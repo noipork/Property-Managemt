@@ -71,6 +71,39 @@
       "relation": "manyToOne",
       "target": "api::plan.plan",
       "inversedBy": "users"
+    },
+    "property": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property.property"
+    },
+    "unitType": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::unit-type.unit-type"
+    },
+    "roomNumber": {
+      "type": "string"
+    },
+    "registrationDate": {
+      "type": "date"
+    },
+    "residencyStatus": {
+      "type": "enumeration",
+      "enum": ["reserved", "active", "nearlyExpired", "expired", "inactive"],
+      "default": "reserved"
+    },
+    "billings": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::billing.billing",
+      "mappedBy": "resident"
+    },
+    "payments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment.payment",
+      "mappedBy": "resident"
     }
   }
 }

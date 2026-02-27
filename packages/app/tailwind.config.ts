@@ -32,6 +32,15 @@ export default <Config>{
           active: '#0f172a',
         },
       },
+      keyframes: {
+        'fade-in-row': {
+          '0%': { opacity: '0', transform: 'translateX(12px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+      },
+      animation: {
+        'fade-in-row': 'fade-in-row 0.3s ease-out',
+      },
     },
   },
 }

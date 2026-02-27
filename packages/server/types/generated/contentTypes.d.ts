@@ -430,6 +430,124 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiBillingBilling extends Struct.CollectionTypeSchema {
+  collectionName: 'billings';
+  info: {
+    description: 'Billing invoices for residents';
+    displayName: 'Billing';
+    pluralName: 'billings';
+    singularName: 'billing';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'THB'>;
+    description: Schema.Attribute.String & Schema.Attribute.Required;
+    dueDate: Schema.Attribute.Date & Schema.Attribute.Required;
+    electricAmount: Schema.Attribute.Decimal;
+    electricMeterEnd: Schema.Attribute.Decimal;
+    electricMeterStart: Schema.Attribute.Decimal;
+    electricUnitPrice: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    electricUnitsUsed: Schema.Attribute.Decimal;
+    invoiceNo: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::billing.billing'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    paidAmount: Schema.Attribute.Decimal;
+    paidDate: Schema.Attribute.Date;
+    payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    publishedAt: Schema.Attribute.DateTime;
+    resident: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    status: Schema.Attribute.Enumeration<
+      ['pending', 'paid', 'overdue', 'partiallyPaid', 'cancelled']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
+    type: Schema.Attribute.Enumeration<
+      ['monthlyRent', 'utilities', 'maintenance', 'deposit', 'lateFee', 'other']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'monthlyRent'>;
+    unitTypePrice: Schema.Attribute.Decimal;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    waterAmount: Schema.Attribute.Decimal;
+    waterMeterEnd: Schema.Attribute.Decimal;
+    waterMeterStart: Schema.Attribute.Decimal;
+    waterUnitPrice: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    waterUnitsUsed: Schema.Attribute.Decimal;
+  };
+}
+
+export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
+  collectionName: 'payments';
+  info: {
+    description: 'Payment records for billing invoices';
+    displayName: 'Payment';
+    pluralName: 'payments';
+    singularName: 'payment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    billing: Schema.Attribute.Relation<'manyToOne', 'api::billing.billing'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'THB'>;
+    date: Schema.Attribute.Date & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::payment.payment'
+    > &
+      Schema.Attribute.Private;
+    method: Schema.Attribute.Enumeration<
+      ['creditCard', 'bankTransfer', 'cash', 'promptPay', 'other']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'bankTransfer'>;
+    notes: Schema.Attribute.Text;
+    paymentSlip: Schema.Attribute.Media<'images'>;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    publishedAt: Schema.Attribute.DateTime;
+    refNo: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    resident: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    status: Schema.Attribute.Enumeration<
+      ['pending', 'reviewing', 'completed', 'failed', 'refunded']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
+    transactionId: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiPlanPlan extends Struct.CollectionTypeSchema {
   collectionName: 'plans';
   info: {
@@ -492,6 +610,179 @@ export interface ApiPlanPlan extends Struct.CollectionTypeSchema {
       'oneToMany',
       'plugin::users-permissions.user'
     >;
+  };
+}
+
+export interface ApiPropertyProperty extends Struct.CollectionTypeSchema {
+  collectionName: 'properties';
+  info: {
+    description: 'Real estate properties managed by the platform';
+    displayName: 'Property';
+    pluralName: 'properties';
+    singularName: 'property';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    address: Schema.Attribute.String & Schema.Attribute.Required;
+    area: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    areaUnit: Schema.Attribute.String & Schema.Attribute.DefaultTo<'sqm'>;
+    city: Schema.Attribute.String & Schema.Attribute.Required;
+    country: Schema.Attribute.String & Schema.Attribute.DefaultTo<'Thailand'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'THB'>;
+    description: Schema.Attribute.Text;
+    image: Schema.Attribute.Media<'images'>;
+    images: Schema.Attribute.Media<'images', true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::property.property'
+    > &
+      Schema.Attribute.Private;
+    monthlyRent: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    occupiedUnits: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    owner: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    propertyType: Schema.Attribute.Enumeration<
+      [
+        'apartment',
+        'condo',
+        'house',
+        'townhouse',
+        'commercial',
+        'land',
+        'other',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'apartment'>;
+    publishedAt: Schema.Attribute.DateTime;
+    state: Schema.Attribute.String;
+    status: Schema.Attribute.Enumeration<
+      ['active', 'inactive', 'maintenance', 'sold']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'active'>;
+    totalUnits: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    unitTypes: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::unit-type.unit-type'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    yearBuilt: Schema.Attribute.Integer;
+    zipCode: Schema.Attribute.String;
+  };
+}
+
+export interface ApiUnitTypeUnitType extends Struct.CollectionTypeSchema {
+  collectionName: 'unit_types';
+  info: {
+    description: 'Unit types within a property (e.g. Studio, 1BR, 2BR)';
+    displayName: 'Unit Type';
+    pluralName: 'unit-types';
+    singularName: 'unit-type';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    area: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    areaUnit: Schema.Attribute.String & Schema.Attribute.DefaultTo<'sqm'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'THB'>;
+    description: Schema.Attribute.Text;
+    images: Schema.Attribute.Media<'images', true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::unit-type.unit-type'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    price: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    publishedAt: Schema.Attribute.DateTime;
+    quantity: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    status: Schema.Attribute.Enumeration<
+      ['available', 'occupied', 'maintenance', 'unavailable']
+    > &
+      Schema.Attribute.DefaultTo<'available'>;
+    unitType: Schema.Attribute.Enumeration<
+      [
+        'studio',
+        'br1',
+        'br2',
+        'br3',
+        'br4',
+        'penthouse',
+        'shophouse',
+        'office',
+        'warehouse',
+        'other',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'studio'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -953,6 +1244,7 @@ export interface PluginUsersPermissionsUser
     draftAndPublish: false;
   };
   attributes: {
+    billings: Schema.Attribute.Relation<'oneToMany', 'api::billing.billing'>;
     blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     confirmationToken: Schema.Attribute.String & Schema.Attribute.Private;
     confirmed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
@@ -975,13 +1267,25 @@ export interface PluginUsersPermissionsUser
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     plan: Schema.Attribute.Relation<'manyToOne', 'api::plan.plan'>;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
     provider: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    registrationDate: Schema.Attribute.Date;
     resetPasswordToken: Schema.Attribute.String & Schema.Attribute.Private;
+    residencyStatus: Schema.Attribute.Enumeration<
+      ['reserved', 'active', 'nearlyExpired', 'expired', 'inactive']
+    > &
+      Schema.Attribute.DefaultTo<'reserved'>;
     role: Schema.Attribute.Relation<
       'manyToOne',
       'plugin::users-permissions.role'
+    >;
+    roomNumber: Schema.Attribute.String;
+    unitType: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::unit-type.unit-type'
     >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1006,7 +1310,11 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::billing.billing': ApiBillingBilling;
+      'api::payment.payment': ApiPaymentPayment;
       'api::plan.plan': ApiPlanPlan;
+      'api::property.property': ApiPropertyProperty;
+      'api::unit-type.unit-type': ApiUnitTypeUnitType;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;

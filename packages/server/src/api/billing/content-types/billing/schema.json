@@ -1,0 +1,110 @@
+{
+  "kind": "collectionType",
+  "collectionName": "billings",
+  "info": {
+    "singularName": "billing",
+    "pluralName": "billings",
+    "displayName": "Billing",
+    "description": "Billing invoices for residents"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "invoiceNo": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": ["monthlyRent", "utilities", "maintenance", "deposit", "lateFee", "other"],
+      "required": true,
+      "default": "monthlyRent"
+    },
+    "description": {
+      "type": "string",
+      "required": true
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "currency": {
+      "type": "string",
+      "default": "THB"
+    },
+    "dueDate": {
+      "type": "date",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "paid", "overdue", "partiallyPaid", "cancelled"],
+      "required": true,
+      "default": "pending"
+    },
+    "paidDate": {
+      "type": "date"
+    },
+    "paidAmount": {
+      "type": "decimal"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "unitTypePrice": {
+      "type": "decimal"
+    },
+    "electricMeterStart": {
+      "type": "decimal"
+    },
+    "electricMeterEnd": {
+      "type": "decimal"
+    },
+    "electricUnitPrice": {
+      "type": "decimal",
+      "default": 0
+    },
+    "electricUnitsUsed": {
+      "type": "decimal"
+    },
+    "electricAmount": {
+      "type": "decimal"
+    },
+    "waterMeterStart": {
+      "type": "decimal"
+    },
+    "waterMeterEnd": {
+      "type": "decimal"
+    },
+    "waterUnitPrice": {
+      "type": "decimal",
+      "default": 0
+    },
+    "waterUnitsUsed": {
+      "type": "decimal"
+    },
+    "waterAmount": {
+      "type": "decimal"
+    },
+    "resident": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "billings"
+    },
+    "property": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property.property"
+    },
+    "payments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment.payment",
+      "mappedBy": "billing"
+    }
+  }
+}

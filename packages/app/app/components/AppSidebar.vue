@@ -8,43 +8,47 @@ const props = defineProps<{
 
 const { user } = useAuth()
 const { t } = useI18n()
+const route = useRoute()
 
-const activeItem = ref('Dashboard')
+function isActive(path: string) {
+    if (path === '/') return route.path === '/'
+    return route.path.startsWith(path)
+}
 
 // Manager menu - full property management access
 const managerMenuSections = computed(() => [
     {
         title: t.value.main,
         items: [
-            { name: t.value.dashboard, icon: 'ti-dashboard', badge: '' },
-            { name: t.value.properties, icon: 'ti-home', badge: '12' },
-            { name: t.value.tenants, icon: 'ti-user', badge: '48' },
-            { name: t.value.leases, icon: 'ti-file', badge: '' },
+            { name: t.value.dashboard, icon: 'ti-dashboard', badge: '', path: '/' },
+            { name: t.value.properties, icon: 'ti-home', badge: '', path: '/properties' },
+            { name: t.value.residents, icon: 'ti-user', badge: '', path: '/residents' },
+            { name: t.value.leases, icon: 'ti-file', badge: '', path: '/leases' },
         ],
     },
     {
         title: t.value.financial,
         items: [
-            { name: t.value.payments, icon: 'ti-wallet', badge: '3' },
-            { name: t.value.invoices, icon: 'ti-receipt', badge: '' },
-            { name: t.value.expenses, icon: 'ti-money', badge: '' },
-            { name: t.value.reports, icon: 'ti-bar-chart', badge: '' },
+            { name: t.value.payments, icon: 'ti-wallet', badge: '', path: '/payments' },
+            { name: t.value.invoices, icon: 'ti-receipt', badge: '', path: '/invoices' },
+            { name: t.value.expenses, icon: 'ti-money', badge: '', path: '/expenses' },
+            { name: t.value.reports, icon: 'ti-bar-chart', badge: '', path: '/reports' },
         ],
     },
     {
         title: t.value.operations,
         items: [
-            { name: t.value.maintenance, icon: 'ti-wrench', badge: '5' },
-            { name: t.value.calendar, icon: 'ti-calendar', badge: '' },
-            { name: t.value.messages, icon: 'ti-comment', badge: '8' },
-            { name: t.value.documents, icon: 'ti-folder', badge: '' },
+            { name: t.value.maintenance, icon: 'ti-wrench', badge: '', path: '/maintenance' },
+            { name: t.value.calendar, icon: 'ti-calendar', badge: '', path: '/calendar' },
+            { name: t.value.messages, icon: 'ti-comment', badge: '', path: '/messages' },
+            { name: t.value.documents, icon: 'ti-folder', badge: '', path: '/documents' },
         ],
     },
     {
         title: t.value.system,
         items: [
-            { name: t.value.settings, icon: 'ti-settings', badge: '' },
-            { name: t.value.help, icon: 'ti-help-alt', badge: '' },
+            { name: t.value.settings, icon: 'ti-settings', badge: '', path: '/settings' },
+            { name: t.value.help, icon: 'ti-help-alt', badge: '', path: '/help' },
         ],
     },
 ])
@@ -54,30 +58,30 @@ const residentMenuSections = computed(() => [
     {
         title: t.value.overview,
         items: [
-            { name: t.value.dashboard, icon: 'ti-dashboard', badge: '' },
-            { name: t.value.myLease, icon: 'ti-file', badge: '' },
+            { name: t.value.dashboard, icon: 'ti-dashboard', badge: '', path: '/' },
+            { name: t.value.myLease, icon: 'ti-file', badge: '', path: '/my-lease' },
         ],
     },
     {
         title: t.value.financial,
         items: [
-            { name: t.value.payments, icon: 'ti-wallet', badge: '' },
-            { name: t.value.paymentHistory, icon: 'ti-receipt', badge: '' },
+            { name: t.value.payments, icon: 'ti-wallet', badge: '', path: '/payments' },
+            { name: t.value.paymentHistory, icon: 'ti-receipt', badge: '', path: '/payment-history' },
         ],
     },
     {
         title: t.value.services,
         items: [
-            { name: t.value.maintenance, icon: 'ti-wrench', badge: '2' },
-            { name: t.value.messages, icon: 'ti-comment', badge: '3' },
-            { name: t.value.documents, icon: 'ti-folder', badge: '' },
+            { name: t.value.maintenance, icon: 'ti-wrench', badge: '2', path: '/maintenance' },
+            { name: t.value.messages, icon: 'ti-comment', badge: '3', path: '/messages' },
+            { name: t.value.documents, icon: 'ti-folder', badge: '', path: '/documents' },
         ],
     },
     {
         title: t.value.account,
         items: [
-            { name: t.value.settings, icon: 'ti-settings', badge: '' },
-            { name: t.value.help, icon: 'ti-help-alt', badge: '' },
+            { name: t.value.settings, icon: 'ti-settings', badge: '', path: '/settings' },
+            { name: t.value.help, icon: 'ti-help-alt', badge: '', path: '/help' },
         ],
     },
 ])
@@ -135,29 +139,30 @@ watch(
                 <!-- Menu items -->
                 <div v-for="item in section.items" :key="item.name" class="sidebar-item mb-0.5"
                     :class="open ? 'mx-3' : 'mx-2'">
-                    <button class="w-full flex items-center rounded-lg transition-all duration-200 group" :class="[
-                        activeItem === item.name
-                            ? 'bg-primary-600 dark:bg-primary-700 text-white shadow-lg shadow-primary-600/20 dark:shadow-primary-700/20'
-                            : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-300',
-                        open ? 'gap-3 px-3 py-2.5' : 'justify-center py-2 px-0'
-                    ]" :title="!open ? item.name : undefined" @click="activeItem = item.name">
+                    <NuxtLink :to="item.path"
+                        class="w-full flex items-center rounded-lg transition-all duration-200 group" :class="[
+                            isActive(item.path)
+                                ? 'bg-primary-600 dark:bg-primary-700 text-white shadow-lg shadow-primary-600/20 dark:shadow-primary-700/20'
+                                : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white',
+                            open ? 'gap-3 px-3 py-2.5' : 'justify-center py-2 px-0'
+                        ]" :title="!open ? item.name : undefined">
                         <i :class="[
                             item.icon,
                             'text-lg flex-shrink-0',
                             open ? 'w-5 text-center' : 'w-full text-center text-xl',
-                            activeItem === item.name ? 'text-white' : 'text-gray-600 dark:text-gray-500 group-hover:text-gray-900 dark:group-hover:text-gray-300',
+                            isActive(item.path) ? 'text-white' : 'text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white',
                         ]"></i>
                         <span v-if="open" class="text-sm font-medium whitespace-nowrap">
                             {{ item.name }}
                         </span>
                         <span v-if="open && item.badge" class="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full"
-                            :class="activeItem === item.name
+                            :class="isActive(item.path)
                                 ? 'bg-white/20 text-white'
-                                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
                                 ">
                             {{ item.badge }}
                         </span>
-                    </button>
+                    </NuxtLink>
                 </div>
             </div>
         </div>

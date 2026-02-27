@@ -4,8 +4,8 @@ const route = useRoute()
 
 const navItems = computed(() => [
     { name: t.value.dashboard, icon: 'ti-dashboard', path: '/' },
+    { name: t.value.properties, icon: 'ti-home', path: '/properties' },
     { name: t.value.payments, icon: 'ti-wallet', path: '/payments' },
-    { name: t.value.maintenance, icon: 'ti-headphone-alt', path: '/maintenance' },
     { name: t.value.messages, icon: 'ti-comment', path: '/messages', badge: 8 },
     { name: t.value.settings, icon: 'ti-settings', path: '/settings' },
 ])

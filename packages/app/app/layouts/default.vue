@@ -22,10 +22,15 @@ function toggleSidebar() {
         <!-- Main content -->
         <main class="transition-all duration-300 
                    md:pt-16 
-                   pb-20 md:pb-0" :class="{ 'md:ml-64': sidebarOpen, 'md:ml-20': !sidebarOpen }">
+                   pb-20 md:pb-12" :class="{ 'md:ml-64': sidebarOpen, 'md:ml-20': !sidebarOpen }">
             <div class="p-4 md:p-6">
                 <slot />
             </div>
         </main>
+
+        <!-- Footer (desktop only, matches navbar positioning) -->
+        <div class="hidden md:block">
+            <AppFooter :sidebar-open="sidebarOpen" />
+        </div>
     </div>
 </template>
