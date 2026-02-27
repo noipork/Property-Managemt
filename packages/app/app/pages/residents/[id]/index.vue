@@ -141,6 +141,19 @@ interface BillingItem {
     dueDate: string
     status: string
     paidDate: string | null
+    paidAmount?: number | null
+    unitTypePrice?: number
+    electricMeterStart?: number
+    electricMeterEnd?: number
+    electricUnitPrice?: number
+    electricUnitsUsed?: number
+    electricAmount?: number
+    waterMeterStart?: number
+    waterMeterEnd?: number
+    waterUnitPrice?: number
+    waterUnitsUsed?: number
+    waterAmount?: number
+    notes?: string | null
 }
 
 interface PaymentItem {
@@ -301,6 +314,66 @@ const paymentMethodIcons: Record<string, string> = {
     promptPay: 'ti-wallet',
 }
 
+// ─── View Invoice Modal ───────────────────────────────────────────────────────
+const showViewInvoiceModal = ref(false)
+const selectedInvoice = ref<BillingItem | null>(null)
+const isLoadingInvoice = ref(false)
+
+async function viewInvoice(bill: BillingItem) {
+    isLoadingInvoice.value = true
+    showViewInvoiceModal.value = true
+    try {
+        const res = await fetch(`${STRAPI_URL}/api/billings/${bill.documentId}`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        if (!res.ok) throw new Error('Failed to fetch invoice details')
+        const data = await res.json()
+        selectedInvoice.value = {
+            id: data.data.id,
+            documentId: data.data.documentId,
+            invoiceNo: data.data.invoiceNo,
+            type: data.data.type,
+            description: data.data.description,
+            amount: data.data.amount,
+            currency: data.data.currency || 'THB',
+            dueDate: data.data.dueDate,
+            status: data.data.status,
+            paidDate: data.data.paidDate,
+            paidAmount: data.data.paidAmount,
+            unitTypePrice: data.data.unitTypePrice,
+            electricMeterStart: data.data.electricMeterStart,
+            electricMeterEnd: data.data.electricMeterEnd,
+            electricUnitPrice: data.data.electricUnitPrice,
+            electricUnitsUsed: data.data.electricUnitsUsed,
+            electricAmount: data.data.electricAmount,
+            waterMeterStart: data.data.waterMeterStart,
+            waterMeterEnd: data.data.waterMeterEnd,
+            waterUnitPrice: data.data.waterUnitPrice,
+            waterUnitsUsed: data.data.waterUnitsUsed,
+            waterAmount: data.data.waterAmount,
+            notes: data.data.notes,
+        }
+    } catch (err) {
+        console.error('Error fetching invoice:', err)
+        selectedInvoice.value = bill
+    } finally {
+        isLoadingInvoice.value = false
+    }
+}
+
+function closeViewInvoiceModal() {
+    showViewInvoiceModal.value = false
+    selectedInvoice.value = null
+}
+
+function getTranslatedStatus(status: string) {
+    return (t.value as any)[status] || status
+}
+
+function getTranslatedType(type: string) {
+    return (t.value as any)[type] || type
+}
+
 // ─── Create Invoice Modal ─────────────────────────────────────────────────────
 const showInvoiceModal = ref(false)
 const isCreatingInvoice = ref(false)
@@ -358,7 +431,7 @@ const totalAmount = computed(() => {
     return invoiceForm.value.unitTypePrice + electricAmount.value + waterAmount.value
 })
 
-function openInvoiceModal() {
+async function openInvoiceModal() {
     // Pre-fill with resident's unit type price if available
     if (resident.value?.unitType?.price) {
         invoiceForm.value.unitTypePrice = resident.value.unitType.price
@@ -370,6 +443,36 @@ function openInvoiceModal() {
     // Set default description
     const monthName = now.toLocaleString('en-US', { month: 'long', year: 'numeric' })
     invoiceForm.value.description = `Monthly Rent - ${monthName}`
+
+    // Fetch latest billing to auto-fill meter start readings
+    try {
+        const params = new URLSearchParams({
+            'filters[resident][id][$eq]': residentId,
+            'sort[0]': 'dueDate:desc',
+            'pagination[page]': '1',
+            'pagination[pageSize]': '1',
+        })
+        const res = await fetch(`${STRAPI_URL}/api/billings?${params}`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        if (res.ok) {
+            const data = await res.json()
+            if (data.data && data.data.length > 0) {
+                const latestBilling = data.data[0]
+                // Auto-fill electric meter start from previous end
+                if (latestBilling.electricMeterEnd) {
+                    invoiceForm.value.electricMeterStart = latestBilling.electricMeterEnd
+                }
+                // Auto-fill water meter start from previous end
+                if (latestBilling.waterMeterEnd) {
+                    invoiceForm.value.waterMeterStart = latestBilling.waterMeterEnd
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Error fetching latest billing:', err)
+    }
+
     showInvoiceModal.value = true
 }
 
@@ -759,8 +862,8 @@ async function createInvoice() {
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ t.noBillingHistory }}</p>
                         </div>
                         <!-- Cards -->
-                        <div v-else v-for="bill in billingHistory" :key="bill.id"
-                            class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-colors">
+                        <div v-else v-for="bill in billingHistory" :key="bill.id" @click="viewInvoice(bill)"
+                            class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-colors cursor-pointer">
                             <div class="flex items-start gap-4">
                                 <!-- Icon -->
                                 <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -775,7 +878,7 @@ async function createInvoice() {
                                         <span class="text-xs font-mono text-gray-400">{{ bill.invoiceNo }}</span>
                                         <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
                                             :class="billingStatusColors[bill.status]">
-                                            {{ t[bill.status as keyof typeof t] || bill.status }}
+                                            {{ getTranslatedStatus(bill.status) }}
                                         </span>
                                     </div>
                                     <p class="font-medium text-gray-900 dark:text-white mt-1">{{ bill.description }}</p>
@@ -796,7 +899,7 @@ async function createInvoice() {
                                         :class="bill.status === 'paid' ? 'text-gray-900 dark:text-white' : bill.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'">
                                         {{ bill.currency }} {{ bill.amount.toLocaleString() }}
                                     </p>
-                                    <p class="text-xs text-gray-400">{{ t[bill.type as keyof typeof t] || bill.type }}
+                                    <p class="text-xs text-gray-400">{{ getTranslatedType(bill.type) }}
                                     </p>
                                 </div>
                             </div>
@@ -850,13 +953,12 @@ async function createInvoice() {
                                         <span class="text-xs font-mono text-gray-400">{{ payment.refNo }}</span>
                                         <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
                                             :class="paymentStatusColors[payment.status]">
-                                            {{ payment.status === 'completed' ? t.paid : t[payment.status as keyof
-                                                typeof t] ||
-                                                payment.status }}
+                                            {{ payment.status === 'completed' ? t.paid :
+                                            getTranslatedStatus(payment.status) }}
                                         </span>
                                     </div>
                                     <p class="font-medium text-gray-900 dark:text-white mt-1">
-                                        {{ t[payment.method as keyof typeof t] || payment.method }}
+                                        {{ getTranslatedType(payment.method) }}
                                     </p>
                                     <p class="text-xs text-gray-400 mt-1">
                                         <i class="ti-calendar mr-1"></i>
@@ -897,6 +999,232 @@ async function createInvoice() {
             </Transition>
 
         </template>
+
+        <!-- View Invoice Modal -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition-all duration-200" enter-from-class="opacity-0"
+                enter-to-class="opacity-100" leave-active-class="transition-all duration-200"
+                leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <div v-if="showViewInvoiceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <!-- Backdrop -->
+                    <div class="absolute inset-0 bg-black/50" @click="closeViewInvoiceModal"></div>
+
+                    <!-- Modal -->
+                    <Transition enter-active-class="transition-all duration-200 delay-75"
+                        enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100"
+                        leave-active-class="transition-all duration-150" leave-from-class="opacity-100 scale-100"
+                        leave-to-class="opacity-0 scale-95">
+                        <div v-if="showViewInvoiceModal"
+                            class="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+                            <!-- Header -->
+                            <div
+                                class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+                                <div>
+                                    <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ t.invoice }}</h2>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ selectedInvoice?.invoiceNo }}
+                                    </p>
+                                </div>
+                                <button @click="closeViewInvoiceModal"
+                                    class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                                    <i class="ti-close text-lg"></i>
+                                </button>
+                            </div>
+
+                            <!-- Body -->
+                            <div v-if="isLoadingInvoice" class="flex-1 flex items-center justify-center py-12">
+                                <div
+                                    class="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin">
+                                </div>
+                            </div>
+                            <div v-else-if="selectedInvoice" class="flex-1 overflow-y-auto p-6 space-y-6">
+                                <!-- Status & Dates -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="space-y-1.5">
+                                        <label
+                                            class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{
+                                                t.status }}</label>
+                                        <span class="inline-flex px-3 py-1.5 rounded-lg text-sm font-semibold"
+                                            :class="billingStatusColors[selectedInvoice.status]">
+                                            {{ getTranslatedStatus(selectedInvoice.status) }}
+                                        </span>
+                                    </div>
+                                    <div class="space-y-1.5">
+                                        <label
+                                            class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{
+                                                t.invoiceType }}</label>
+                                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{
+                                            getTranslatedType(selectedInvoice.type) }}</p>
+                                    </div>
+                                </div>
+
+                                <!-- Description -->
+                                <div class="space-y-1.5">
+                                    <label
+                                        class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{
+                                            t.description }}</label>
+                                    <p class="text-sm text-gray-900 dark:text-white">{{ selectedInvoice.description }}
+                                    </p>
+                                </div>
+
+                                <!-- Dates -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="space-y-1.5">
+                                        <label
+                                            class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{
+                                                t.dueDate }}</label>
+                                        <p class="text-sm text-gray-900 dark:text-white flex items-center gap-1.5">
+                                            <i class="ti-calendar text-gray-400 text-xs"></i>
+                                            {{ formatDate(selectedInvoice.dueDate) }}
+                                        </p>
+                                    </div>
+                                    <div v-if="selectedInvoice.paidDate" class="space-y-1.5">
+                                        <label
+                                            class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{
+                                                t.paidOn }}</label>
+                                        <p class="text-sm text-gray-900 dark:text-white flex items-center gap-1.5">
+                                            <i class="ti-check text-emerald-500 text-xs"></i>
+                                            {{ formatDate(selectedInvoice.paidDate) }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Room Rent -->
+                                <div v-if="selectedInvoice.unitTypePrice"
+                                    class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                    <h4
+                                        class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                                        <i class="ti-home text-primary-500"></i>
+                                        {{ t.roomRent }}
+                                    </h4>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">{{ t.unitTypePrice
+                                            }}</span>
+                                        <span class="text-lg font-bold text-gray-900 dark:text-white">{{
+                                            selectedInvoice.currency }} {{
+                                                selectedInvoice.unitTypePrice.toLocaleString()
+                                            }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Electric Meter -->
+                                <div v-if="selectedInvoice.electricMeterStart !== undefined || selectedInvoice.electricMeterEnd !== undefined"
+                                    class="bg-yellow-50 dark:bg-yellow-900/10 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800/30">
+                                    <h4
+                                        class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                                        <i class="ti-bolt text-yellow-500"></i>
+                                        {{ t.electricMeter }}
+                                    </h4>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="space-y-1">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterStart }}</p>
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{
+                                                selectedInvoice.electricMeterStart || 0 }}</p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterEnd }}</p>
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{
+                                                selectedInvoice.electricMeterEnd || 0 }}</p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitPrice }}</p>
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{
+                                                selectedInvoice.currency }} {{ (selectedInvoice.electricUnitPrice ||
+                                                    0).toLocaleString() }}</p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.units }}</p>
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{
+                                                selectedInvoice.electricUnitsUsed || 0 }} {{ t.units }}</p>
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="mt-3 pt-3 border-t border-yellow-200 dark:border-yellow-800/30 flex items-center justify-between">
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.total
+                                            }}</span>
+                                        <span class="text-lg font-bold text-yellow-700 dark:text-yellow-400">{{
+                                            selectedInvoice.currency }} {{ (selectedInvoice.electricAmount ||
+                                                0).toLocaleString() }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Water Meter -->
+                                <div v-if="selectedInvoice.waterMeterStart !== undefined || selectedInvoice.waterMeterEnd !== undefined"
+                                    class="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-4 border border-blue-200 dark:border-blue-800/30">
+                                    <h4
+                                        class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                                        <i class="ti-droplet text-blue-500"></i>
+                                        {{ t.waterMeter }}
+                                    </h4>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="space-y-1">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterStart }}</p>
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{
+                                                selectedInvoice.waterMeterStart || 0 }}</p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterEnd }}</p>
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{
+                                                selectedInvoice.waterMeterEnd || 0 }}</p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitPrice }}</p>
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{
+                                                selectedInvoice.currency }} {{ (selectedInvoice.waterUnitPrice ||
+                                                    0).toLocaleString() }}</p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.units }}</p>
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{
+                                                selectedInvoice.waterUnitsUsed || 0 }} {{ t.units }}</p>
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800/30 flex items-center justify-between">
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.total
+                                            }}</span>
+                                        <span class="text-lg font-bold text-blue-700 dark:text-blue-400">{{
+                                            selectedInvoice.currency }} {{ (selectedInvoice.waterAmount ||
+                                                0).toLocaleString()
+                                            }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Notes -->
+                                <div v-if="selectedInvoice.notes" class="space-y-1.5">
+                                    <label
+                                        class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{
+                                            t.notes }}</label>
+                                    <p
+                                        class="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                                        {{ selectedInvoice.notes }}</p>
+                                </div>
+                            </div>
+
+                            <!-- Footer -->
+                            <div
+                                class="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                                <!-- Total Amount -->
+                                <div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{
+                                        t.totalAmount }}</p>
+                                    <p class="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                                        {{ selectedInvoice?.currency }} {{ selectedInvoice?.amount.toLocaleString() }}
+                                    </p>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="flex items-center gap-3">
+                                    <button @click="closeViewInvoiceModal"
+                                        class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                                        {{ t.close }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </Transition>
+                </div>
+            </Transition>
+        </Teleport>
 
         <!-- Create Invoice Modal -->
         <Teleport to="body">
@@ -976,7 +1304,7 @@ async function createInvoice() {
                                     <div class="flex items-center gap-3">
                                         <div class="flex-1 space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitTypePrice
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.unitTypePrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
@@ -1000,28 +1328,28 @@ async function createInvoice() {
                                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterStart
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.electricMeterStart" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterEnd
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.electricMeterEnd" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitPrice
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.electricUnitPrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.total
-                                                }}</label>
+                                            }}</label>
                                             <div
                                                 class="px-3 py-2 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg">
                                                 <span class="font-semibold text-yellow-700 dark:text-yellow-400">
@@ -1044,28 +1372,28 @@ async function createInvoice() {
                                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterStart
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.waterMeterStart" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterEnd
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.waterMeterEnd" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitPrice
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.waterUnitPrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.total
-                                                }}</label>
+                                            }}</label>
                                             <div
                                                 class="px-3 py-2 bg-blue-100 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg">
                                                 <span class="font-semibold text-blue-700 dark:text-blue-400">
@@ -1080,7 +1408,7 @@ async function createInvoice() {
                                 <!-- Notes -->
                                 <div class="space-y-1.5">
                                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.notes
-                                        }}</label>
+                                    }}</label>
                                     <textarea v-model="invoiceForm.notes" rows="2"
                                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                                         :placeholder="t.invoiceNotesPlaceholder"></textarea>
