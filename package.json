@@ -2,13 +2,12 @@
   "name": "property-management",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
-    "dev": "npm run dev --workspaces",
-    "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces"
+    "dev:app": "npm run dev --prefix packages/app",
+    "dev:server": "npm run dev --prefix packages/server",
+    "build:app": "npm run build --prefix packages/app",
+    "build:server": "npm run build --prefix packages/server",
+    "install:all": "npm install --prefix packages/app && npm install --prefix packages/server"
   },
   "devDependencies": {},
   "engines": {

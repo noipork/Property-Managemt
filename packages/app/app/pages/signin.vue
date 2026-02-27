@@ -161,7 +161,7 @@ onMounted(() => {
                         class="w-10 h-10 flex items-center justify-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm"
                         @click="toggleTheme" :title="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'">
                         <i v-if="isDarkMode" class="ti-shine text-gray-600 dark:text-gray-300 text-lg"></i>
-                        <i v-else class="ti-moon text-gray-600 dark:text-gray-300 text-lg"></i>
+                        <i v-else class="ti-shine text-gray-600 dark:text-gray-300 text-lg"></i>
                     </button>
 
                     <!-- Language Switcher -->
@@ -223,7 +223,7 @@ onMounted(() => {
                         <div>
                             <div class="flex items-center justify-between mb-1.5">
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.password
-                                    }}</label>
+                                }}</label>
                                 <a href="#" class="text-xs text-primary-600 dark:text-primary-400 hover:underline">{{
                                     t.forgotPassword }}</a>
                             </div>
@@ -246,7 +246,7 @@ onMounted(() => {
                             <input id="remember" v-model="rememberMe" type="checkbox"
                                 class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 dark:bg-gray-800" />
                             <label for="remember" class="text-sm text-gray-600 dark:text-gray-400">{{ t.rememberMe
-                                }}</label>
+                            }}</label>
                         </div>
 
                         <!-- Submit -->

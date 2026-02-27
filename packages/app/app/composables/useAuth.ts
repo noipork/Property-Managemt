@@ -89,7 +89,7 @@ export const useAuth = () => {
             const data = await response.json()
 
             // Fetch user data with role populated
-            const userResponse = await fetch(`${STRAPI_URL}/api/users/me?populate=role`, {
+            const userResponse = await fetch(`${STRAPI_URL}/api/users/me?populate=*`, {
                 headers: {
                     'Authorization': `Bearer ${data.jwt}`,
                 },
@@ -129,18 +129,29 @@ export const useAuth = () => {
         }
     }
 
-    const register = async (name: string, email: string, password: string) => {
+    const register = async (
+        name: string,
+        email: string,
+        password: string,
+        plan?: { id?: number; documentId?: string }
+    ) => {
         try {
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            }
+            
+            // Pass plan via custom header to avoid Strapi body validation
+            if (plan?.documentId) {
+                headers['X-Selected-Plan'] = plan.documentId
+            }
+
             const response = await fetch(`${STRAPI_URL}/api/auth/local/register`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
                 body: JSON.stringify({
                     username: name.replace(/\s+/g, '').toLowerCase(),
                     email: email,
                     password: password,
-                    role: 3, // Default role: Manager (role ID 3)
                 }),
             })
 
@@ -150,8 +161,32 @@ export const useAuth = () => {
 
             const data = await response.json()
 
+            const userId: number | undefined = data?.user?.id
+
+            // Update role and plan after registration completes
+            if (userId) {
+                const updatePayload: Record<string, unknown> = { role: 3 }
+
+                if (plan?.id) {
+                    updatePayload.plan = plan.id
+                }
+
+                const updateResponse = await fetch(`${STRAPI_URL}/api/users/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${data.jwt}`,
+                    },
+                    body: JSON.stringify(updatePayload),
+                })
+
+                if (!updateResponse.ok) {
+                    console.error('Failed to update user role/plan after register', await updateResponse.text())
+                }
+            }
+
             // Fetch user data with role populated
-            const userResponse = await fetch(`${STRAPI_URL}/api/users/me?populate=role`, {
+            const userResponse = await fetch(`${STRAPI_URL}/api/users/me?populate=*`, {
                 headers: {
                     'Authorization': `Bearer ${data.jwt}`,
                 },

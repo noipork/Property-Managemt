@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import gsap from 'gsap'
 
 definePageMeta({
@@ -45,11 +45,52 @@ function setLanguage(langCode: 'EN' | 'TH') {
     showLangMenu.value = false
 }
 
-const plans = computed(() => [
-    { id: 'starter', name: t.value.starter, price: t.value.free, desc: t.value.starterDesc, icon: 'ti-home' },
-    { id: 'pro', name: t.value.professional, price: '$29/mo', desc: t.value.professionalDesc, icon: 'ti-crown' },
-    { id: 'enterprise', name: t.value.enterprise, price: '$99/mo', desc: t.value.enterpriseDesc, icon: 'ti-building' },
-])
+const planIcons: Record<string, string> = {
+    starter: 'ti-home',
+    professional: 'ti-crown',
+    enterprise: 'ti-briefcase',
+}
+
+const config = useRuntimeConfig()
+
+interface StrapiPlan {
+    id: number
+    documentId: string
+    name: string
+    slug: string
+    price: number
+    currency: string
+    maxProperties: number
+    maxUnitsPerProperty: number
+    features: string[]
+    isActive: boolean
+    sortOrder: number
+}
+
+const plans = ref<StrapiPlan[]>([])
+const plansLoading = ref(true)
+const plansError = ref(false)
+
+async function fetchPlans() {
+    try {
+        plansLoading.value = true
+        plansError.value = false
+        const res = await fetch(
+            `${config.public.strapiUrl}/api/plans?sort=sortOrder:asc&filters[isActive][$eq]=true`
+        )
+        if (!res.ok) throw new Error('Failed to fetch plans')
+        const json = await res.json()
+        plans.value = json.data ?? []
+        // default select first plan
+        if (plans.value.length > 0 && !plans.value.find(p => p.slug === selectedPlan.value)) {
+            selectedPlan.value = plans.value[0].slug
+        }
+    } catch (e) {
+        plansError.value = true
+    } finally {
+        plansLoading.value = false
+    }
+}
 
 const handleSubmit = async () => {
     if (!fullName.value || !email.value || !password.value || !agreeTerms.value) {
@@ -69,7 +110,15 @@ const handleSubmit = async () => {
     isLoading.value = true
     errorMessage.value = ''
 
-    const result = await register(fullName.value, email.value, password.value)
+    const selectedPlanData = plans.value.find(p => p.slug === selectedPlan.value)
+    const result = await register(
+        fullName.value,
+        email.value,
+        password.value,
+        selectedPlanData
+            ? { id: selectedPlanData.id, documentId: selectedPlanData.documentId }
+            : undefined
+    )
 
     isLoading.value = false
 
@@ -82,6 +131,7 @@ const handleSubmit = async () => {
 }
 
 onMounted(() => {
+    fetchPlans()
     nextTick(() => {
         // Animate hero text
         gsap.fromTo('.auth-hero',
@@ -192,7 +242,7 @@ onMounted(() => {
                         class="w-10 h-10 flex items-center justify-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm"
                         @click="toggleTheme" :title="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'">
                         <i v-if="isDarkMode" class="ti-shine text-gray-600 dark:text-gray-300 text-lg"></i>
-                        <i v-else class="ti-moon text-gray-600 dark:text-gray-300 text-lg"></i>
+                        <i v-else class="ti-shine text-gray-600 dark:text-gray-300 text-lg"></i>
                     </button>
 
                     <!-- Language Switcher -->
@@ -320,21 +370,41 @@ onMounted(() => {
 
                         <!-- Plan Picker -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">{{ t.choosePlan }}</label>
-                            <div class="grid grid-cols-3 gap-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{
+                                t.choosePlan }}</label>
+
+                            <!-- Loading skeleton -->
+                            <div v-if="plansLoading" class="grid grid-cols-3 gap-2">
+                                <div v-for="i in 3" :key="i"
+                                    class="h-20 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 animate-pulse">
+                                </div>
+                            </div>
+
+                            <!-- Error -->
+                            <div v-else-if="plansError"
+                                class="p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400 text-center">
+                                Failed to load plans. <button type="button" class="underline"
+                                    @click="fetchPlans">Retry</button>
+                            </div>
+
+                            <!-- Plans -->
+                            <div v-else class="grid grid-cols-3 gap-2">
                                 <button v-for="plan in plans" :key="plan.id" type="button"
-                                    class="relative p-3 rounded-lg border text-center transition-all" :class="selectedPlan === plan.id
-                                        ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-500'
-                                        : 'border-gray-200 bg-white hover:border-gray-300'"
-                                    @click="selectedPlan = plan.id">
-                                    <i :class="[plan.icon, selectedPlan === plan.id ? 'text-primary-600' : 'text-gray-400']"
+                                    class="relative p-3 rounded-lg border text-center transition-all"
+                                    :class="selectedPlan === plan.slug
+                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-500'
+                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'"
+                                    @click="selectedPlan = plan.slug">
+                                    <i :class="[planIcons[plan.slug] ?? 'ti-tag', selectedPlan === plan.slug ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500']"
                                         class="text-lg block mb-1"></i>
                                     <p class="text-xs font-semibold"
-                                        :class="selectedPlan === plan.id ? 'text-primary-700' : 'text-gray-800'">{{
-                                            plan.name }}</p>
+                                        :class="selectedPlan === plan.slug ? 'text-primary-700 dark:text-primary-400' : 'text-gray-800 dark:text-gray-200'">
+                                        {{ plan.name }}
+                                    </p>
                                     <p class="text-[10px] mt-0.5"
-                                        :class="selectedPlan === plan.id ? 'text-primary-500' : 'text-gray-400'">{{
-                                            plan.price }}</p>
+                                        :class="selectedPlan === plan.slug ? 'text-primary-500 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'">
+                                        {{ plan.price.toLocaleString() }} {{ plan.currency }}
+                                    </p>
                                 </button>
                             </div>
                         </div>
@@ -355,7 +425,7 @@ onMounted(() => {
 
                         <!-- Submit -->
                         <button type="submit"
-                            :disabled="isLoading || !fullName || !email || !password || !agreeTerms || password !== confirmPassword || password.length < 8"
+                            :disabled="isLoading || !fullName || !email || !password || !agreeTerms || password !== confirmPassword || password.length < 8 || plansLoading || plansError || !selectedPlan"
                             class="w-full py-2.5 bg-primary-600 dark:bg-primary-700 text-white text-sm font-medium rounded-lg hover:bg-primary-700 dark:hover:bg-primary-800 transition-colors shadow-sm shadow-primary-600/20 dark:shadow-primary-700/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                             <i v-if="!isLoading" class="ti-plus text-xs"></i>
                             <i v-else class="ti-reload text-xs animate-spin"></i>
