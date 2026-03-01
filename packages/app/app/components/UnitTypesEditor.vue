@@ -210,7 +210,7 @@ const statusColors: Record<string, string> = {
 
                 <!-- Price pill -->
                 <span v-if="unit.price" class="text-xs font-medium text-gray-700 dark:text-gray-300 flex-shrink-0">
-                    {{ Number(unit.price).toLocaleString() }} {{ unit.currency }}
+                    {{ Number(unit.price).toLocaleString('en-US') }} {{ unit.currency }}
                 </span>
 
                 <!-- Status badge -->

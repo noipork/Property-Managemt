@@ -1,0 +1,110 @@
+{
+  "kind": "collectionType",
+  "collectionName": "maintenances",
+  "info": {
+    "singularName": "maintenance",
+    "pluralName": "maintenances",
+    "displayName": "Maintenance",
+    "description": "Maintenance requests from residents"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text",
+      "required": true
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "plumbing",
+        "electrical",
+        "hvac",
+        "appliance",
+        "structural",
+        "cleaning",
+        "pest_control",
+        "other"
+      ],
+      "default": "other",
+      "required": true
+    },
+    "priority": {
+      "type": "enumeration",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "in_progress",
+        "on_hold",
+        "resolved",
+        "cancelled"
+      ],
+      "default": "pending",
+      "required": true
+    },
+    "requestNumber": {
+      "type": "string",
+      "unique": true,
+      "required": true
+    },
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": ["images"]
+    },
+    "resident": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "maintenances"
+    },
+    "property": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property.property"
+    },
+    "roomNumber": {
+      "type": "string"
+    },
+    "scheduledDate": {
+      "type": "datetime"
+    },
+    "completedDate": {
+      "type": "datetime"
+    },
+    "assignedTo": {
+      "type": "string"
+    },
+    "estimatedCost": {
+      "type": "decimal"
+    },
+    "actualCost": {
+      "type": "decimal"
+    },
+    "resolutionNotes": {
+      "type": "text"
+    },
+    "messages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::maintenance-message.maintenance-message",
+      "mappedBy": "maintenance"
+    }
+  }
+}

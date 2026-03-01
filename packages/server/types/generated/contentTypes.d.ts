@@ -430,6 +430,69 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAnnouncementAnnouncement
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'announcements';
+  info: {
+    description: 'Announcements posted by managers for properties';
+    displayName: 'Announcement';
+    pluralName: 'announcements';
+    singularName: 'announcement';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    author: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    category: Schema.Attribute.Enumeration<
+      [
+        'general',
+        'maintenance',
+        'event',
+        'emergency',
+        'policy',
+        'reminder',
+        'celebration',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'general'>;
+    content: Schema.Attribute.RichText & Schema.Attribute.Required;
+    coverImage: Schema.Attribute.Media<'images'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    excerpt: Schema.Attribute.Text;
+    expiryDate: Schema.Attribute.DateTime;
+    images: Schema.Attribute.Media<'images', true>;
+    isPinned: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::announcement.announcement'
+    > &
+      Schema.Attribute.Private;
+    priority: Schema.Attribute.Enumeration<['normal', 'important', 'urgent']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'normal'>;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    publishDate: Schema.Attribute.DateTime;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<['draft', 'published', 'archived']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'draft'>;
+    tags: Schema.Attribute.JSON;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    viewCount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+  };
+}
+
 export interface ApiBillingBilling extends Struct.CollectionTypeSchema {
   collectionName: 'billings';
   info: {
@@ -492,6 +555,270 @@ export interface ApiBillingBilling extends Struct.CollectionTypeSchema {
     waterMeterStart: Schema.Attribute.Decimal;
     waterUnitPrice: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     waterUnitsUsed: Schema.Attribute.Decimal;
+  };
+}
+
+export interface ApiConversationConversation
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'conversations';
+  info: {
+    description: 'Chat conversations between managers and residents';
+    displayName: 'Conversation';
+    pluralName: 'conversations';
+    singularName: 'conversation';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    lastMessage: Schema.Attribute.Text;
+    lastMessageAt: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::conversation.conversation'
+    > &
+      Schema.Attribute.Private;
+    messages: Schema.Attribute.Relation<'oneToMany', 'api::message.message'>;
+    participants: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiLeaseLease extends Struct.CollectionTypeSchema {
+  collectionName: 'leases';
+  info: {
+    description: 'Lease agreements linked to residents';
+    displayName: 'Lease';
+    pluralName: 'leases';
+    singularName: 'lease';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    acceptedAt: Schema.Attribute.DateTime;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'THB'>;
+    depositAmount: Schema.Attribute.Decimal;
+    emergencyContactName: Schema.Attribute.String;
+    emergencyContactPhone: Schema.Attribute.String;
+    endDate: Schema.Attribute.Date & Schema.Attribute.Required;
+    identityDocumentNumber: Schema.Attribute.String;
+    identityDocuments: Schema.Attribute.Media<'images' | 'files', true>;
+    identityDocumentType: Schema.Attribute.Enumeration<
+      ['nationalId', 'passport', 'driversLicense', 'other']
+    >;
+    identityVerified: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    leaseNo: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::lease.lease'> &
+      Schema.Attribute.Private;
+    monthlyRent: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    publishedAt: Schema.Attribute.DateTime;
+    resident: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    residentAddress: Schema.Attribute.Text;
+    residentFullName: Schema.Attribute.String;
+    residentPhone: Schema.Attribute.String;
+    startDate: Schema.Attribute.Date & Schema.Attribute.Required;
+    status: Schema.Attribute.Enumeration<
+      ['pending', 'active', 'expired', 'terminated', 'cancelled']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
+    terms: Schema.Attribute.RichText &
+      Schema.Attribute.CustomField<
+        'plugin::ckeditor5.CKEditor',
+        {
+          preset: 'defaultHtml';
+        }
+      >;
+    unitType: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::unit-type.unit-type'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMaintenanceMessageMaintenanceMessage
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'maintenance_messages';
+  info: {
+    description: 'Messages/discussions for maintenance requests';
+    displayName: 'Maintenance Message';
+    pluralName: 'maintenance-messages';
+    singularName: 'maintenance-message';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    images: Schema.Attribute.Media<'images', true>;
+    isInternal: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::maintenance-message.maintenance-message'
+    > &
+      Schema.Attribute.Private;
+    maintenance: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::maintenance.maintenance'
+    >;
+    message: Schema.Attribute.Text & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    sender: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMaintenanceMaintenance extends Struct.CollectionTypeSchema {
+  collectionName: 'maintenances';
+  info: {
+    description: 'Maintenance requests from residents';
+    displayName: 'Maintenance';
+    pluralName: 'maintenances';
+    singularName: 'maintenance';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    actualCost: Schema.Attribute.Decimal;
+    assignedTo: Schema.Attribute.String;
+    category: Schema.Attribute.Enumeration<
+      [
+        'plumbing',
+        'electrical',
+        'hvac',
+        'appliance',
+        'structural',
+        'cleaning',
+        'pest_control',
+        'other',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'other'>;
+    completedDate: Schema.Attribute.DateTime;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text & Schema.Attribute.Required;
+    estimatedCost: Schema.Attribute.Decimal;
+    images: Schema.Attribute.Media<'images', true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::maintenance.maintenance'
+    > &
+      Schema.Attribute.Private;
+    messages: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::maintenance-message.maintenance-message'
+    >;
+    priority: Schema.Attribute.Enumeration<
+      ['low', 'medium', 'high', 'urgent']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'medium'>;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    publishedAt: Schema.Attribute.DateTime;
+    requestNumber: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    resident: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    resolutionNotes: Schema.Attribute.Text;
+    roomNumber: Schema.Attribute.String;
+    scheduledDate: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['pending', 'in_progress', 'on_hold', 'resolved', 'cancelled']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMessageMessage extends Struct.CollectionTypeSchema {
+  collectionName: 'messages';
+  info: {
+    description: 'Individual messages in conversations';
+    displayName: 'Message';
+    pluralName: 'messages';
+    singularName: 'message';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    attachments: Schema.Attribute.Media<'images' | 'files' | 'videos', true>;
+    content: Schema.Attribute.Text & Schema.Attribute.Required;
+    conversation: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::conversation.conversation'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    editedAt: Schema.Attribute.DateTime;
+    images: Schema.Attribute.Media<'images', true>;
+    isEdited: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isRead: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::message.message'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    readAt: Schema.Attribute.DateTime;
+    replyTo: Schema.Attribute.Relation<'oneToOne', 'api::message.message'>;
+    sender: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -1256,12 +1583,17 @@ export interface PluginUsersPermissionsUser
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    leases: Schema.Attribute.Relation<'oneToMany', 'api::lease.lease'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'plugin::users-permissions.user'
     > &
       Schema.Attribute.Private;
+    maintenances: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::maintenance.maintenance'
+    >;
     password: Schema.Attribute.Password &
       Schema.Attribute.Private &
       Schema.Attribute.SetMinMaxLength<{
@@ -1310,7 +1642,13 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::announcement.announcement': ApiAnnouncementAnnouncement;
       'api::billing.billing': ApiBillingBilling;
+      'api::conversation.conversation': ApiConversationConversation;
+      'api::lease.lease': ApiLeaseLease;
+      'api::maintenance-message.maintenance-message': ApiMaintenanceMessageMaintenanceMessage;
+      'api::maintenance.maintenance': ApiMaintenanceMaintenance;
+      'api::message.message': ApiMessageMessage;
       'api::payment.payment': ApiPaymentPayment;
       'api::plan.plan': ApiPlanPlan;
       'api::property.property': ApiPropertyProperty;

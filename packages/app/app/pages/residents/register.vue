@@ -15,9 +15,33 @@ const form = ref({
     propertyId: '',
     unitTypeId: '',
     roomNumber: '',
-    registrationDate: new Date().toISOString().split('T')[0],
+    registrationDate: '',
     residencyStatus: 'reserved',
+    // Lease fields
+    leaseNo: '',
+    leaseStartDate: '',
+    leaseEndDate: '',
+    monthlyRent: '',
+    depositAmount: '',
+    currency: 'THB',
+    terms: '',
+    notes: '',
 })
+
+// Set date client-side only to avoid hydration mismatch
+onMounted(() => {
+    if (!form.value.registrationDate) {
+        form.value.registrationDate = new Date().toISOString().split('T')[0]
+    }
+    // Auto-generate lease number: LSE-YYYYMMDD-XXXX
+    const now = new Date()
+    const datePart = now.getFullYear().toString() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0')
+    const rand = Math.floor(1000 + Math.random() * 9000)
+    form.value.leaseNo = `LSE-${datePart}-${rand}`
+})
+
 const errors = ref<Record<string, string>>({})
 const isSubmitting = ref(false)
 
@@ -117,6 +141,18 @@ function unitTypeOptionLabel(ut: { name: string; quantity: number; occupiedCount
 
 const showPassword = ref(false)
 const copiedField = ref<string | null>(null)
+const termsExpanded = ref(false)
+const termsEditor = ref<HTMLElement | null>(null)
+
+function execCmd(command: string, value?: string) {
+    document.execCommand(command, false, value)
+}
+function clearTerms() {
+    if (termsEditor.value) {
+        termsEditor.value.innerHTML = ''
+        form.value.terms = ''
+    }
+}
 
 function generatePassword() {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%'
@@ -261,6 +297,13 @@ function validate() {
     if (!form.value.roomNumber.trim()) errors.value.roomNumber = t.value.validationRoomRequired
     if (!form.value.registrationDate) errors.value.registrationDate = t.value.validationDateRequired
     if (isUnitFull.value) errors.value.unitTypeId = t.value.unitFull
+    // Lease validation
+    if (!form.value.leaseNo.trim()) errors.value.leaseNo = t.value.leaseValidationNo
+    if (!form.value.leaseStartDate) errors.value.leaseStartDate = t.value.leaseValidationStart
+    if (!form.value.leaseEndDate) errors.value.leaseEndDate = t.value.leaseValidationEnd
+    if (form.value.leaseStartDate && form.value.leaseEndDate && form.value.leaseEndDate <= form.value.leaseStartDate)
+        errors.value.leaseEndDate = t.value.leaseValidationEndAfterStart
+    if (!form.value.monthlyRent || Number(form.value.monthlyRent) <= 0) errors.value.monthlyRent = t.value.leaseValidationRent
     return Object.keys(errors.value).length === 0
 }
 
@@ -320,7 +363,37 @@ async function submit() {
             return
         }
 
-        // ── Step 4: Success ──
+        // ── Step 4: Create lease record ──
+        const leaseRes = await fetch(`${STRAPI_URL}/api/leases`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token.value}`,
+            },
+            body: JSON.stringify({
+                data: {
+                    leaseNo: form.value.leaseNo,
+                    status: 'pending',
+                    startDate: form.value.leaseStartDate,
+                    endDate: form.value.leaseEndDate,
+                    monthlyRent: Number(form.value.monthlyRent),
+                    depositAmount: form.value.depositAmount ? Number(form.value.depositAmount) : null,
+                    currency: form.value.currency || 'THB',
+                    terms: form.value.terms || null,
+                    notes: form.value.notes || null,
+                    resident: newUserId,
+                    property: Number(form.value.propertyId),
+                    unitType: Number(form.value.unitTypeId),
+                },
+            }),
+        })
+        if (!leaseRes.ok) {
+            const leaseData = await leaseRes.json()
+            // Resident created — warn but don't block navigation
+            showToast('error', t.value.leaseCreatedError + ': ' + (leaseData?.error?.message ?? 'Unknown error'))
+        }
+
+        // ── Step 5: Success ──
         showToast('success', t.value.residentRegistered)
         setTimeout(() => router.push('/residents'), 1800)
     } catch (e: any) {
@@ -329,6 +402,30 @@ async function submit() {
     } finally {
         isSubmitting.value = false
     }
+}
+
+// ─── WYSIWYG paste handler ───────────────────────────────────────────────────
+function handleTermsPaste(e: ClipboardEvent) {
+    e.preventDefault()
+    const text = e.clipboardData?.getData('text/plain') ?? ''
+    if (!text) return
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+    const range = selection.getRangeAt(0)
+    range.deleteContents()
+    // Convert newlines to <br> and insert as HTML nodes
+    const fragment = document.createDocumentFragment()
+    const lines = text.split(/\r?\n/)
+    lines.forEach((line, i) => {
+        if (i > 0) fragment.appendChild(document.createElement('br'))
+        if (line) fragment.appendChild(document.createTextNode(line))
+    })
+    range.insertNode(fragment)
+    // Move cursor to end of inserted content
+    range.collapse(false)
+    selection.removeAllRanges()
+    selection.addRange(range)
+    form.value.terms = (termsEditor.value as HTMLElement).innerHTML
 }
 
 onMounted(fetchProperties)
@@ -518,7 +615,7 @@ onMounted(fetchProperties)
                             <div v-if="selectedUnitType.price" class="flex items-center justify-between">
                                 <span class="text-gray-500 dark:text-gray-400">{{ t.unitPrice }}</span>
                                 <span class="text-gray-700 dark:text-gray-300">
-                                    {{ selectedUnitType.currency }} {{ selectedUnitType.price.toLocaleString() }}
+                                    {{ selectedUnitType.currency }} {{ selectedUnitType.price.toLocaleString('en-US') }}
                                 </span>
                             </div>
                             <div v-if="isUnitFull"
@@ -567,6 +664,219 @@ onMounted(fetchProperties)
                             <i
                                 class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
+                    </div>
+                </div>
+            </Transition>
+
+            <!-- ── Lease Details ── -->
+            <Transition appear enter-active-class="transition-all duration-500 delay-150"
+                enter-from-class="opacity-0 translate-y-4" enter-to-class="opacity-100 translate-y-0">
+                <div
+                    class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <i class="ti-receipt text-primary-600 dark:text-primary-400"></i>
+                        {{ t.leaseDetails }}
+                    </h2>
+
+                    <!-- Lease No + Currency (row) -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                {{ t.leaseNo }} <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input v-model="form.leaseNo" type="text" :placeholder="t.leaseNoPlaceholder"
+                                    class="w-full pl-3 pr-10 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors font-mono"
+                                    :class="errors.leaseNo ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'" />
+                                <button type="button" @click="() => {
+                                    const now = new Date()
+                                    const d = now.getFullYear().toString() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0')
+                                    form.leaseNo = `LSE-${d}-${Math.floor(1000 + Math.random() * 9000)}`
+                                }" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                    :title="t.leaseRegenerate">
+                                    <i class="ti-reload text-sm"></i>
+                                </button>
+                            </div>
+                            <p v-if="errors.leaseNo" class="mt-1 text-xs text-red-500">{{ errors.leaseNo }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                {{ t.leaseCurrency }}
+                            </label>
+                            <div class="relative">
+                                <select v-model="form.currency"
+                                    class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors appearance-none">
+                                    <option value="THB">THB</option>
+                                    <option value="USD">USD</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="SGD">SGD</option>
+                                </select>
+                                <i
+                                    class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Start Date + End Date (row) -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                {{ t.leaseStartDate }} <span class="text-red-500">*</span>
+                            </label>
+                            <input v-model="form.leaseStartDate" type="date"
+                                class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
+                                :class="errors.leaseStartDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
+                                @click="($event.target as HTMLInputElement).showPicker?.()" />
+                            <p v-if="errors.leaseStartDate" class="mt-1 text-xs text-red-500">{{ errors.leaseStartDate
+                                }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                {{ t.leaseEndDate }} <span class="text-red-500">*</span>
+                            </label>
+                            <input v-model="form.leaseEndDate" type="date"
+                                class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
+                                :class="errors.leaseEndDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
+                                @click="($event.target as HTMLInputElement).showPicker?.()" />
+                            <p v-if="errors.leaseEndDate" class="mt-1 text-xs text-red-500">{{ errors.leaseEndDate }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Rent + Deposit (row) -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                {{ t.leaseMonthlyRent }} <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <span
+                                    class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium pointer-events-none">{{
+                                        form.currency }}</span>
+                                <input v-model="form.monthlyRent" type="number" min="0" step="0.01" placeholder="0.00"
+                                    class="w-full pl-12 pr-3 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                                    :class="errors.monthlyRent ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'" />
+                            </div>
+                            <p v-if="errors.monthlyRent" class="mt-1 text-xs text-red-500">{{ errors.monthlyRent }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                {{ t.leaseDepositAmount }}
+                            </label>
+                            <div class="relative">
+                                <span
+                                    class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium pointer-events-none">{{
+                                        form.currency }}</span>
+                                <input v-model="form.depositAmount" type="number" min="0" step="0.01" placeholder="0.00"
+                                    class="w-full pl-12 pr-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lease duration summary -->
+                    <div v-if="form.leaseStartDate && form.leaseEndDate && form.leaseEndDate > form.leaseStartDate"
+                        class="flex items-center gap-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 rounded-lg text-xs text-primary-700 dark:text-primary-300">
+                        <i class="ti-calendar shrink-0"></i>
+                        <span>{{ t.leaseDuration }}:
+                            <strong>{{
+                                (() => {
+                                    const s = new Date(form.leaseStartDate)
+                                    const e = new Date(form.leaseEndDate)
+                                    const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())
+                                    return months > 0
+                                        ? months + ' ' + (months !== 1 ? t.leaseDurationMonthsPlural : t.leaseDurationMonths)
+                                        : Math.round((e.getTime() - s.getTime()) / 86400000) + ' ' + t.leaseDurationDays
+                                })()
+                            }}</strong>
+                        </span>
+                    </div>
+
+                    <!-- Terms & Conditions WYSIWYG -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {{ t.leaseTerms }}
+                            </label>
+                            <button type="button" @click="termsExpanded = !termsExpanded"
+                                class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors select-none">
+                                <i :class="termsExpanded ? 'ti-arrows-corner' : 'ti-fullscreen'" class="text-xs"></i>
+                                {{ termsExpanded ? t.leaseTermsCollapse : t.leaseTermsExpand }}
+                            </button>
+                        </div>
+                        <!-- Toolbar -->
+                        <div
+                            class="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 border border-b-0 border-gray-200 dark:border-gray-700 rounded-t-lg">
+                            <button type="button" @mousedown.prevent="execCmd('bold')" title="Bold"
+                                class="font-bold text-sm w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300">B</button>
+                            <button type="button" @mousedown.prevent="execCmd('italic')" title="Italic"
+                                class="italic text-sm w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300">I</button>
+                            <button type="button" @mousedown.prevent="execCmd('underline')" title="Underline"
+                                class="underline text-sm w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300">U</button>
+                            <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                            <button type="button" @mousedown.prevent="execCmd('insertUnorderedList')"
+                                title="Bullet list"
+                                class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300">
+                                <i class="ti-list text-xs"></i>
+                            </button>
+                            <button type="button" @mousedown.prevent="execCmd('insertOrderedList')"
+                                title="Numbered list"
+                                class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor"
+                                    stroke-width="1.8">
+                                    <line x1="6" y1="4" x2="14" y2="4" />
+                                    <line x1="6" y1="8" x2="14" y2="8" />
+                                    <line x1="6" y1="12" x2="14" y2="12" /><text x="1" y="5" font-size="4"
+                                        fill="currentColor" stroke="none">1.</text><text x="1" y="9" font-size="4"
+                                        fill="currentColor" stroke="none">2.</text><text x="1" y="13" font-size="4"
+                                        fill="currentColor" stroke="none">3.</text>
+                                </svg>
+                            </button>
+                            <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                            <button type="button" @mousedown.prevent="execCmd('formatBlock', 'h3')" title="Heading"
+                                class="text-xs font-bold w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300">H3</button>
+                            <button type="button" @mousedown.prevent="execCmd('formatBlock', 'p')" title="Paragraph"
+                                class="text-xs w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300">¶</button>
+                            <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                            <button type="button" @mousedown.prevent="clearTerms" :title="t.leaseTermsClear"
+                                class="w-7 h-7 flex items-center justify-center rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-gray-400 hover:text-red-500">
+                                <i class="ti-trash text-xs"></i>
+                            </button>
+                            <span class="ml-auto text-xs text-gray-400 dark:text-gray-500 select-none pr-1">
+                                {{ form.terms ? form.terms.replace(/<[^>]*>/g, '').length : 0 }} chars
+                            </span>
+                        </div>
+                        <!-- Editable area -->
+                        <div ref="termsEditor" contenteditable="true"
+                            @input="form.terms = ($event.target as HTMLElement).innerHTML" @paste="handleTermsPaste"
+                            :data-placeholder="t.leaseTermsPlaceholder" :class="[
+                                'overflow-y-auto w-full px-3 py-3 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-b-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-300',
+                                '[&_h3]:font-bold [&_h3]:text-base [&_h3]:mt-2 [&_h3]:mb-1',
+                                '[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1',
+                                '[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1',
+                                '[&_p]:my-1',
+                                'empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 empty:before:pointer-events-none empty:before:block',
+                                termsExpanded ? 'min-h-[32rem]' : 'min-h-48 max-h-96',
+                            ]"></div>
+                        <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                            <i class="ti-info-alt"></i>
+                            {{ t.leaseTermsHint }}
+                        </p>
+                    </div>
+
+                    <!-- Notes -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                            {{ t.leaseNotes }}
+                        </label>
+                        <textarea v-model="form.notes" rows="3" :placeholder="t.leaseNotesPlaceholder"
+                            class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors resize-none"></textarea>
+                    </div>
+
+                    <!-- Status hint -->
+                    <div class="flex items-start gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <i class="ti-info-alt mt-0.5 shrink-0 text-primary-500"></i>
+                        {{ t.leaseStatusHint }} <span class="font-semibold text-amber-600 dark:text-amber-400 mx-1">{{
+                            t.leaseStatusPending }}</span> {{ t.leaseStatusHint2 }}
                     </div>
                 </div>
             </Transition>

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 
 const { t } = useI18n()
 const { token } = useAuth()
+const router = useRouter()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
 
@@ -34,6 +35,8 @@ const filterUnitTypeId = ref('')
 const filterStatus = ref('')
 const filterDateFrom = ref('')
 const filterDateTo = ref('')
+const sortBy = ref('registrationDate')
+const sortDir = ref<'asc' | 'desc'>('desc')
 
 // ─── Pagination (client-side slice of allResidents) ───────────────────────────
 const currentPage = ref(1)
@@ -124,8 +127,12 @@ const statusLabels = computed(() => ({
 
 const statuses = ['reserved', 'active', 'nearlyExpired', 'expired', 'inactive']
 
+const defaultSort = 'registrationDate'
+const defaultSortDir = 'desc'
 const activeFilterCount = computed(() =>
-    [filterUnitTypeId.value, filterStatus.value, filterDateFrom.value, filterDateTo.value].filter(Boolean).length
+    [filterUnitTypeId.value, filterStatus.value, filterDateFrom.value, filterDateTo.value,
+    sortBy.value !== defaultSort || sortDir.value !== defaultSortDir ? 'sort' : ''
+    ].filter(Boolean).length
 )
 
 // ─── Fetch Residents (single API call, all matching records, paginate client-side) ──
@@ -153,6 +160,7 @@ async function fetchResidents() {
             params.set('filters[$or][0][username][$containsi]', searchQuery.value.trim())
             params.set('filters[$or][1][roomNumber][$containsi]', searchQuery.value.trim())
         }
+        params.set('sort[0]', `${sortBy.value}:${sortDir.value}`)
         const res = await fetch(`${STRAPI_URL}/api/users?${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
         })
@@ -177,12 +185,16 @@ let initializing = true
 
 watch(searchQuery, resetAndFetch)
 watch(filterPropertyId, () => { filterUnitTypeId.value = ''; fetchUnitTypes(); if (!initializing) resetAndFetch() })
-watch([filterUnitTypeId, filterStatus, filterDateFrom, filterDateTo], resetAndFetch)
+watch([filterUnitTypeId, filterStatus, filterDateFrom, filterDateTo, sortBy, sortDir], resetAndFetch)
 watch(pageSize, () => { currentPage.value = 1 })
 
 function confirmDelete(resident: Resident) {
     deleteTarget.value = resident
     showDeleteModal.value = true
+}
+
+function goToResident(residentId: number | string) {
+    router.push(`/residents/${residentId}`)
 }
 
 async function deleteResident() {
@@ -210,7 +222,16 @@ function formatDate(dateStr: string | null) {
     return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+// ─── Entry Animation ─────────────────────────────────────────────────────────
+const headerVisible = ref(false)
+const filtersVisible = ref(false)
+const listVisible = ref(false)
+
 onMounted(async () => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        headerVisible.value = true
+        filtersVisible.value = true
+    }))
     await fetchProperties()
     if (propertiesList.value.length > 0) {
         filterPropertyId.value = String(propertiesList.value[0].id)
@@ -218,6 +239,10 @@ onMounted(async () => {
     }
     initializing = false
     await fetchResidents()
+    await nextTick()
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        listVisible.value = true
+    }))
 })
 </script>
 
@@ -249,94 +274,106 @@ onMounted(async () => {
         </Teleport>
 
         <!-- Page Header -->
-        <Transition appear enter-active-class="transition-all duration-500" enter-from-class="opacity-0 -translate-y-3"
-            enter-to-class="opacity-100 translate-y-0">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.residentsTitle }}</h1>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ t.residentsSubtitle }}</p>
-                </div>
-                <NuxtLink to="/residents/register"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
-                    <i class="ti-user-add text-base"></i>
-                    {{ t.registerResident }}
-                </NuxtLink>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-all duration-500"
+            :class="headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3'">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.residentsTitle }}</h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ t.residentsSubtitle }}</p>
             </div>
-        </Transition>
+            <NuxtLink to="/residents/register"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
+                <i class="ti-user-add text-base"></i>
+                {{ t.registerResident }}
+            </NuxtLink>
+        </div>
 
         <!-- Property Dropdown -->
-        <Transition appear enter-active-class="transition-all duration-500 delay-100"
-            enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0">
-            <div class="relative w-full sm:w-72">
-                <i
-                    class="ti-home absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
-                <select v-model="filterPropertyId" @change="filterUnitTypeId = ''"
-                    class="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none transition-colors">
-                    <option value="">{{ t.allProperties }}</option>
-                    <option v-for="prop in propertiesList" :key="prop.id" :value="String(prop.id)">
-                        {{ prop.name }}{{ prop.city ? ' · ' + prop.city : '' }}
-                    </option>
-                </select>
-                <i
-                    class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-            </div>
-        </Transition>
+        <div class="relative w-full sm:w-72 transition-all duration-500 delay-100"
+            :class="headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
+            <i class="ti-home absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+            <select v-model="filterPropertyId" @change="filterUnitTypeId = ''"
+                class="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none transition-colors">
+                <option value="">{{ t.allProperties }}</option>
+                <option v-for="prop in propertiesList" :key="prop.id" :value="String(prop.id)">
+                    {{ prop.name }}{{ prop.city ? ' · ' + prop.city : '' }}
+                </option>
+            </select>
+            <i
+                class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+        </div>
 
         <!-- Search + Filters -->
-        <Transition appear enter-active-class="transition-all duration-500 delay-150"
-            enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0">
-            <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 space-y-3">
-                <!-- Row 1: Search -->
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 space-y-3 transition-all duration-500 delay-150"
+            :class="filtersVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
+            <!-- Row 1: Search -->
+            <div class="relative">
+                <i class="ti-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input v-model="searchQuery" type="text" :placeholder="t.searchResidents"
+                    class="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <!-- Row 2: Unit Type · Status · Date range -->
+            <div class="flex flex-wrap gap-2 items-center">
+                <!-- Unit Type -->
                 <div class="relative">
-                    <i class="ti-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                    <input v-model="searchQuery" type="text" :placeholder="t.searchResidents"
-                        class="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                    <select v-model="filterUnitTypeId" :disabled="unitTypesList.length === 0"
+                        class="pl-3 pr-7 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none disabled:opacity-40">
+                        <option value="">{{ t.allUnitTypes }}</option>
+                        <option v-for="ut in unitTypesList" :key="ut.id" :value="String(ut.id)">{{ ut.name }}
+                        </option>
+                    </select>
+                    <i
+                        class="ti-angle-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
-                <!-- Row 2: Unit Type · Status · Date range -->
-                <div class="flex flex-wrap gap-2 items-center">
-                    <!-- Unit Type -->
-                    <div class="relative">
-                        <select v-model="filterUnitTypeId" :disabled="unitTypesList.length === 0"
-                            class="pl-3 pr-7 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none disabled:opacity-40">
-                            <option value="">{{ t.allUnitTypes }}</option>
-                            <option v-for="ut in unitTypesList" :key="ut.id" :value="String(ut.id)">{{ ut.name }}
-                            </option>
-                        </select>
-                        <i
-                            class="ti-angle-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
-                    <!-- Status -->
-                    <div class="relative">
-                        <select v-model="filterStatus"
-                            class="pl-3 pr-7 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
-                            <option value="">{{ t.allStatuses }}</option>
-                            <option v-for="s in statuses" :key="s" :value="s">{{ statusLabels[s] }}</option>
-                        </select>
-                        <i
-                            class="ti-angle-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
-                    <!-- Date From -->
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t.filterRegistDate
+                <!-- Status -->
+                <div class="relative">
+                    <select v-model="filterStatus"
+                        class="pl-3 pr-7 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
+                        <option value="">{{ t.allStatuses }}</option>
+                        <option v-for="s in statuses" :key="s" :value="s">{{ statusLabels[s] }}</option>
+                    </select>
+                    <i
+                        class="ti-angle-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                </div>
+                <!-- Date From -->
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t.filterRegistDate
                         }}</span>
-                        <input v-model="filterDateFrom" type="date"
-                            class="px-2 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
-                            @click="($event.target as HTMLInputElement).showPicker?.()" />
-                        <span class="text-xs text-gray-400">–</span>
-                        <input v-model="filterDateTo" type="date"
-                            class="px-2 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
-                            @click="($event.target as HTMLInputElement).showPicker?.()" />
+                    <input v-model="filterDateFrom" type="date"
+                        class="px-2 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
+                        @click="($event.target as HTMLInputElement).showPicker?.()" />
+                    <span class="text-xs text-gray-400">–</span>
+                    <input v-model="filterDateTo" type="date"
+                        class="px-2 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
+                        @click="($event.target as HTMLInputElement).showPicker?.()" />
+                </div>
+                <!-- Sort By -->
+                <div class="flex items-center gap-1">
+                    <div class="relative">
+                        <select v-model="sortBy"
+                            class="pl-3 pr-7 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
+                            <option value="registrationDate">{{ t.sortByRegDate }}</option>
+                            <option value="username">{{ t.sortByName }}</option>
+                            <option value="roomNumber">{{ t.sortByRoom }}</option>
+                            <option value="residencyStatus">{{ t.sortByStatus }}</option>
+                        </select>
+                        <i
+                            class="ti-angle-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                     </div>
-                    <!-- Clear filters -->
-                    <button v-if="activeFilterCount > 0"
-                        @click="filterUnitTypeId = ''; filterStatus = ''; filterDateFrom = ''; filterDateTo = ''"
-                        class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-red-500 hover:text-red-700 dark:hover:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg transition-colors">
-                        <i class="ti-close text-xs"></i>
-                        Clear ({{ activeFilterCount }})
+                    <button @click="sortDir = sortDir === 'asc' ? 'desc' : 'asc'"
+                        class="p-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        :title="sortDir === 'asc' ? t.sortAsc : t.sortDesc">
+                        <i :class="sortDir === 'asc' ? 'ti-arrow-up' : 'ti-arrow-down'" class="text-xs"></i>
                     </button>
                 </div>
+                <!-- Clear filters -->
+                <button v-if="activeFilterCount > 0"
+                    @click="filterUnitTypeId = ''; filterStatus = ''; filterDateFrom = ''; filterDateTo = ''; sortBy = 'registrationDate'; sortDir = 'desc'"
+                    class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-red-500 hover:text-red-700 dark:hover:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg transition-colors">
+                    <i class="ti-close text-xs"></i>
+                    Clear ({{ activeFilterCount }})
+                </button>
             </div>
-        </Transition>
+        </div>
 
         <!-- Loading -->
         <div v-if="isLoading" class="flex items-center justify-center py-20">
@@ -361,138 +398,138 @@ onMounted(async () => {
         </div>
 
         <!-- Residents Card List -->
-        <Transition appear enter-active-class="transition-all duration-500 delay-200"
-            enter-from-class="opacity-0 translate-y-4" enter-to-class="opacity-100 translate-y-0">
-            <div v-if="!isLoading && residents.length > 0" class="space-y-3">
-                <!-- Cards -->
-                <div v-for="(resident, index) in residents" :key="resident.id"
-                    class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-all animate-fade-in-row"
-                    :style="{ animationDelay: index * 40 + 'ms', animationFillMode: 'both' }">
-                    <div class="flex items-center gap-4">
-                        <!-- Avatar -->
-                        <div
-                            class="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
-                            <i class="ti-user text-xl text-primary-600 dark:text-primary-400"></i>
-                        </div>
+        <div v-if="!isLoading && residents.length > 0" class="space-y-3">
+            <!-- Cards -->
+            <div v-for="(resident, index) in residents" :key="resident.id"
+                class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-all duration-500 cursor-pointer"
+                :class="listVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'"
+                :style="{ transitionDelay: listVisible ? `${index * 40}ms` : '0ms' }"
+                @click="goToResident(resident.id)">
+                <div class="flex items-center gap-4">
+                    <!-- Avatar -->
+                    <div
+                        class="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
+                        <i class="ti-user text-xl text-primary-600 dark:text-primary-400"></i>
+                    </div>
 
-                        <!-- Main Info -->
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <h3 class="font-semibold text-gray-900 dark:text-white truncate">{{ resident.username }}
-                                </h3>
-                                <span v-if="resident.residencyStatus"
-                                    class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
-                                    :class="statusColors[resident.residencyStatus] || statusColors.inactive">
-                                    {{ statusLabels[resident.residencyStatus as keyof typeof statusLabels] ||
+                    <!-- Main Info -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h3 class="font-semibold text-gray-900 dark:text-white truncate">{{ resident.username }}
+                            </h3>
+                            <span v-if="resident.residencyStatus"
+                                class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
+                                :class="statusColors[resident.residencyStatus] || statusColors.inactive">
+                                {{ statusLabels[resident.residencyStatus as keyof typeof statusLabels] ||
                                     resident.residencyStatus }}
-                                </span>
-                            </div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ resident.email }}</p>
+                            </span>
                         </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ resident.email }}</p>
+                    </div>
 
-                        <!-- Room + Unit Type -->
-                        <div class="hidden sm:flex items-center gap-4 text-sm">
-                            <!-- Room -->
-                            <div class="text-center min-w-[60px]">
-                                <span v-if="resident.roomNumber"
-                                    class="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold">
-                                    <i class="ti-key text-xs"></i>
-                                    {{ resident.roomNumber }}
-                                </span>
-                                <span v-else class="text-gray-400 text-xs">—</span>
-                            </div>
-                            <!-- Unit Type -->
-                            <div class="text-center min-w-[80px]">
-                                <span v-if="resident.unitType" class="text-xs text-gray-600 dark:text-gray-400">{{
-                                    resident.unitType.name }}</span>
-                                <span v-else class="text-gray-400 text-xs">—</span>
-                            </div>
+                    <!-- Room + Unit Type -->
+                    <div class="hidden sm:flex items-center gap-4 text-sm">
+                        <!-- Room -->
+                        <div class="text-center min-w-[60px]">
+                            <span v-if="resident.roomNumber"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold">
+                                <i class="ti-key text-xs"></i>
+                                {{ resident.roomNumber }}
+                            </span>
+                            <span v-else class="text-gray-400 text-xs">—</span>
                         </div>
-
-                        <!-- Registration Date -->
-                        <div class="hidden md:block text-center min-w-[90px]">
-                            <p class="text-xs text-gray-400 uppercase tracking-wider">{{ t.registrationDate }}</p>
-                            <p class="text-sm text-gray-700 dark:text-gray-300">{{ formatDate(resident.registrationDate)
-                                }}</p>
-                        </div>
-
-                        <!-- Actions -->
-                        <div class="flex items-center gap-1 shrink-0">
-                            <NuxtLink :to="`/residents/${resident.id}`"
-                                class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                                :title="t.view">
-                                <i class="ti-eye text-base"></i>
-                            </NuxtLink>
-                            <NuxtLink :to="`/residents/${resident.id}/edit`"
-                                class="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                                :title="t.edit">
-                                <i class="ti-pencil text-base"></i>
-                            </NuxtLink>
-                            <button @click="confirmDelete(resident)"
-                                class="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                                :title="t.delete">
-                                <i class="ti-trash text-base"></i>
-                            </button>
+                        <!-- Unit Type -->
+                        <div class="text-center min-w-[80px]">
+                            <span v-if="resident.unitType" class="text-xs text-gray-600 dark:text-gray-400">{{
+                                resident.unitType.name }}</span>
+                            <span v-else class="text-gray-400 text-xs">—</span>
                         </div>
                     </div>
 
-                    <!-- Mobile: Extra info row -->
-                    <div
-                        class="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 sm:hidden">
-                        <span v-if="resident.roomNumber"
-                            class="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-xs font-medium">
-                            <i class="ti-key text-xs"></i>
-                            {{ resident.roomNumber }}
-                        </span>
-                        <span v-if="resident.unitType" class="text-xs text-gray-500 dark:text-gray-400">{{
-                            resident.unitType.name }}</span>
-                        <span class="text-xs text-gray-400 ml-auto">{{ formatDate(resident.registrationDate) }}</span>
+                    <!-- Registration Date -->
+                    <div class="hidden md:block text-center min-w-[90px]">
+                        <p class="text-xs text-gray-400 uppercase tracking-wider">{{ t.registrationDate }}</p>
+                        <p class="text-sm text-gray-700 dark:text-gray-300">{{ formatDate(resident.registrationDate)
+                            }}</p>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-center gap-1 shrink-0">
+                        <NuxtLink :to="`/residents/${resident.id}`" @click.stop
+                            class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                            :title="t.view">
+                            <i class="ti-eye text-base"></i>
+                        </NuxtLink>
+                        <NuxtLink :to="`/residents/${resident.id}/edit`" @click.stop
+                            class="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                            :title="t.edit">
+                            <i class="ti-pencil text-base"></i>
+                        </NuxtLink>
+                        <button @click.stop="confirmDelete(resident)"
+                            class="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                            :title="t.delete">
+                            <i class="ti-trash text-base"></i>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Pagination Footer -->
-                <div
-                    class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <!-- Left: count + page size -->
-                    <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                        <span>{{ totalCount }} {{ totalCount !== 1 ? t.residentsFoundPlural : t.residentsFound }}</span>
-                        <div class="flex items-center gap-1.5">
-                            <span>{{ t.perPage }}</span>
-                            <div class="relative">
-                                <select v-model="pageSize"
-                                    class="pl-2 pr-6 py-1 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
-                                    <option v-for="n in pageSizeOptions" :key="n" :value="n">{{ n }}</option>
-                                </select>
-                                <i
-                                    class="ti-angle-down absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Right: page nav -->
-                    <div class="flex items-center gap-1">
-                        <button @click="currentPage = 1" :disabled="currentPage === 1"
-                            class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
-                            <i class="ti-angle-double-left text-xs"></i>
-                        </button>
-                        <button @click="currentPage--" :disabled="currentPage === 1"
-                            class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
-                            <i class="ti-angle-left text-xs"></i>
-                        </button>
-                        <span class="px-3 py-1 text-xs text-gray-600 dark:text-gray-400">
-                            {{ t.page }} {{ currentPage }} {{ t.of }} {{ totalPages || 1 }}
-                        </span>
-                        <button @click="currentPage++" :disabled="currentPage >= totalPages"
-                            class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
-                            <i class="ti-angle-right text-xs"></i>
-                        </button>
-                        <button @click="currentPage = totalPages" :disabled="currentPage >= totalPages"
-                            class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
-                            <i class="ti-angle-double-right text-xs"></i>
-                        </button>
-                    </div>
+                <!-- Mobile: Extra info row -->
+                <div class="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 sm:hidden">
+                    <span v-if="resident.roomNumber"
+                        class="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-xs font-medium">
+                        <i class="ti-key text-xs"></i>
+                        {{ resident.roomNumber }}
+                    </span>
+                    <span v-if="resident.unitType" class="text-xs text-gray-500 dark:text-gray-400">{{
+                        resident.unitType.name }}</span>
+                    <span class="text-xs text-gray-400 ml-auto">{{ formatDate(resident.registrationDate) }}</span>
                 </div>
             </div>
-        </Transition> <!-- Delete Confirmation Modal -->
+
+            <!-- Pagination Footer -->
+            <div
+                class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <!-- Left: count + page size -->
+                <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    <span>{{ totalCount }} {{ totalCount !== 1 ? t.residentsFoundPlural : t.residentsFound }}</span>
+                    <div class="flex items-center gap-1.5">
+                        <span>{{ t.perPage }}</span>
+                        <div class="relative">
+                            <select v-model="pageSize"
+                                class="pl-2 pr-6 py-1 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
+                                <option v-for="n in pageSizeOptions" :key="n" :value="n">{{ n }}</option>
+                            </select>
+                            <i
+                                class="ti-angle-down absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        </div>
+                    </div>
+                </div>
+                <!-- Right: page nav -->
+                <div class="flex items-center gap-1">
+                    <button @click="currentPage = 1" :disabled="currentPage === 1"
+                        class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
+                        <i class="ti-angle-double-left text-xs"></i>
+                    </button>
+                    <button @click="currentPage--" :disabled="currentPage === 1"
+                        class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
+                        <i class="ti-angle-left text-xs"></i>
+                    </button>
+                    <span class="px-3 py-1 text-xs text-gray-600 dark:text-gray-400">
+                        {{ t.page }} {{ currentPage }} {{ t.of }} {{ totalPages || 1 }}
+                    </span>
+                    <button @click="currentPage++" :disabled="currentPage >= totalPages"
+                        class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
+                        <i class="ti-angle-right text-xs"></i>
+                    </button>
+                    <button @click="currentPage = totalPages" :disabled="currentPage >= totalPages"
+                        class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
+                        <i class="ti-angle-double-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
         <Teleport to="body">
             <div v-if="showDeleteModal"
                 class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">

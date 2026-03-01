@@ -126,17 +126,24 @@ async function fetchProperties() {
         errorMessage.value = 'Failed to load properties'
     } finally {
         isLoading.value = false
-        // Wait two ticks so the cards/empty-state render in their hidden state first
+        // nextTick lets the skeleton unmount and cards render in opacity-0 state,
+        // then double-rAF guarantees the browser paints before flipping visible.
         await nextTick()
-        await nextTick()
-        setTimeout(() => { cardsVisible.value = true }, 50)
+        await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => {
+            cardsVisible.value = true
+            resolve()
+        })))
     }
 }
 
 onMounted(() => {
-    nextTick(() => {
-        headerVisible.value = true
-        setTimeout(() => { filtersVisible.value = true }, 100)
+    // Double rAF: first frame lets browser paint the opacity-0 state,
+    // second frame flips visible so the CSS transition always fires.
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            headerVisible.value = true
+            filtersVisible.value = true
+        })
     })
     fetchProperties()
 })
@@ -267,82 +274,87 @@ function imageUrl(url: string) {
         <!-- Property Cards -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             <div v-for="(property, index) in filteredProperties" :key="property.id"
-                class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all duration-500 group"
+                class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all duration-500 group cursor-pointer"
                 :class="cardsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
                 :style="{ transitionDelay: cardsVisible ? `${index * 60}ms` : '0ms' }">
-                <!-- Card Header -->
-                <!-- Cover Image / Placeholder -->
-                <div class="relative w-full h-40 overflow-hidden bg-gray-100 dark:bg-gray-900/60">
-                    <img v-if="property.image" :src="imageUrl(property.image.url)" :alt="property.name"
-                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2">
-                        <div
-                            class="w-12 h-12 bg-primary-100 dark:bg-primary-900/40 rounded-xl flex items-center justify-center">
-                            <i :class="typeIcons[property.propertyType] || 'ti-home'"
-                                class="text-primary-400 dark:text-primary-500 text-2xl"></i>
-                        </div>
-                        <span class="text-xs text-gray-400 dark:text-gray-500">{{ t.noImages }}</span>
-                    </div>
-                    <!-- Status badge over image -->
-                    <span
-                        class="absolute top-2 right-2 text-[10px] font-semibold px-2 py-1 rounded-full uppercase backdrop-blur-sm"
-                        :class="statusColors[property.status] || statusColors.active">
-                        {{ statusLabels[property.status as keyof typeof statusLabels] || property.status }}
-                    </span>
-                </div>
-
-                <div class="p-5">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex items-center gap-3">
+                <!-- Clickable main content area -->
+                <NuxtLink :to="`/properties/${property.documentId}`" class="block">
+                    <!-- Card Header -->
+                    <!-- Cover Image / Placeholder -->
+                    <div class="relative w-full h-40 overflow-hidden bg-gray-100 dark:bg-gray-900/60">
+                        <img v-if="property.image" :src="imageUrl(property.image.url)" :alt="property.name"
+                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2">
                             <div
-                                class="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                                class="w-12 h-12 bg-primary-100 dark:bg-primary-900/40 rounded-xl flex items-center justify-center">
                                 <i :class="typeIcons[property.propertyType] || 'ti-home'"
-                                    class="text-primary-600 dark:text-primary-400 text-sm"></i>
+                                    class="text-primary-400 dark:text-primary-500 text-2xl"></i>
                             </div>
-                            <div>
-                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">{{
-                                    property.name }}</h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ property.address }}, {{
-                                    property.city }}</p>
-                            </div>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">{{ t.noImages }}</span>
                         </div>
-                    </div>
-
-                    <!-- Stats Row -->
-                    <div class="grid grid-cols-3 gap-3 mb-4">
-                        <div class="text-center p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.units }}</p>
-                            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ property.totalUnits }}</p>
-                        </div>
-                        <div class="text-center p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.occupied }}</p>
-                            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ property.occupiedUnits }}</p>
-                        </div>
-                        <div class="text-center p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.occupancy }}</p>
-                            <p class="text-sm font-bold"
-                                :class="occupancyPercent(property) >= 80 ? 'text-emerald-600 dark:text-emerald-400' : occupancyPercent(property) >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'">
-                                {{ occupancyPercent(property) }}%
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Occupancy Bar -->
-                    <div class="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-4">
-                        <div class="h-full rounded-full transition-all duration-500"
-                            :class="occupancyPercent(property) >= 80 ? 'bg-emerald-500' : occupancyPercent(property) >= 50 ? 'bg-amber-500' : 'bg-red-500'"
-                            :style="{ width: occupancyPercent(property) + '%' }">
-                        </div>
-                    </div>
-
-                    <!-- Rent -->
-                    <div v-if="property.monthlyRent" class="flex items-center justify-between mb-4">
-                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ t.monthlyRentLabel }}</span>
-                        <span class="text-sm font-semibold text-gray-900 dark:text-white">
-                            {{ Number(property.monthlyRent).toLocaleString() }} {{ property.currency }}
+                        <!-- Status badge over image -->
+                        <span
+                            class="absolute top-2 right-2 text-[10px] font-semibold px-2 py-1 rounded-full uppercase backdrop-blur-sm"
+                            :class="statusColors[property.status] || statusColors.active">
+                            {{ statusLabels[property.status as keyof typeof statusLabels] || property.status }}
                         </span>
                     </div>
-                </div>
+
+                    <div class="p-5">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <i :class="typeIcons[property.propertyType] || 'ti-home'"
+                                        class="text-primary-600 dark:text-primary-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">{{
+                                        property.name }}</h3>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ property.address }},
+                                        {{
+                                            property.city }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stats Row -->
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="text-center p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.units }}</p>
+                                <p class="text-sm font-bold text-gray-900 dark:text-white">{{ property.totalUnits }}</p>
+                            </div>
+                            <div class="text-center p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.occupied }}</p>
+                                <p class="text-sm font-bold text-gray-900 dark:text-white">{{ property.occupiedUnits }}
+                                </p>
+                            </div>
+                            <div class="text-center p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.occupancy }}</p>
+                                <p class="text-sm font-bold"
+                                    :class="occupancyPercent(property) >= 80 ? 'text-emerald-600 dark:text-emerald-400' : occupancyPercent(property) >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'">
+                                    {{ occupancyPercent(property) }}%
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Occupancy Bar -->
+                        <div class="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-4">
+                            <div class="h-full rounded-full transition-all duration-500"
+                                :class="occupancyPercent(property) >= 80 ? 'bg-emerald-500' : occupancyPercent(property) >= 50 ? 'bg-amber-500' : 'bg-red-500'"
+                                :style="{ width: occupancyPercent(property) + '%' }">
+                            </div>
+                        </div>
+
+                        <!-- Rent -->
+                        <div v-if="property.monthlyRent" class="flex items-center justify-between mb-4">
+                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ t.monthlyRentLabel }}</span>
+                            <span class="text-sm font-semibold text-gray-900 dark:text-white">
+                                {{ Number(property.monthlyRent).toLocaleString('en-US') }} {{ property.currency }}
+                            </span>
+                        </div>
+                    </div>
+                </NuxtLink>
 
                 <!-- Actions -->
                 <div
@@ -387,7 +399,8 @@ function imageUrl(url: string) {
                             <div
                                 class="flex justify-between text-xs font-medium text-amber-700 dark:text-amber-400 mb-2">
                                 <span>{{ limitModalData.planName }}</span>
-                                <span>{{ limitModalData.current }} / {{ limitModalData.limit }} properties</span>
+                                <span>{{ limitModalData.current }} / {{ limitModalData.limit }} {{
+                                    t.planLimitPropertiesOf }}</span>
                             </div>
                             <div class="w-full h-2 bg-amber-200 dark:bg-amber-800 rounded-full overflow-hidden">
                                 <div class="h-full bg-amber-500 rounded-full transition-all duration-500"

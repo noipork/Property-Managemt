@@ -90,7 +90,13 @@
     },
     "residencyStatus": {
       "type": "enumeration",
-      "enum": ["reserved", "active", "nearlyExpired", "expired", "inactive"],
+      "enum": [
+        "reserved",
+        "active",
+        "nearlyExpired",
+        "expired",
+        "inactive"
+      ],
       "default": "reserved"
     },
     "billings": {
@@ -103,6 +109,18 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::payment.payment",
+      "mappedBy": "resident"
+    },
+    "leases": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::lease.lease",
+      "mappedBy": "resident"
+    },
+    "maintenances": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::maintenance.maintenance",
       "mappedBy": "resident"
     }
   }

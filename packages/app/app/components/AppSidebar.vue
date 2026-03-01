@@ -31,17 +31,18 @@ const managerMenuSections = computed(() => [
         items: [
             { name: t.value.payments, icon: 'ti-wallet', badge: '', path: '/payments' },
             { name: t.value.invoices, icon: 'ti-receipt', badge: '', path: '/invoices' },
-            { name: t.value.expenses, icon: 'ti-money', badge: '', path: '/expenses' },
-            { name: t.value.reports, icon: 'ti-bar-chart', badge: '', path: '/reports' },
+            // { name: t.value.expenses, icon: 'ti-money', badge: '', path: '/expenses' },
+            // { name: t.value.reports, icon: 'ti-bar-chart', badge: '', path: '/reports' },
         ],
     },
     {
         title: t.value.operations,
         items: [
             { name: t.value.maintenance, icon: 'ti-wrench', badge: '', path: '/maintenance' },
-            { name: t.value.calendar, icon: 'ti-calendar', badge: '', path: '/calendar' },
+            { name: t.value.announcements, icon: 'ti-speakerphone', badge: '', path: '/announcements' },
+            // { name: t.value.calendar, icon: 'ti-calendar', badge: '', path: '/calendar' },
             { name: t.value.messages, icon: 'ti-comment', badge: '', path: '/messages' },
-            { name: t.value.documents, icon: 'ti-folder', badge: '', path: '/documents' },
+            // { name: t.value.documents, icon: 'ti-folder', badge: '', path: '/documents' },
         ],
     },
     {

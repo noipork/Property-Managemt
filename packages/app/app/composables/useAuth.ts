@@ -1,3 +1,5 @@
+import { ref } from 'vue'
+
 export type UserRole = 'manager' | 'resident'
 
 // Helper function to map Strapi role ID to our UserRole type
@@ -11,63 +13,32 @@ function mapStrapiRoleToUserRole(strapiRole: any): UserRole {
     return 'manager'
 }
 
+// ─── Module-scope shared state ────────────────────────────────────────────────
+// With ssr: false this runs once in the browser. Plain refs at module scope are
+// shared across all composable calls (same reference), and reading localStorage
+// here is safe — it runs before any component or middleware.
+
+function restoreToken(): string | null {
+    try { return localStorage.getItem('authToken') } catch { return null }
+}
+function restoreUser(): { id: number; documentId: string; name: string; email: string; role: UserRole } | null {
+    try {
+        const raw = localStorage.getItem('authUser')
+        return raw ? JSON.parse(raw) : null
+    } catch { return null }
+}
+
+const _token = ref<string | null>(restoreToken())
+const _user = ref<{ id: number; documentId: string; name: string; email: string; role: UserRole } | null>(restoreUser())
+const _isAuthenticated = ref<boolean>(!!_token.value)
+
 export const useAuth = () => {
     const config = useRuntimeConfig()
-    
-    // Initialize state with SSR-safe approach
-    const isAuthenticated = useState('isAuthenticated', () => {
-        if (process.client) {
-            return !!localStorage.getItem('authToken')
-        }
-        return false
-    })
-    
-    const user = useState('user', () => {
-        if (process.client) {
-            const storedUser = localStorage.getItem('authUser')
-            if (storedUser) {
-                try {
-                    return JSON.parse(storedUser) as { name: string; email: string; role: UserRole }
-                } catch {
-                    return null
-                }
-            }
-        }
-        return null
-    })
-    
-    const token = useState('token', () => {
-        if (process.client) {
-            return localStorage.getItem('authToken')
-        }
-        return null
-    })
-
     const STRAPI_URL = config.public.strapiUrl
 
-    // Restore session from localStorage on client-side (for page refreshes)
-    if (process.client) {
-        const storedToken = localStorage.getItem('authToken')
-        const storedUser = localStorage.getItem('authUser')
-        
-        if (storedToken && storedUser && !user.value) {
-            try {
-                token.value = storedToken
-                user.value = JSON.parse(storedUser)
-                isAuthenticated.value = true
-            } catch (error) {
-                console.error('Failed to restore session:', error)
-                // Clear invalid data
-                localStorage.removeItem('authToken')
-                localStorage.removeItem('authUser')
-            }
-        } else if (!storedToken) {
-            // Clear state if no token in localStorage
-            isAuthenticated.value = false
-            user.value = null
-            token.value = null
-        }
-    }
+    const isAuthenticated = _isAuthenticated
+    const user = _user
+    const token = _token
 
     const login = async (email: string, password: string) => {
         try {
@@ -101,6 +72,8 @@ export const useAuth = () => {
             token.value = data.jwt
             isAuthenticated.value = true
             user.value = {
+                id: userData.id,
+                documentId: userData.documentId,
                 name: userData.username || userData.email.split('@')[0],
                 email: userData.email,
                 role: mapStrapiRoleToUserRole(userData.role),
@@ -198,6 +171,8 @@ export const useAuth = () => {
             token.value = data.jwt
             isAuthenticated.value = true
             user.value = {
+                id: userData.id,
+                documentId: userData.documentId,
                 name: name,
                 email: userData.email,
                 role: mapStrapiRoleToUserRole(userData.role),

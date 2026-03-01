@@ -75,7 +75,7 @@ function barHeight(val: number): string {
 
 onMounted(() => {
     nextTick(() => {
-        // Stat cards entrance
+        // Stat cards entrance (includes revenue + occupancy cards)
         gsap.fromTo('.stat-card',
             { y: 30, opacity: 0 },
             { y: 0, opacity: 1, duration: 0.6, stagger: 0.1, ease: 'power3.out', clearProps: 'all' },
@@ -109,7 +109,7 @@ onMounted(() => {
         // Revenue chart bars entrance
         gsap.fromTo('.revenue-bar',
             { scaleY: 0, opacity: 0 },
-            { scaleY: 1, opacity: 1, duration: 0.8, stagger: 0.08, ease: 'power3.out', delay: 0.4, transformOrigin: 'bottom', clearProps: 'opacity' },
+            { scaleY: 1, opacity: 1, duration: 0.8, stagger: 0.08, ease: 'power3.out', delay: 0.7, transformOrigin: 'bottom', clearProps: 'opacity' },
         )
 
         // Table rows entrance
@@ -139,7 +139,7 @@ onMounted(() => {
         // Occupancy progress bars
         gsap.fromTo('.occupancy-bar',
             { scaleX: 0 },
-            { scaleX: 1, duration: 1, stagger: 0.15, ease: 'power3.out', delay: 0.8, transformOrigin: 'left', clearProps: 'all' },
+            { scaleX: 1, duration: 1, stagger: 0.15, ease: 'power3.out', delay: 1.0, transformOrigin: 'left', clearProps: 'all' },
         )
 
         // Maintenance rows
@@ -224,7 +224,7 @@ onMounted(() => {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
             <!-- Revenue chart -->
             <div
-                class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-4 md:p-6">
+                class="stat-card lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-4 md:p-6">
                 <div
                     class="section-header flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 md:mb-6">
                     <div>
@@ -245,16 +245,16 @@ onMounted(() => {
                         </span>
                     </div>
                 </div>
-                <div class="flex items-end gap-1.5 md:gap-3 h-40 md:h-56 overflow-x-auto pb-2">
+                <div class="flex items-end gap-1.5 md:gap-3 h-40 md:h-56 overflow-x-auto overflow-y-visible pb-2">
                     <div v-for="item in revenueData" :key="item.month"
                         class="flex-1 min-w-[32px] md:min-w-0 flex flex-col items-center gap-1">
                         <div class="w-full flex items-end justify-center gap-0.5 md:gap-1 h-32 md:h-48">
                             <div class="revenue-bar w-3 md:w-5 rounded-t-md bg-primary-500 dark:bg-primary-600 hover:bg-primary-600 dark:hover:bg-primary-700 transition-colors cursor-pointer shadow-sm"
                                 :style="{ height: barHeight(item.revenue), minHeight: '4px' }"
-                                :title="`Revenue: $${item.revenue.toLocaleString()}`"></div>
+                                :title="`Revenue: $${item.revenue.toLocaleString('en-US')}`"></div>
                             <div class="revenue-bar w-3 md:w-5 rounded-t-md bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors cursor-pointer shadow-sm"
                                 :style="{ height: barHeight(item.expenses), minHeight: '4px' }"
-                                :title="`Expenses: $${item.expenses.toLocaleString()}`"></div>
+                                :title="`Expenses: $${item.expenses.toLocaleString('en-US')}`"></div>
                         </div>
                         <span class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">{{
                             item.month }}</span>
@@ -264,7 +264,7 @@ onMounted(() => {
 
             <!-- Occupancy breakdown -->
             <div
-                class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-4 md:p-6">
+                class="stat-card bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-4 md:p-6">
                 <div class="section-header mb-4 md:mb-6">
                     <h2 class="text-base md:text-lg font-semibold text-gray-900 dark:text-white">{{ t.occupancy }}</h2>
                     <p class="text-xs md:text-sm text-gray-500 dark:text-gray-400">{{ t.currentUnitStatus }}</p>
@@ -289,8 +289,7 @@ onMounted(() => {
                     <div v-for="item in occupancyBreakdown" :key="item.label" class="flex items-center gap-2 md:gap-3">
                         <span class="w-2 h-2 rounded-full flex-shrink-0" :class="item.color"></span>
                         <span class="text-xs md:text-sm text-gray-600 dark:text-gray-400 flex-1">{{ item.label }}</span>
-                        <div
-                            class="w-16 md:w-24 h-1.5 md:h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div class="w-16 md:w-24 h-1.5 md:h-2 bg-gray-100 dark:bg-gray-700 rounded-full">
                             <div class="occupancy-bar h-full rounded-full" :class="item.color"
                                 :style="{ width: item.value + '%' }"></div>
                         </div>

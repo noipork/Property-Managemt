@@ -1,0 +1,98 @@
+{
+  "kind": "collectionType",
+  "collectionName": "announcements",
+  "info": {
+    "singularName": "announcement",
+    "pluralName": "announcements",
+    "displayName": "Announcement",
+    "description": "Announcements posted by managers for properties"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "content": {
+      "type": "richtext",
+      "required": true
+    },
+    "excerpt": {
+      "type": "text"
+    },
+    "coverImage": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    },
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": ["images"]
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "general",
+        "maintenance",
+        "event",
+        "emergency",
+        "policy",
+        "reminder",
+        "celebration"
+      ],
+      "default": "general",
+      "required": true
+    },
+    "priority": {
+      "type": "enumeration",
+      "enum": [
+        "normal",
+        "important",
+        "urgent"
+      ],
+      "default": "normal",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "published",
+        "archived"
+      ],
+      "default": "draft",
+      "required": true
+    },
+    "publishDate": {
+      "type": "datetime"
+    },
+    "expiryDate": {
+      "type": "datetime"
+    },
+    "property": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property.property"
+    },
+    "author": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "isPinned": {
+      "type": "boolean",
+      "default": false
+    },
+    "viewCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "tags": {
+      "type": "json"
+    }
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "kind": "collectionType",
+  "collectionName": "leases",
+  "info": {
+    "singularName": "lease",
+    "pluralName": "leases",
+    "displayName": "Lease",
+    "description": "Lease agreements linked to residents"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "leaseNo": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "status": {
+      "type": "enumeration",
+      "required": true,
+      "default": "pending",
+      "enum": [
+        "pending",
+        "active",
+        "expired",
+        "terminated",
+        "cancelled"
+      ]
+    },
+    "startDate": {
+      "type": "date",
+      "required": true
+    },
+    "endDate": {
+      "type": "date",
+      "required": true
+    },
+    "monthlyRent": {
+      "type": "decimal",
+      "required": true
+    },
+    "depositAmount": {
+      "type": "decimal"
+    },
+    "currency": {
+      "type": "string",
+      "default": "THB"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "acceptedAt": {
+      "type": "datetime"
+    },
+    "identityVerified": {
+      "type": "boolean",
+      "default": false
+    },
+    "identityDocumentType": {
+      "type": "enumeration",
+      "enum": [
+        "nationalId",
+        "passport",
+        "driversLicense",
+        "other"
+      ]
+    },
+    "identityDocumentNumber": {
+      "type": "string"
+    },
+    "residentFullName": {
+      "type": "string"
+    },
+    "residentPhone": {
+      "type": "string"
+    },
+    "residentAddress": {
+      "type": "text"
+    },
+    "emergencyContactName": {
+      "type": "string"
+    },
+    "emergencyContactPhone": {
+      "type": "string"
+    },
+    "identityDocuments": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "resident": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "leases"
+    },
+    "property": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property.property"
+    },
+    "unitType": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::unit-type.unit-type"
+    },
+    "terms": {
+      "type": "customField",
+      "customField": "plugin::ckeditor5.CKEditor",
+      "options": {
+        "preset": "defaultHtml"
+      }
+    }
+  }
+}

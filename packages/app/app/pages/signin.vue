@@ -17,8 +17,13 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const showLangMenu = ref(false)
 
-// Initialize from localStorage immediately (client-side only)
-const isDarkMode = ref(process.client ? localStorage.getItem('theme') === 'dark' : false)
+// SSR-safe: always start false, restore from localStorage after hydration
+const isDarkMode = ref(false)
+
+onMounted(() => {
+    const stored = localStorage.getItem('theme')
+    isDarkMode.value = stored === 'dark'
+})
 
 const languages = [
     { code: 'EN', name: 'English' },
@@ -223,7 +228,7 @@ onMounted(() => {
                         <div>
                             <div class="flex items-center justify-between mb-1.5">
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.password
-                                }}</label>
+                                    }}</label>
                                 <a href="#" class="text-xs text-primary-600 dark:text-primary-400 hover:underline">{{
                                     t.forgotPassword }}</a>
                             </div>
@@ -246,7 +251,7 @@ onMounted(() => {
                             <input id="remember" v-model="rememberMe" type="checkbox"
                                 class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 dark:bg-gray-800" />
                             <label for="remember" class="text-sm text-gray-600 dark:text-gray-400">{{ t.rememberMe
-                            }}</label>
+                                }}</label>
                         </div>
 
                         <!-- Submit -->

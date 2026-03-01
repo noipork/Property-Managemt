@@ -21,8 +21,13 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const showLangMenu = ref(false)
 
-// Initialize from localStorage immediately (client-side only)
-const isDarkMode = ref(process.client ? localStorage.getItem('theme') === 'dark' : false)
+// SSR-safe: always start false, restore from localStorage after hydration
+const isDarkMode = ref(false)
+
+onMounted(() => {
+    const stored = localStorage.getItem('theme')
+    isDarkMode.value = stored === 'dark'
+})
 
 const languages = [
     { code: 'EN', name: 'English' },
@@ -403,7 +408,7 @@ onMounted(() => {
                                     </p>
                                     <p class="text-[10px] mt-0.5"
                                         :class="selectedPlan === plan.slug ? 'text-primary-500 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'">
-                                        {{ plan.price.toLocaleString() }} {{ plan.currency }}
+                                        {{ plan.price.toLocaleString('en-US') }} {{ plan.currency }}
                                     </p>
                                 </button>
                             </div>

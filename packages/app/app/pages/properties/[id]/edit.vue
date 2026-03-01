@@ -178,8 +178,11 @@ async function fetchProperty() {
         errorMessage.value = 'Failed to load property'
     } finally {
         isLoading.value = false
-        await new Promise(r => setTimeout(r, 50))
-        sectionsVisible.value = true
+        await nextTick()
+        await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => {
+            sectionsVisible.value = true
+            resolve()
+        })))
     }
 }
 

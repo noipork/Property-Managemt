@@ -3,6 +3,11 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
 
+  // Disable SSR — this is a fully-authenticated dashboard app.
+  // SSR causes hydration mismatches because auth state (localStorage) differs
+  // between server render and client hydration.
+  ssr: false,
+
   modules: ['@nuxtjs/tailwindcss'],
 
   runtimeConfig: {

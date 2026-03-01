@@ -218,7 +218,11 @@ async function handleSubmit() {
 }
 
 onMounted(() => {
-    setTimeout(() => { sectionsVisible.value = true }, 50)
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            sectionsVisible.value = true
+        })
+    })
 })
 </script>
 

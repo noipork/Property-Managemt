@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 
 const { t } = useI18n()
 const { token } = useAuth()
@@ -151,8 +151,11 @@ async function fetchProperty() {
         errorMessage.value = 'Failed to load property'
     } finally {
         isLoading.value = false
-        await new Promise(r => setTimeout(r, 50))
-        sectionsVisible.value = true
+        await nextTick()
+        await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => {
+            sectionsVisible.value = true
+            resolve()
+        })))
     }
 }
 
@@ -353,8 +356,8 @@ onUnmounted(() => {
                         <div v-if="property.area" class="flex justify-between">
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.areaLabel }}</dt>
                             <dd class="text-sm font-medium text-gray-900 dark:text-white">{{
-                                Number(property.area).toLocaleString()
-                            }} {{ property.areaUnit }}</dd>
+                                Number(property.area).toLocaleString('en-US')
+                                }} {{ property.areaUnit }}</dd>
                         </div>
                         <div v-if="property.yearBuilt" class="flex justify-between">
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.yearBuiltLabel }}</dt>
@@ -379,7 +382,8 @@ onUnmounted(() => {
                         <div class="flex justify-between">
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.monthlyRentLabel }}</dt>
                             <dd class="text-sm font-medium text-gray-900 dark:text-white">
-                                {{ property.monthlyRent ? Number(property.monthlyRent).toLocaleString() : '—' }} {{
+                                {{ property.monthlyRent ? Number(property.monthlyRent).toLocaleString('en-US') : '—' }}
+                                {{
                                     property.currency }}
                             </dd>
                         </div>
@@ -390,7 +394,7 @@ onUnmounted(() => {
                         <div v-if="property.monthlyRent" class="flex justify-between">
                             <dt class="text-sm text-gray-500 dark:text-gray-400">Est. Monthly Revenue</dt>
                             <dd class="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                                {{ (Number(property.monthlyRent) * property.occupiedUnits).toLocaleString() }} {{
+                                {{ (Number(property.monthlyRent) * property.occupiedUnits).toLocaleString('en-US') }} {{
                                     property.currency
                                 }}
                             </dd>
@@ -419,7 +423,7 @@ onUnmounted(() => {
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ ut.name
-                                        }}</span>
+                                    }}</span>
                                     <span
                                         class="text-xs px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400 capitalize">
                                         {{ ut.unitType?.replace(/^br(\d)$/, '$1BR') ?? ut.unitType }}
@@ -443,12 +447,12 @@ onUnmounted(() => {
                                     </span>
                                     <span v-if="ut.area" class="flex items-center gap-1">
                                         <i class="ti-ruler-alt-2"></i>
-                                        {{ Number(ut.area).toLocaleString() }} {{ ut.areaUnit }}
+                                        {{ Number(ut.area).toLocaleString('en-US') }} {{ ut.areaUnit }}
                                     </span>
                                     <span v-if="ut.price"
                                         class="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
                                         <i class="ti-tag"></i>
-                                        {{ Number(ut.price).toLocaleString() }} {{ ut.currency }} / mo
+                                        {{ Number(ut.price).toLocaleString('en-US') }} {{ ut.currency }} / mo
                                     </span>
                                 </div>
                             </div>
@@ -456,7 +460,7 @@ onUnmounted(() => {
                         <!-- Description + images -->
                         <div v-if="ut.description || ut.images?.length" class="p-3 space-y-2">
                             <p v-if="ut.description" class="text-xs text-gray-500 dark:text-gray-400">{{ ut.description
-                                }}</p>
+                            }}</p>
                             <div v-if="ut.images?.length" class="flex gap-2 flex-wrap">
                                 <div v-for="(img, imgIdx) in ut.images" :key="img.id"
                                     class="relative w-24 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer group"

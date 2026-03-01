@@ -1,6 +1,10 @@
 <script setup lang="ts">
 const { t } = useI18n()
-const year = new Date().getFullYear()
+const year = ref('')
+
+onMounted(() => {
+    year.value = String(new Date().getFullYear())
+})
 
 const props = defineProps<{
     sidebarOpen: boolean

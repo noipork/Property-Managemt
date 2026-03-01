@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import gsap from 'gsap'
 import type { UserRole } from '~/composables/useAuth'
 
@@ -18,8 +18,13 @@ const showProfileMenu = ref(false)
 const showNotifications = ref(false)
 const showLangMenu = ref(false)
 
-// Initialize from localStorage immediately (client-side only)
-const isDarkMode = ref(process.client ? localStorage.getItem('theme') === 'dark' : false)
+// SSR-safe: always start false, restore from localStorage after hydration
+const isDarkMode = ref(false)
+
+onMounted(() => {
+    const stored = localStorage.getItem('theme')
+    isDarkMode.value = stored === 'dark'
+})
 
 const notifications = [
     { id: 1, text: 'New tenant application received', time: '5 min ago', read: false },
