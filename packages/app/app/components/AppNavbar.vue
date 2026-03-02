@@ -169,12 +169,6 @@ function handleLogout() {
                 </div>
             </div>
 
-            <!-- Messages -->
-            <button
-                class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                <i class="ti-email text-gray-600 dark:text-gray-300 text-lg"></i>
-            </button>
-
             <!-- Profile -->
             <ClientOnly>
                 <div class="relative">

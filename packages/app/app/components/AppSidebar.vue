@@ -21,16 +21,16 @@ const managerMenuSections = computed(() => [
         title: t.value.main,
         items: [
             { name: t.value.dashboard, icon: 'ti-dashboard', badge: '', path: '/' },
-            { name: t.value.properties, icon: 'ti-home', badge: '', path: '/properties' },
-            { name: t.value.residents, icon: 'ti-user', badge: '', path: '/residents' },
-            { name: t.value.leases, icon: 'ti-file', badge: '', path: '/leases' },
+            { name: t.value.properties, icon: 'ti-home', badge: '', path: '/manager/properties' },
+            { name: t.value.residents, icon: 'ti-user', badge: '', path: '/manager/residents' },
+            { name: t.value.leases, icon: 'ti-file', badge: '', path: '/manager/leases' },
         ],
     },
     {
         title: t.value.financial,
         items: [
-            { name: t.value.payments, icon: 'ti-wallet', badge: '', path: '/payments' },
-            { name: t.value.invoices, icon: 'ti-receipt', badge: '', path: '/invoices' },
+            { name: t.value.payments, icon: 'ti-wallet', badge: '', path: '/manager/payments' },
+            { name: t.value.invoices, icon: 'ti-receipt', badge: '', path: '/manager/invoices' },
             // { name: t.value.expenses, icon: 'ti-money', badge: '', path: '/expenses' },
             // { name: t.value.reports, icon: 'ti-bar-chart', badge: '', path: '/reports' },
         ],
@@ -38,20 +38,20 @@ const managerMenuSections = computed(() => [
     {
         title: t.value.operations,
         items: [
-            { name: t.value.maintenance, icon: 'ti-wrench', badge: '', path: '/maintenance' },
-            { name: t.value.announcements, icon: 'ti-speakerphone', badge: '', path: '/announcements' },
+            { name: t.value.maintenance, icon: 'ti-headphone-alt', badge: '', path: '/manager/maintenance' },
+            { name: t.value.announcements, icon: 'ti-announcement', badge: '', path: '/manager/announcements' },
             // { name: t.value.calendar, icon: 'ti-calendar', badge: '', path: '/calendar' },
-            { name: t.value.messages, icon: 'ti-comment', badge: '', path: '/messages' },
+            { name: t.value.messages, icon: 'ti-comment', badge: '', path: '/manager/messages' },
             // { name: t.value.documents, icon: 'ti-folder', badge: '', path: '/documents' },
         ],
     },
-    {
-        title: t.value.system,
-        items: [
-            { name: t.value.settings, icon: 'ti-settings', badge: '', path: '/settings' },
-            { name: t.value.help, icon: 'ti-help-alt', badge: '', path: '/help' },
-        ],
-    },
+    // {
+    //     title: t.value.system,
+    //     items: [
+    //         { name: t.value.settings, icon: 'ti-settings', badge: '', path: '/settings' },
+    //         { name: t.value.help, icon: 'ti-help-alt', badge: '', path: '/help' },
+    //     ],
+    // },
 ])
 
 // Resident menu - limited to tenant-specific features
@@ -60,29 +60,21 @@ const residentMenuSections = computed(() => [
         title: t.value.overview,
         items: [
             { name: t.value.dashboard, icon: 'ti-dashboard', badge: '', path: '/' },
-            { name: t.value.myLease, icon: 'ti-file', badge: '', path: '/my-lease' },
+            { name: t.value.myLease, icon: 'ti-file', badge: '', path: '/resident/my-lease' },
         ],
     },
     {
         title: t.value.financial,
         items: [
-            { name: t.value.payments, icon: 'ti-wallet', badge: '', path: '/payments' },
-            { name: t.value.paymentHistory, icon: 'ti-receipt', badge: '', path: '/payment-history' },
+            { name: t.value.myBills, icon: 'ti-receipt', badge: '', path: '/resident/my-bills' },
+            { name: t.value.paymentHistory, icon: 'ti-wallet', badge: '', path: '/resident/payment-history' },
         ],
     },
     {
         title: t.value.services,
         items: [
-            { name: t.value.maintenance, icon: 'ti-wrench', badge: '2', path: '/maintenance' },
-            { name: t.value.messages, icon: 'ti-comment', badge: '3', path: '/messages' },
-            { name: t.value.documents, icon: 'ti-folder', badge: '', path: '/documents' },
-        ],
-    },
-    {
-        title: t.value.account,
-        items: [
-            { name: t.value.settings, icon: 'ti-settings', badge: '', path: '/settings' },
-            { name: t.value.help, icon: 'ti-help-alt', badge: '', path: '/help' },
+            { name: t.value.maintenance, icon: 'ti-headphone-alt', badge: '', path: '/resident/maintenance' },
+            { name: t.value.messages, icon: 'ti-comment', badge: '', path: '/resident/messages' },
         ],
     },
 ])

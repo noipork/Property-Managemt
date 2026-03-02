@@ -24,6 +24,10 @@ export default defineNuxtConfig({
           href: 'https://cdn.jsdelivr.net/themify-icons/0.1.2/css/themify-icons.css',
         },
         {
+          rel: 'stylesheet',
+          href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css',
+        },
+        {
           rel: 'preconnect',
           href: 'https://fonts.googleapis.com',
         },

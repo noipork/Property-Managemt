@@ -25,7 +25,8 @@ const props = defineProps<{
 
         <!-- Center links -->
         <div class="hidden sm:flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
-            <NuxtLink to="/properties" class="hover:text-primary-500 dark:hover:text-primary-400 transition-colors">
+            <NuxtLink to="/manager/properties"
+                class="hover:text-primary-500 dark:hover:text-primary-400 transition-colors">
                 {{ t.properties }}
             </NuxtLink>
             <span class="text-gray-200 dark:text-gray-700">·</span>

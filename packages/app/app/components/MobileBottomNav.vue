@@ -1,17 +1,33 @@
 <script setup lang="ts">
 const { t } = useI18n()
+const { user } = useAuth()
 const route = useRoute()
 
-const navItems = computed(() => [
+// Manager nav items
+const managerNavItems = computed(() => [
     { name: t.value.dashboard, icon: 'ti-dashboard', path: '/' },
-    { name: t.value.properties, icon: 'ti-home', path: '/properties' },
-    { name: t.value.payments, icon: 'ti-wallet', path: '/payments' },
-    { name: t.value.messages, icon: 'ti-comment', path: '/messages', badge: 8 },
+    { name: t.value.properties, icon: 'ti-home', path: '/manager/properties' },
+    { name: t.value.payments, icon: 'ti-wallet', path: '/manager/payments' },
+    { name: t.value.messages, icon: 'ti-comment', path: '/manager/messages', badge: 8 },
     { name: t.value.settings, icon: 'ti-settings', path: '/settings' },
 ])
 
+// Resident nav items
+const residentNavItems = computed(() => [
+    { name: t.value.dashboard, icon: 'ti-dashboard', path: '/' },
+    { name: t.value.maintenance, icon: 'ti-headphone-alt', path: '/resident/maintenance' },
+    { name: t.value.messages, icon: 'ti-comment', path: '/resident/messages' },
+    { name: t.value.settings, icon: 'ti-settings', path: '/settings' },
+])
+
+// Use appropriate nav based on user role
+const navItems = computed(() => {
+    return user.value?.role === 'resident' ? residentNavItems.value : managerNavItems.value
+})
+
 function isActive(path: string) {
-    return route.path === path
+    if (path === '/') return route.path === '/'
+    return route.path.startsWith(path)
 }
 </script>
 
