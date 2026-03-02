@@ -420,16 +420,7 @@ onMounted(async () => {
     }))
     await Promise.all([fetchConversations(), fetchManagers()])
 
-    // Auto-reopen last conversation (if still available) to immediately mark as read
-    try {
-        const lastId = localStorage.getItem(LAST_CONV_KEY)
-        if (lastId) {
-            const conv = conversations.value.find(c => c.documentId === lastId)
-            if (conv) {
-                await selectConversation(conv)
-            }
-        }
-    } catch { /* ignore */ }
+    // Do not auto-open a conversation on load so unread badges stay visible
     await nextTick()
     requestAnimationFrame(() => requestAnimationFrame(() => {
         contentVisible.value = true
@@ -790,9 +781,9 @@ onUnmounted(() => {
                                     <div class="flex items-center gap-1 mt-1 px-1"
                                         :class="msg.sender?.id === user?.id ? 'justify-end' : 'justify-start'">
                                         <span class="text-[10px] text-gray-400">{{ formatMessageTime(msg.createdAt)
-                                            }}</span>
+                                        }}</span>
                                         <span v-if="msg.isEdited" class="text-[10px] text-gray-400">({{ t.edited
-                                            }})</span>
+                                        }})</span>
                                     </div>
                                 </div>
                             </div>

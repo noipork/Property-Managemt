@@ -687,16 +687,7 @@ onMounted(async () => {
     }))
     await Promise.all([fetchConversations(), fetchProperties()])
 
-    // Auto-reopen last conversation (if still available) to immediately mark as read
-    try {
-        const lastId = localStorage.getItem(LAST_CONV_KEY)
-        if (lastId) {
-            const conv = conversations.value.find(c => c.documentId === lastId)
-            if (conv) {
-                await selectConversation(conv)
-            }
-        }
-    } catch { /* ignore */ }
+    // Do not auto-open a conversation on load so unread badges stay visible
     await nextTick()
     requestAnimationFrame(() => requestAnimationFrame(() => {
         contentVisible.value = true
@@ -1060,9 +1051,9 @@ onUnmounted(() => {
                                     <div class="flex items-center gap-1 mt-1 px-1"
                                         :class="msg.sender?.id === user?.id ? 'justify-end' : 'justify-start'">
                                         <span class="text-[10px] text-gray-400">{{ formatMessageTime(msg.createdAt)
-                                        }}</span>
+                                            }}</span>
                                         <span v-if="msg.isEdited" class="text-[10px] text-gray-400">({{ t.edited
-                                        }})</span>
+                                            }})</span>
                                     </div>
                                 </div>
                             </div>
@@ -1285,7 +1276,7 @@ onUnmounted(() => {
                                         <span class="text-gray-600 dark:text-gray-400">{{ t.broadcastSending }}</span>
                                         <span class="font-medium text-gray-900 dark:text-white">{{
                                             broadcastProgress.current
-                                        }}/{{ broadcastProgress.total }}</span>
+                                            }}/{{ broadcastProgress.total }}</span>
                                     </div>
                                     <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                         <div class="h-full bg-amber-500 rounded-full transition-all duration-300"
