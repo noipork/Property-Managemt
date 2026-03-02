@@ -67,6 +67,9 @@ const residentSearchQuery = ref('')
 // ─── Mobile View ──────────────────────────────────────────────────────────────
 const showChatOnMobile = ref(false)
 
+// Remember last opened conversation
+const LAST_CONV_KEY = 'pm-last-conversation'
+
 // ─── Delete Conversation ──────────────────────────────────────────────────────
 const showDeleteModal = ref(false)
 const conversationToDelete = ref<string | null>(null)
@@ -166,8 +169,7 @@ async function fetchMessages(conversationId: string) {
             sender: m.sender,
             images: m.images?.map((img: any) => ({ id: img.id, url: img.url })) ?? null,
         }))
-        await nextTick()
-        scrollToBottom()
+        await ensureScrollToBottom()
     } catch {
         showToast('error', 'Failed to load messages')
     } finally {
@@ -180,6 +182,12 @@ function scrollToBottom() {
     if (messagesContainer.value) {
         messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
     }
+}
+
+// Ensure DOM has painted before trying to scroll
+async function ensureScrollToBottom() {
+    await nextTick()
+    requestAnimationFrame(() => scrollToBottom())
 }
 
 // ─── Select Conversation ──────────────────────────────────────────────────────
@@ -196,6 +204,11 @@ async function selectConversation(conversation: Conversation) {
 
     joinConversation(conversation.documentId)
     typingUsers.value.clear()
+
+    // Persist last opened conversation to restore on refresh
+    try {
+        localStorage.setItem(LAST_CONV_KEY, conversation.documentId)
+    } catch { /* ignore */ }
 
     await fetchMessages(conversation.documentId)
 
@@ -656,6 +669,11 @@ watch(selectedPropertyId, () => {
     fetchResidents()
 })
 
+// Auto-scroll when a conversation is (re)opened
+watch(selectedConversation, (conv) => {
+    if (conv) ensureScrollToBottom()
+})
+
 // ─── Entry Animation ──────────────────────────────────────────────────────────
 const headerVisible = ref(false)
 const contentVisible = ref(false)
@@ -668,6 +686,17 @@ onMounted(async () => {
         headerVisible.value = true
     }))
     await Promise.all([fetchConversations(), fetchProperties()])
+
+    // Auto-reopen last conversation (if still available) to immediately mark as read
+    try {
+        const lastId = localStorage.getItem(LAST_CONV_KEY)
+        if (lastId) {
+            const conv = conversations.value.find(c => c.documentId === lastId)
+            if (conv) {
+                await selectConversation(conv)
+            }
+        }
+    } catch { /* ignore */ }
     await nextTick()
     requestAnimationFrame(() => requestAnimationFrame(() => {
         contentVisible.value = true
@@ -683,7 +712,7 @@ onMounted(async () => {
                 const exists = messages.value.some(m => m.documentId === data.message.documentId)
                 if (!exists) {
                     messages.value.push(data.message as any)
-                    nextTick(() => scrollToBottom())
+                    ensureScrollToBottom()
                 }
                 // Auto-mark as read since conversation is open
                 if (data.message.sender.documentId !== user.value?.documentId) {
@@ -705,6 +734,9 @@ onMounted(async () => {
                     const conv = conversations.value.find(c => c.documentId === data.conversationDocumentId)
                     if (conv) {
                         conv.unreadCount = (conv.unreadCount ?? 0) + 1
+                    } else {
+                        // Conversation not in list - refetch to get it with proper unread count
+                        fetchConversations()
                     }
                 }
             }
@@ -742,12 +774,22 @@ onMounted(async () => {
             if (conv) {
                 conv.lastMessage = data.lastMessage
                 conv.lastMessageAt = data.lastMessageAt
+
+                // If conversation is not currently open and the other user sent the message, increment unread
+                if (
+                    (!selectedConversation.value || selectedConversation.value.documentId !== data.conversationDocumentId) &&
+                    data.senderDocumentId && data.senderDocumentId !== user.value?.documentId
+                ) {
+                    conv.unreadCount = (conv.unreadCount ?? 0) + 1
+                }
+
                 conversations.value.sort((a, b) => {
                     const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0
                     const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0
                     return bTime - aTime
                 })
             } else {
+                // Conversation not in list yet; refetch to include it with unread state
                 fetchConversations()
             }
         })

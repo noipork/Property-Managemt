@@ -9,6 +9,7 @@ const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
 const route = useRoute()
 const maintenanceDocumentId = route.params.id as string
+const LAST_SEEN_KEY = 'pm-maint-last-seen-manager'
 
 interface MaintenanceMessage {
     id: number
@@ -16,6 +17,8 @@ interface MaintenanceMessage {
     message: string
     createdAt: string
     isInternal: boolean
+    isRead: boolean
+    readAt?: string | null
     sender: { id: number; username: string; email: string } | null
     images: { id: number; url: string; formats?: any }[] | null
 }
@@ -191,9 +194,9 @@ async function fetchRequest() {
             request.value.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
         }
 
-        // Scroll to bottom of messages
-        await nextTick()
-        scrollToBottom()
+        await ensureScrollToBottom()
+        await markMessagesAsRead()
+        recordLastSeen()
     } catch {
         errorMessage.value = t.value.maintenanceLoadError
     } finally {
@@ -205,6 +208,47 @@ function scrollToBottom() {
     if (messagesContainer.value) {
         messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
     }
+}
+
+async function ensureScrollToBottom() {
+    await nextTick()
+    requestAnimationFrame(() => scrollToBottom())
+}
+
+// Optimistically mark unread messages (not sent by me) as read
+async function markMessagesAsRead() {
+    if (!request.value || !request.value.messages?.length) return
+    const unread = request.value.messages.filter(m => m.sender?.id !== user.value?.id && !m.isRead)
+    if (unread.length === 0) return
+
+    const now = new Date().toISOString()
+    unread.forEach(m => {
+        m.isRead = true
+        m.readAt = now
+    })
+
+    try {
+        await fetch(`${STRAPI_URL}/api/maintenance-messages/mark-read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token.value}`,
+            },
+            body: JSON.stringify({ maintenanceDocumentId: maintenanceDocumentId }),
+        })
+    } catch { /* silent */ }
+
+    recordLastSeen()
+}
+
+function recordLastSeen() {
+    if (typeof localStorage === 'undefined') return
+    try {
+        const raw = localStorage.getItem(LAST_SEEN_KEY)
+        const map = raw ? JSON.parse(raw) as Record<string, number> : {}
+        map[maintenanceDocumentId] = Date.now()
+        localStorage.setItem(LAST_SEEN_KEY, JSON.stringify(map))
+    } catch { /* ignore */ }
 }
 
 // ─── Send Message ─────────────────────────────────────────────────────────────
@@ -351,8 +395,15 @@ onMounted(async () => {
                 const exists = request.value.messages?.some(m => m.documentId === data.message.documentId)
                 if (!exists) {
                     if (!request.value.messages) request.value.messages = []
-                    request.value.messages.push(data.message as any)
-                    nextTick(() => scrollToBottom())
+                    const incoming = { ...(data.message as any) }
+                    if (incoming.sender?.id === user.value?.id) {
+                        incoming.isRead = true
+                    }
+                    request.value.messages.push(incoming)
+                    ensureScrollToBottom()
+                    if (incoming.sender?.id !== user.value?.id) {
+                        markMessagesAsRead()
+                    }
                 }
             }
         })
@@ -521,7 +572,7 @@ onUnmounted(() => {
                                             {{ msg.sender?.username || 'Unknown' }}
                                         </span>
                                         <span class="text-[10px] text-gray-400">{{ formatMessageTime(msg.createdAt)
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                     <div class="rounded-2xl px-4 py-2.5 text-sm"
                                         :class="msg.sender?.id === user?.id
@@ -599,7 +650,7 @@ onUnmounted(() => {
                                 class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
                                 <span class="text-gray-500 dark:text-gray-400">{{ t.property }}</span>
                                 <span class="font-medium text-gray-900 dark:text-white">{{ request.property.name
-                                    }}</span>
+                                }}</span>
                             </div>
 
                             <!-- Room -->
@@ -614,7 +665,7 @@ onUnmounted(() => {
                                 class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
                                 <span class="text-gray-500 dark:text-gray-400">{{ t.residentInfo }}</span>
                                 <span class="font-medium text-gray-900 dark:text-white">{{ request.resident.username
-                                    }}</span>
+                                }}</span>
                             </div>
 
                             <!-- Category -->

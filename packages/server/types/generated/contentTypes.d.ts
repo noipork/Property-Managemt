@@ -682,6 +682,7 @@ export interface ApiMaintenanceMessageMaintenanceMessage
       Schema.Attribute.Private;
     images: Schema.Attribute.Media<'images', true>;
     isInternal: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isRead: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -694,6 +695,7 @@ export interface ApiMaintenanceMessageMaintenanceMessage
     >;
     message: Schema.Attribute.Text & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
+    readAt: Schema.Attribute.DateTime;
     sender: Schema.Attribute.Relation<
       'manyToOne',
       'plugin::users-permissions.user'

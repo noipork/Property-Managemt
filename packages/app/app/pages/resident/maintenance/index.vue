@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 
 const { t } = useI18n()
 const { token, user } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
+const { onNewMaintenanceMessage, onMaintenanceUpdated, joinMaintenance, leaveMaintenance, isConnected } = useSocket()
 const STRAPI_URL = config.public.strapiUrl
+const LAST_SEEN_KEY = 'pm-maint-last-seen-resident'
 
 interface MaintenanceRequest {
     id: number
@@ -22,9 +24,12 @@ interface MaintenanceRequest {
     assignedTo: string | null
     estimatedCost: number | null
     actualCost: number | null
+    updatedAt: string
     createdAt: string
     images: { id: number; url: string }[] | null
     property: { id: number; documentId: string; name: string } | null
+    unreadCount?: number
+    hasStatusUpdate?: boolean
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -142,6 +147,26 @@ const priorityLabels = computed(() => ({
     urgent: t.value.urgent || 'Urgent',
 }))
 
+function markCardAsSeen(documentId: string) {
+    const target = allRequests.value.find(r => r.documentId === documentId)
+    if (target) {
+        target.unreadCount = 0
+        target.hasStatusUpdate = false
+    }
+    persistLastSeen(documentId)
+    markMaintenanceMessagesRead(documentId)
+}
+
+function persistLastSeen(documentId: string) {
+    if (typeof localStorage === 'undefined') return
+    try {
+        const raw = localStorage.getItem(LAST_SEEN_KEY)
+        const map = raw ? JSON.parse(raw) as Record<string, number> : {}
+        map[documentId] = Date.now()
+        localStorage.setItem(LAST_SEEN_KEY, JSON.stringify(map))
+    } catch { /* ignore */ }
+}
+
 // ─── UI labels (formatter-safe) ───────────────────────────────────────────────
 const ui = computed(() => ({
     searchMaintenance: t.value.searchMaintenance || 'Search by request # or title...',
@@ -173,18 +198,26 @@ const activeFilterCount = computed(() =>
     [filterStatus.value, filterCategory.value, searchQuery.value.trim()].filter(Boolean).length
 )
 
+const joinedMaintenances = new Set<string>()
+const cleanupFns: Array<() => void> = []
+
 // ─── Fetch Maintenance Requests ───────────────────────────────────────────────
 async function fetchRequests() {
     if (!user.value?.documentId) return
     isLoading.value = true
     try {
+        const lastSeenMap = loadLastSeenMap()
         const params = new URLSearchParams({
             'filters[resident][documentId][$eq]': user.value.documentId,
-            'populate[0]': 'property',
-            'populate[1]': 'images',
+            'populate[property][fields][0]': 'name',
+            'populate[images]': 'true',
             'pagination[pageSize]': '500',
             'sort[0]': 'createdAt:desc',
         })
+        params.set('populate[messages][fields][0]', 'id')
+        params.set('populate[messages][fields][1]', 'isRead')
+        params.set('populate[messages][filters][isRead][$eq]', 'false')
+        params.set('populate[messages][filters][sender][documentId][$ne]', user.value.documentId)
 
         const res = await fetch(`${STRAPI_URL}/api/maintenances?${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
@@ -195,11 +228,38 @@ async function fetchRequests() {
             ...m,
             images: m.images ?? [],
             property: m.property ?? null,
+            unreadCount: Array.isArray(m.messages) ? m.messages.length : 0,
+            hasStatusUpdate: (m.updatedAt ? new Date(m.updatedAt).getTime() : 0) > (lastSeenMap[m.documentId] ?? 0),
         }))
+        if (isConnected.value) joinMaintenanceRooms()
     } catch {
         showToast('error', t.value.maintenanceLoadError || 'Failed to load requests')
     } finally {
         isLoading.value = false
+    }
+}
+
+function joinMaintenanceRooms() {
+    allRequests.value.forEach((req) => {
+        if (req.documentId && !joinedMaintenances.has(req.documentId)) {
+            joinMaintenance(req.documentId)
+            joinedMaintenances.add(req.documentId)
+        }
+    })
+}
+
+function leaveMaintenanceRooms() {
+    joinedMaintenances.forEach(id => leaveMaintenance(id))
+    joinedMaintenances.clear()
+}
+
+function loadLastSeenMap(): Record<string, number> {
+    if (typeof localStorage === 'undefined') return {}
+    try {
+        const raw = localStorage.getItem(LAST_SEEN_KEY)
+        return raw ? JSON.parse(raw) as Record<string, number> : {}
+    } catch {
+        return {}
     }
 }
 
@@ -235,7 +295,22 @@ async function cancelRequest() {
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 function goToRequest(documentId: string) {
+    markCardAsSeen(documentId)
     router.push(`/resident/maintenance/${documentId}`)
+}
+
+async function markMaintenanceMessagesRead(documentId: string) {
+    if (!token.value) return
+    try {
+        await fetch(`${STRAPI_URL}/api/maintenance-messages/mark-read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token.value}`,
+            },
+            body: JSON.stringify({ maintenanceDocumentId: documentId }),
+        })
+    } catch { /* ignore */ }
 }
 
 function formatDate(dateStr: string | null) {
@@ -245,6 +320,10 @@ function formatDate(dateStr: string | null) {
 
 // ─── Watch ────────────────────────────────────────────────────────────────────
 watch([searchQuery, filterStatus, filterCategory], () => { currentPage.value = 1 })
+
+watch(isConnected, (connected) => {
+    if (connected) joinMaintenanceRooms()
+})
 
 // ─── Entry Animation ─────────────────────────────────────────────────────────
 const headerVisible = ref(false)
@@ -263,6 +342,28 @@ onMounted(async () => {
         filtersVisible.value = true
         listVisible.value = true
     }))
+
+    cleanupFns.push(
+        onNewMaintenanceMessage((data) => {
+            const target = allRequests.value.find(r => r.documentId === data.maintenanceDocumentId)
+            if (!target) return
+            if (data.message?.sender?.documentId === user.value?.documentId) return
+            target.unreadCount = (target.unreadCount ?? 0) + 1
+        })
+    )
+
+    cleanupFns.push(
+        onMaintenanceUpdated((data) => {
+            const target = allRequests.value.find(r => r.documentId === data.maintenanceDocumentId)
+            if (target) target.hasStatusUpdate = true
+        })
+    )
+})
+
+onUnmounted(() => {
+    cleanupFns.forEach(fn => fn())
+    cleanupFns.length = 0
+    leaveMaintenanceRooms()
 })
 </script>
 
@@ -308,57 +409,74 @@ onMounted(async () => {
         </div>
 
         <!-- Stats Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 transition-all duration-500 delay-100"
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 transition-all duration-500 delay-100"
             :class="statsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'">
             <!-- Total -->
-            <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-                <div class="flex items-center gap-2 mb-2">
-                    <div
-                        class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                        <i class="fa-solid fa-wrench text-primary-500 text-sm"></i>
-                    </div>
-                    <span class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold">{{
-                        t.total }}</span>
+            <div
+                class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 flex items-center gap-3 sm:flex-col sm:items-start sm:gap-0">
+                <div
+                    class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 shrink-0 sm:mb-3">
+                    <i class="fa-solid fa-wrench text-primary-500 text-sm"></i>
                 </div>
-                <p class="text-lg font-bold text-gray-900 dark:text-white">{{ stats.total }}</p>
+                <div class="flex-1 sm:flex-none">
+                    <p
+                        class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold leading-none mb-0.5 sm:mb-1">
+                        {{ t.total }}</p>
+                    <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-none">{{ stats.total
+                        }}</p>
+                </div>
             </div>
 
             <!-- Pending -->
-            <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-                <div class="flex items-center gap-2 mb-2">
-                    <div
-                        class="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                        <i class="fa-solid fa-clock text-amber-500 text-sm"></i>
-                    </div>
-                    <span class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold">{{
-                        t.pending }}</span>
+            <div
+                class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 flex items-center gap-3 sm:flex-col sm:items-start sm:gap-0">
+                <div
+                    class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 shrink-0 sm:mb-3">
+                    <i class="fa-solid fa-clock text-amber-500 text-sm"></i>
                 </div>
-                <p class="text-lg font-bold text-gray-900 dark:text-white">{{ stats.pending }}</p>
+                <div class="flex-1 sm:flex-none">
+                    <p
+                        class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold leading-none mb-0.5 sm:mb-1">
+                        {{ t.pending }}</p>
+                    <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-none">{{ stats.pending
+                        }}</p>
+                </div>
+                <span v-if="stats.pending > 0"
+                    class="ml-auto sm:hidden w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
             </div>
 
             <!-- In Progress -->
-            <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-                <div class="flex items-center gap-2 mb-2">
-                    <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                        <i class="fa-solid fa-gear text-blue-500 text-sm"></i>
-                    </div>
-                    <span class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold">{{
-                        statusLabels['in_progress'] }}</span>
+            <div
+                class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 flex items-center gap-3 sm:flex-col sm:items-start sm:gap-0">
+                <div
+                    class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 shrink-0 sm:mb-3">
+                    <i class="fa-solid fa-gear text-blue-500 text-sm"></i>
                 </div>
-                <p class="text-lg font-bold text-gray-900 dark:text-white">{{ stats.inProgress }}</p>
+                <div class="flex-1 sm:flex-none">
+                    <p
+                        class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold leading-none mb-0.5 sm:mb-1">
+                        {{ statusLabels['in_progress'] }}</p>
+                    <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-none">{{
+                        stats.inProgress }}</p>
+                </div>
+                <span v-if="stats.inProgress > 0"
+                    class="ml-auto sm:hidden w-2 h-2 rounded-full bg-blue-400 animate-pulse shrink-0"></span>
             </div>
 
             <!-- Resolved -->
-            <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-                <div class="flex items-center gap-2 mb-2">
-                    <div
-                        class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                        <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
-                    </div>
-                    <span class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold">{{
-                        t.resolved }}</span>
+            <div
+                class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 flex items-center gap-3 sm:flex-col sm:items-start sm:gap-0">
+                <div
+                    class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 shrink-0 sm:mb-3">
+                    <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
                 </div>
-                <p class="text-lg font-bold text-gray-900 dark:text-white">{{ stats.resolved }}</p>
+                <div class="flex-1 sm:flex-none">
+                    <p
+                        class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold leading-none mb-0.5 sm:mb-1">
+                        {{ t.resolved }}</p>
+                    <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-none">{{
+                        stats.resolved }}</p>
+                </div>
             </div>
         </div>
 
@@ -453,6 +571,12 @@ onMounted(async () => {
                             <h3 class="font-semibold text-gray-900 dark:text-white truncate text-sm">
                                 {{ req.title }}
                             </h3>
+                            <span v-if="req.unreadCount"
+                                class="min-w-[22px] h-5 px-1.5 bg-primary-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                {{ req.unreadCount > 99 ? '99+' : req.unreadCount }}
+                            </span>
+                            <span v-else-if="req.hasStatusUpdate" class="w-2 h-2 rounded-full bg-amber-500"
+                                title="New update"></span>
                             <span :class="statusColors[req.status]"
                                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold">
                                 <span :class="statusDotColors[req.status]" class="w-1.5 h-1.5 rounded-full"></span>
@@ -502,6 +626,12 @@ onMounted(async () => {
                 <!-- Mobile meta row -->
                 <div class="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 sm:hidden">
                     <span class="text-xs text-gray-400 font-mono">{{ req.requestNumber }}</span>
+                    <span v-if="req.unreadCount"
+                        class="min-w-[20px] h-5 px-1.5 bg-primary-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {{ req.unreadCount > 99 ? '99+' : req.unreadCount }}
+                    </span>
+                    <span v-else-if="req.hasStatusUpdate" class="w-2 h-2 rounded-full bg-amber-500"
+                        title="New update"></span>
                     <span v-if="req.property" class="inline-flex items-center gap-1 text-xs text-gray-400">
                         <i class="fa-solid fa-building text-[10px]"></i>
                         {{ req.property.name }}

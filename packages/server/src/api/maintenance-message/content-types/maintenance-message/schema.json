@@ -35,6 +35,13 @@
     "isInternal": {
       "type": "boolean",
       "default": false
+    },
+    "isRead": {
+      "type": "boolean",
+      "default": false
+    },
+    "readAt": {
+      "type": "datetime"
     }
   }
 }

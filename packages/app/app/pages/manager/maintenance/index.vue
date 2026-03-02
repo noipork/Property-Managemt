@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 
 const { t } = useI18n()
 const { token, user } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
+const { onNewMaintenanceMessage, onMaintenanceUpdated, joinMaintenance, leaveMaintenance, isConnected } = useSocket()
 const STRAPI_URL = config.public.strapiUrl
+const LAST_SEEN_KEY = 'pm-maint-last-seen-manager'
 
 interface MaintenanceRequest {
     id: number
@@ -22,10 +24,13 @@ interface MaintenanceRequest {
     assignedTo: string | null
     estimatedCost: number | null
     actualCost: number | null
+    updatedAt: string
     createdAt: string
     images: { id: number; url: string }[] | null
     resident: { id: number; username: string; email: string; roomNumber: string | null } | null
     property: { id: number; documentId: string; name: string } | null
+    unreadCount?: number
+    hasStatusUpdate?: boolean
 }
 
 interface Property {
@@ -63,6 +68,8 @@ const isDeleting = ref(false)
 
 // ─── Properties list ──────────────────────────────────────────────────────────
 const propertiesList = ref<Property[]>([])
+const joinedMaintenances = new Set<string>()
+const cleanupFns: Array<() => void> = []
 
 async function fetchProperties() {
     try {
@@ -112,14 +119,22 @@ const priorityColors: Record<string, string> = {
 }
 
 const categoryIcons: Record<string, string> = {
-    plumbing: 'ti-droplet',
-    electrical: 'ti-bolt',
-    hvac: 'ti-air-conditioning',
-    appliance: 'ti-device-tv',
-    structural: 'ti-building',
-    cleaning: 'ti-spray',
-    pest_control: 'ti-bug',
-    other: 'ti-tool',
+    plumbing: 'fa-solid fa-droplet',
+    electrical: 'fa-solid fa-bolt',
+    hvac: 'fa-solid fa-fan',
+    appliance: 'fa-solid fa-tv',
+    structural: 'fa-solid fa-building',
+    cleaning: 'fa-solid fa-broom',
+    pest_control: 'fa-solid fa-bug',
+    other: 'fa-solid fa-wrench',
+}
+
+const statusDotColors: Record<string, string> = {
+    pending: 'bg-amber-500',
+    in_progress: 'bg-blue-500',
+    on_hold: 'bg-gray-400',
+    resolved: 'bg-emerald-500',
+    cancelled: 'bg-red-500',
 }
 
 const statusLabels = computed(() => ({
@@ -155,10 +170,19 @@ async function fetchRequests() {
     if (initializing) return
     isLoading.value = true
     try {
+        const lastSeenMap = loadLastSeenMap()
         const params = new URLSearchParams()
-        params.set('populate[0]', 'resident')
-        params.set('populate[1]', 'property')
-        params.set('populate[2]', 'images')
+        params.set('populate[resident][fields][0]', 'username')
+        params.set('populate[resident][fields][1]', 'email')
+        params.set('populate[resident][fields][2]', 'roomNumber')
+        params.set('populate[property][fields][0]', 'name')
+        params.set('populate[images]', 'true')
+        if (user.value?.documentId) {
+            params.set('populate[messages][fields][0]', 'id')
+            params.set('populate[messages][fields][1]', 'isRead')
+            params.set('populate[messages][filters][isRead][$eq]', 'false')
+            params.set('populate[messages][filters][sender][documentId][$ne]', user.value.documentId)
+        }
         params.set('pagination[pageSize]', '500')
         params.set(`sort[0]`, `${sortBy.value}:${sortDir.value}`)
 
@@ -189,11 +213,38 @@ async function fetchRequests() {
             images: m.images ?? [],
             resident: m.resident ?? null,
             property: m.property ?? null,
+            unreadCount: Array.isArray(m.messages) ? m.messages.length : 0,
+            hasStatusUpdate: (m.updatedAt ? new Date(m.updatedAt).getTime() : 0) > (lastSeenMap[m.documentId] ?? 0),
         }))
+        if (isConnected.value) joinMaintenanceRooms()
     } catch {
         showToast('error', t.value.maintenanceLoadError)
     } finally {
         isLoading.value = false
+    }
+}
+
+function joinMaintenanceRooms() {
+    allRequests.value.forEach((req) => {
+        if (req.documentId && !joinedMaintenances.has(req.documentId)) {
+            joinMaintenance(req.documentId)
+            joinedMaintenances.add(req.documentId)
+        }
+    })
+}
+
+function leaveMaintenanceRooms() {
+    joinedMaintenances.forEach(id => leaveMaintenance(id))
+    joinedMaintenances.clear()
+}
+
+function loadLastSeenMap(): Record<string, number> {
+    if (typeof localStorage === 'undefined') return {}
+    try {
+        const raw = localStorage.getItem(LAST_SEEN_KEY)
+        return raw ? JSON.parse(raw) as Record<string, number> : {}
+    } catch {
+        return {}
     }
 }
 
@@ -204,6 +255,10 @@ watch([filterPropertyId, filterStatus, filterCategory, filterPriority, searchQue
 
 watch(currentPage, () => {
     nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
+})
+
+watch(isConnected, (connected) => {
+    if (connected) joinMaintenanceRooms()
 })
 
 // ─── Delete ───────────────────────────────────────────────────────────────────
@@ -234,6 +289,8 @@ async function deleteRequest() {
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 function goToRequest(documentId: string) {
+    markCardAsSeen(documentId)
+    markMaintenanceMessagesRead(documentId)
     router.push(`/manager/maintenance/${documentId}`)
 }
 
@@ -249,6 +306,39 @@ function formatDateTime(dateStr: string | null) {
 
 function toggleSortDir() {
     sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+}
+
+function markCardAsSeen(documentId: string) {
+    const target = allRequests.value.find(r => r.documentId === documentId)
+    if (target) {
+        target.unreadCount = 0
+        target.hasStatusUpdate = false
+    }
+    persistLastSeen(documentId)
+}
+
+async function markMaintenanceMessagesRead(documentId: string) {
+    if (!token.value) return
+    try {
+        await fetch(`${STRAPI_URL}/api/maintenance-messages/mark-read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token.value}`,
+            },
+            body: JSON.stringify({ maintenanceDocumentId: documentId }),
+        })
+    } catch { /* ignore */ }
+}
+
+function persistLastSeen(documentId: string) {
+    if (typeof localStorage === 'undefined') return
+    try {
+        const raw = localStorage.getItem(LAST_SEEN_KEY)
+        const map = raw ? JSON.parse(raw) as Record<string, number> : {}
+        map[documentId] = Date.now()
+        localStorage.setItem(LAST_SEEN_KEY, JSON.stringify(map))
+    } catch { /* ignore */ }
 }
 
 // ─── Entry Animation ─────────────────────────────────────────────────────────
@@ -271,6 +361,28 @@ onMounted(async () => {
     requestAnimationFrame(() => requestAnimationFrame(() => {
         listVisible.value = true
     }))
+
+    cleanupFns.push(
+        onNewMaintenanceMessage((data) => {
+            const target = allRequests.value.find(r => r.documentId === data.maintenanceDocumentId)
+            if (!target) return
+            if (data.message?.sender?.documentId === user.value?.documentId) return
+            target.unreadCount = (target.unreadCount ?? 0) + 1
+        })
+    )
+
+    cleanupFns.push(
+        onMaintenanceUpdated((data) => {
+            const target = allRequests.value.find(r => r.documentId === data.maintenanceDocumentId)
+            if (target) target.hasStatusUpdate = true
+        })
+    )
+})
+
+onUnmounted(() => {
+    cleanupFns.forEach(fn => fn())
+    cleanupFns.length = 0
+    leaveMaintenanceRooms()
 })
 </script>
 
@@ -289,12 +401,12 @@ onMounted(async () => {
                         :class="toast.type === 'success'
                             ? 'bg-emerald-50 dark:bg-emerald-900/80 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
                             : 'bg-red-50 dark:bg-red-900/80 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'">
-                        <i :class="toast.type === 'success' ? 'ti-check' : 'ti-alert-circle'"
+                        <i :class="toast.type === 'success' ? 'fa-solid fa-circle-check text-emerald-500' : 'fa-solid fa-circle-exclamation text-red-500'"
                             class="text-base mt-0.5 shrink-0"></i>
                         <span class="flex-1 leading-snug">{{ toast.message }}</span>
                         <button @click="dismissToast(toast.id)"
                             class="shrink-0 opacity-50 hover:opacity-100 transition-opacity"><i
-                                class="ti-close text-xs"></i></button>
+                                class="fa-solid fa-xmark text-xs"></i></button>
                     </div>
                 </TransitionGroup>
             </div>
@@ -312,7 +424,8 @@ onMounted(async () => {
             :class="filtersVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
             <!-- Search - Full width on mobile -->
             <div class="relative w-full mb-3">
-                <i class="ti-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <i
+                    class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                 <input v-model="searchQuery" type="text" :placeholder="t.searchMaintenance"
                     class="w-full pl-9 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
@@ -329,7 +442,7 @@ onMounted(async () => {
                         </option>
                     </select>
                     <i
-                        class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
 
                 <!-- Status filter -->
@@ -340,7 +453,7 @@ onMounted(async () => {
                         <option v-for="s in statuses" :key="s" :value="s">{{ statusLabels[s] }}</option>
                     </select>
                     <i
-                        class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
 
                 <!-- Category filter -->
@@ -351,7 +464,7 @@ onMounted(async () => {
                         <option v-for="c in categories" :key="c" :value="c">{{ categoryLabels[c] }}</option>
                     </select>
                     <i
-                        class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
 
                 <!-- Priority filter -->
@@ -362,7 +475,7 @@ onMounted(async () => {
                         <option v-for="p in priorities" :key="p" :value="p">{{ priorityLabels[p] }}</option>
                     </select>
                     <i
-                        class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
 
                 <!-- Sort -->
@@ -376,12 +489,12 @@ onMounted(async () => {
                             <option value="category">{{ t.sortByCategory }}</option>
                         </select>
                         <i
-                            class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                     </div>
                     <button @click="toggleSortDir"
                         class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
                         :title="sortDir === 'asc' ? 'Ascending' : 'Descending'">
-                        <i :class="sortDir === 'asc' ? 'ti-sort-ascending' : 'ti-sort-descending'"
+                        <i :class="sortDir === 'asc' ? 'fa-solid fa-arrow-up-a-z' : 'fa-solid fa-arrow-down-a-z'"
                             class="text-gray-500 dark:text-gray-400"></i>
                     </button>
                 </div>
@@ -397,198 +510,127 @@ onMounted(async () => {
         </div>
 
         <!-- Empty state -->
-        <div v-else-if="allRequests.length === 0"
-            class="text-center py-16 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
-            <i class="ti-wrench text-4xl text-gray-300 dark:text-gray-600 mb-4"></i>
+        <div v-else-if="allRequests.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+            <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+                <i class="fa-solid fa-wrench text-2xl text-gray-400"></i>
+            </div>
             <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ t.noMaintenance }}</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">{{ t.noMaintenanceDesc }}</p>
         </div>
 
         <!-- Request Cards -->
-        <div v-else class="space-y-3 sm:space-y-4">
+        <div v-else class="space-y-3">
             <div v-for="(req, idx) in requests" :key="req.id" @click="goToRequest(req.documentId)"
-                class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 sm:p-5 hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md transition-all duration-300 cursor-pointer"
-                :class="listVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
-                :style="{ transitionDelay: `${idx * 50}ms` }">
-                <div class="flex flex-col gap-3 sm:gap-4">
-                    <!-- Mobile: Vertical layout -->
-                    <div class="flex items-start gap-3 sm:hidden">
-                        <!-- Category Icon -->
-                        <div
-                            class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                            <i :class="categoryIcons[req.category] || 'ti-tool'"
-                                class="text-lg text-gray-600 dark:text-gray-400"></i>
-                        </div>
-
-                        <!-- Info -->
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-1.5 mb-1 flex-wrap">
-                                <span class="text-[10px] font-mono text-gray-400">{{ req.requestNumber }}</span>
-                                <span :class="statusColors[req.status]"
-                                    class="px-1.5 py-0.5 rounded text-[10px] font-medium">
-                                    {{ statusLabels[req.status] }}
-                                </span>
-                                <span :class="priorityColors[req.priority]"
-                                    class="px-1.5 py-0.5 rounded text-[10px] font-medium">
-                                    {{ priorityLabels[req.priority] }}
-                                </span>
-                            </div>
-                            <h3 class="font-semibold text-sm text-gray-900 dark:text-white line-clamp-1 mb-1">{{
-                                req.title }}</h3>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{{ req.description }}</p>
-                        </div>
-
-                        <!-- Actions (mobile) -->
-                        <div class="flex items-center gap-0.5 shrink-0" @click.stop>
-                            <NuxtLink :to="`/manager/maintenance/${req.documentId}/edit`"
-                                class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                title="Edit">
-                                <i class="ti-pencil text-gray-500 dark:text-gray-400 text-sm"></i>
-                            </NuxtLink>
-                            <button @click.stop="confirmDelete(req)"
-                                class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                title="Delete">
-                                <i class="ti-trash text-red-500 text-sm"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Desktop: Horizontal layout -->
-                    <div class="hidden sm:flex sm:flex-col lg:flex-row lg:items-center gap-4">
-                        <!-- Left: Category icon + main info -->
-                        <div class="flex items-start gap-4 flex-1">
-                            <!-- Category Icon -->
-                            <div
-                                class="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                                <i :class="categoryIcons[req.category] || 'ti-tool'"
-                                    class="text-xl text-gray-600 dark:text-gray-400"></i>
-                            </div>
-
-                            <!-- Info -->
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 mb-1 flex-wrap">
-                                    <span class="text-xs font-mono text-gray-400">{{ req.requestNumber }}</span>
-                                    <span :class="statusColors[req.status]"
-                                        class="px-2 py-0.5 rounded-full text-xs font-medium">
-                                        {{ statusLabels[req.status] }}
-                                    </span>
-                                    <span :class="priorityColors[req.priority]"
-                                        class="px-2 py-0.5 rounded-full text-xs font-medium">
-                                        {{ priorityLabels[req.priority] }}
-                                    </span>
-                                </div>
-                                <h3 class="font-semibold text-gray-900 dark:text-white truncate">{{ req.title }}</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">{{ req.description
-                                    }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Right: Meta info -->
-                        <div
-                            class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500 dark:text-gray-400 lg:shrink-0">
-                            <!-- Category -->
-                            <div class="flex items-center gap-1.5">
-                                <i :class="categoryIcons[req.category]" class="text-xs"></i>
-                                <span>{{ categoryLabels[req.category] }}</span>
-                            </div>
-
-                            <!-- Resident -->
-                            <div v-if="req.resident" class="flex items-center gap-1.5">
-                                <i class="ti-user text-xs"></i>
-                                <span>{{ req.resident.username }}</span>
-                                <span v-if="req.roomNumber" class="text-gray-400">· Room {{ req.roomNumber }}</span>
-                            </div>
-
-                            <!-- Property -->
-                            <div v-if="req.property" class="flex items-center gap-1.5">
-                                <i class="ti-home text-xs"></i>
-                                <span>{{ req.property.name }}</span>
-                            </div>
-
-                            <!-- Date -->
-                            <div class="flex items-center gap-1.5">
-                                <i class="ti-calendar text-xs"></i>
-                                <span>{{ formatDate(req.createdAt) }}</span>
-                            </div>
-
-                            <!-- Images indicator -->
-                            <div v-if="req.images && req.images.length > 0" class="flex items-center gap-1.5">
-                                <i class="ti-photo text-xs"></i>
-                                <span>{{ req.images.length }}</span>
-                            </div>
-
-                            <!-- Actions -->
-                            <div class="flex items-center gap-1" @click.stop>
-                                <NuxtLink :to="`/manager/maintenance/${req.documentId}/edit`"
-                                    class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                    title="Edit">
-                                    <i class="ti-pencil text-gray-500 dark:text-gray-400"></i>
-                                </NuxtLink>
-                                <button @click.stop="confirmDelete(req)"
-                                    class="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                    title="Delete">
-                                    <i class="ti-trash text-red-500"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Mobile: Meta info row -->
+                class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-all duration-500 cursor-pointer"
+                :class="listVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'"
+                :style="{ transitionDelay: listVisible ? `${idx * 40}ms` : '0ms' }">
+                <div class="flex items-center gap-4">
+                    <!-- Category Icon -->
                     <div
-                        class="flex sm:hidden flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-2.5">
-                        <!-- Category -->
-                        <div class="flex items-center gap-1">
-                            <i :class="categoryIcons[req.category]" class="text-[10px]"></i>
-                            <span>{{ categoryLabels[req.category] }}</span>
-                        </div>
+                        class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+                        <i :class="categoryIcons[req.category] || categoryIcons.other"
+                            class="text-xl text-gray-600 dark:text-gray-400"></i>
+                    </div>
 
-                        <!-- Resident -->
-                        <div v-if="req.resident" class="flex items-center gap-1">
-                            <i class="ti-user text-[10px]"></i>
-                            <span class="truncate max-w-[100px]">{{ req.resident.username }}</span>
+                    <!-- Main Info -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h3 class="font-semibold text-gray-900 dark:text-white truncate text-sm">
+                                {{ req.title }}
+                            </h3>
+                            <span v-if="req.unreadCount"
+                                class="min-w-[22px] h-5 px-1.5 bg-primary-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                {{ req.unreadCount > 99 ? '99+' : req.unreadCount }}
+                            </span>
+                            <span v-else-if="req.hasStatusUpdate" class="w-2 h-2 rounded-full bg-amber-500"
+                                title="New update"></span>
+                            <span :class="statusColors[req.status]"
+                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold">
+                                <span :class="statusDotColors[req.status]" class="w-1.5 h-1.5 rounded-full"></span>
+                                {{ statusLabels[req.status] }}
+                            </span>
+                            <span :class="priorityColors[req.priority]"
+                                class="px-2 py-0.5 rounded-full text-xs font-medium">
+                                {{ priorityLabels[req.priority] }}
+                            </span>
                         </div>
-
-                        <!-- Property -->
-                        <div v-if="req.property" class="flex items-center gap-1">
-                            <i class="ti-home text-[10px]"></i>
-                            <span class="truncate max-w-[120px]">{{ req.property.name }}</span>
-                        </div>
-
-                        <!-- Date -->
-                        <div class="flex items-center gap-1">
-                            <i class="ti-calendar text-[10px]"></i>
-                            <span>{{ formatDate(req.createdAt) }}</span>
-                        </div>
-
-                        <!-- Images indicator -->
-                        <div v-if="req.images && req.images.length > 0" class="flex items-center gap-1">
-                            <i class="ti-photo text-[10px]"></i>
-                            <span>{{ req.images.length }}</span>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">{{ req.description }}</p>
+                        <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+                            <span class="text-xs text-gray-400 font-mono">{{ req.requestNumber }}</span>
+                            <span v-if="req.resident" class="inline-flex items-center gap-1 text-xs text-gray-400">
+                                <i class="fa-solid fa-user text-[10px]"></i>
+                                {{ req.resident.username }}
+                            </span>
+                            <span v-if="req.property" class="inline-flex items-center gap-1 text-xs text-gray-400">
+                                <i class="fa-solid fa-building text-[10px]"></i>
+                                {{ req.property.name }}
+                            </span>
+                            <span v-if="req.roomNumber" class="inline-flex items-center gap-1 text-xs text-gray-400">
+                                <i class="fa-solid fa-door-open text-[10px]"></i>
+                                {{ req.roomNumber }}
+                            </span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400">
+                                <i class="fa-solid fa-calendar text-[10px]"></i>
+                                {{ formatDate(req.createdAt) }}
+                            </span>
+                            <span v-if="req.images && req.images.length > 0"
+                                class="inline-flex items-center gap-1 text-xs text-gray-400">
+                                <i class="fa-solid fa-image text-[10px]"></i>
+                                {{ req.images.length }}
+                            </span>
                         </div>
                     </div>
+
+                    <!-- Arrow -->
+                    <i class="fa-solid fa-chevron-right text-xs text-gray-300 dark:text-gray-600 shrink-0"></i>
+                </div>
+
+                <!-- Mobile meta row -->
+                <div class="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 sm:hidden">
+                    <span class="text-xs text-gray-400 font-mono">{{ req.requestNumber }}</span>
+                    <span v-if="req.unreadCount"
+                        class="min-w-[20px] h-5 px-1.5 bg-primary-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {{ req.unreadCount > 99 ? '99+' : req.unreadCount }}
+                    </span>
+                    <span v-else-if="req.hasStatusUpdate" class="w-2 h-2 rounded-full bg-amber-500"
+                        title="New update"></span>
+                    <span v-if="req.resident" class="inline-flex items-center gap-1 text-xs text-gray-400">
+                        <i class="fa-solid fa-user text-[10px]"></i>
+                        {{ req.resident.username }}
+                    </span>
+                    <span v-if="req.property" class="inline-flex items-center gap-1 text-xs text-gray-400">
+                        <i class="fa-solid fa-building text-[10px]"></i>
+                        {{ req.property.name }}
+                    </span>
+                    <span class="text-xs text-gray-400 ml-auto">{{ formatDate(req.createdAt) }}</span>
                 </div>
             </div>
 
             <!-- Pagination -->
-            <div
-                class="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-800">
-                <div class="flex items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                    <span>{{ totalCount }} {{ totalCount !== 1 ? t.maintenanceFoundPlural : t.maintenanceFound
-                    }}</span>
+            <div v-if="totalPages > 1"
+                class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    <span>{{ totalCount }} {{ totalCount !== 1 ? t.maintenanceFoundPlural : t.maintenanceFound }}</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button @click="currentPage = Math.max(1, currentPage - 1)" :disabled="currentPage === 1"
-                        class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                        <i class="ti-angle-left text-gray-600 dark:text-gray-300 text-sm"></i>
+                <div class="flex items-center gap-1">
+                    <button @click="currentPage = 1" :disabled="currentPage === 1"
+                        class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
+                        <i class="fa-solid fa-angles-left text-xs"></i>
                     </button>
-                    <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-300 px-2 min-w-[60px] text-center">{{
-                        currentPage }} / {{ totalPages
-                        }}</span>
-                    <button @click="currentPage = Math.min(totalPages, currentPage + 1)"
-                        :disabled="currentPage === totalPages"
-                        class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                        <i class="ti-angle-right text-gray-600 dark:text-gray-300 text-sm"></i>
+                    <button @click="currentPage--" :disabled="currentPage === 1"
+                        class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
+                        <i class="fa-solid fa-angle-left text-xs"></i>
+                    </button>
+                    <span class="px-3 py-1 text-xs text-gray-600 dark:text-gray-400">
+                        {{ currentPage }} / {{ totalPages }}
+                    </span>
+                    <button @click="currentPage++" :disabled="currentPage >= totalPages"
+                        class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
+                        <i class="fa-solid fa-angle-right text-xs"></i>
+                    </button>
+                    <button @click="currentPage = totalPages" :disabled="currentPage >= totalPages"
+                        class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
+                        <i class="fa-solid fa-angles-right text-xs"></i>
                     </button>
                 </div>
             </div>
@@ -606,7 +648,7 @@ onMounted(async () => {
                         <div class="flex items-start gap-4">
                             <div
                                 class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                                <i class="ti-alert-triangle text-red-500"></i>
+                                <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
                             </div>
                             <div>
                                 <h3 class="font-semibold text-gray-900 dark:text-white">{{ t.deleteMaintenance }}</h3>
@@ -623,7 +665,7 @@ onMounted(async () => {
                             </button>
                             <button @click="deleteRequest" :disabled="isDeleting"
                                 class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2">
-                                <i v-if="isDeleting" class="ti-reload text-xs animate-spin"></i>
+                                <i v-if="isDeleting" class="fa-solid fa-spinner fa-spin text-xs"></i>
                                 {{ t.delete }}
                             </button>
                         </div>
