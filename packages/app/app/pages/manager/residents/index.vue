@@ -15,6 +15,7 @@ interface Resident {
     roomNumber: string | null
     registrationDate: string | null
     residencyStatus: string | null
+    nextBillDate: string | null
     property: { id: number; documentId: string; name: string; city: string } | null
     unitType: { id: number; documentId: string; name: string; unitType: string; quantity: number } | null
 }
@@ -337,7 +338,7 @@ onMounted(async () => {
                 <!-- Date From -->
                 <div class="flex items-center gap-1.5">
                     <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t.filterRegistDate
-                        }}</span>
+                    }}</span>
                     <input v-model="filterDateFrom" type="date"
                         class="px-2 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
                         @click="($event.target as HTMLInputElement).showPicker?.()" />
@@ -450,7 +451,18 @@ onMounted(async () => {
                     <div class="hidden md:block text-center min-w-[90px]">
                         <p class="text-xs text-gray-400 uppercase tracking-wider">{{ t.registrationDate }}</p>
                         <p class="text-sm text-gray-700 dark:text-gray-300">{{ formatDate(resident.registrationDate)
-                            }}</p>
+                        }}</p>
+                    </div>
+
+                    <!-- Next Bill Date -->
+                    <div class="hidden md:block text-center min-w-[90px]">
+                        <p class="text-xs text-gray-400 uppercase tracking-wider">{{ t.nextBillDate }}</p>
+                        <p v-if="resident.nextBillDate" class="text-sm font-medium" :class="new Date(resident.nextBillDate) <= new Date()
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-amber-600 dark:text-amber-400'">
+                            {{ formatDate(resident.nextBillDate) }}
+                        </p>
+                        <p v-else class="text-sm text-gray-400">—</p>
                     </div>
 
                     <!-- Actions -->
@@ -482,6 +494,10 @@ onMounted(async () => {
                     </span>
                     <span v-if="resident.unitType" class="text-xs text-gray-500 dark:text-gray-400">{{
                         resident.unitType.name }}</span>
+                    <span v-if="resident.nextBillDate" class="text-xs font-medium"
+                        :class="new Date(resident.nextBillDate) <= new Date() ? 'text-red-500' : 'text-amber-500'">
+                        <i class="ti-bell text-xs"></i> {{ formatDate(resident.nextBillDate) }}
+                    </span>
                     <span class="text-xs text-gray-400 ml-auto">{{ formatDate(resident.registrationDate) }}</span>
                 </div>
             </div>

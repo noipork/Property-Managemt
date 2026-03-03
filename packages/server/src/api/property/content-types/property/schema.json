@@ -99,6 +99,23 @@
       "relation": "oneToMany",
       "target": "api::unit-type.unit-type",
       "mappedBy": "property"
+    },
+    "bankName": {
+      "type": "string"
+    },
+    "bankAccountName": {
+      "type": "string"
+    },
+    "bankAccountNumber": {
+      "type": "string"
+    },
+    "promptPayId": {
+      "type": "string"
+    },
+    "qrCodeImage": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
     }
   }
 }

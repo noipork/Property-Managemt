@@ -963,6 +963,9 @@ export interface ApiPropertyProperty extends Struct.CollectionTypeSchema {
         number
       >;
     areaUnit: Schema.Attribute.String & Schema.Attribute.DefaultTo<'sqm'>;
+    bankAccountName: Schema.Attribute.String;
+    bankAccountNumber: Schema.Attribute.String;
+    bankName: Schema.Attribute.String;
     city: Schema.Attribute.String & Schema.Attribute.Required;
     country: Schema.Attribute.String & Schema.Attribute.DefaultTo<'Thailand'>;
     createdAt: Schema.Attribute.DateTime;
@@ -998,6 +1001,7 @@ export interface ApiPropertyProperty extends Struct.CollectionTypeSchema {
       'manyToOne',
       'plugin::users-permissions.user'
     >;
+    promptPayId: Schema.Attribute.String;
     propertyType: Schema.Attribute.Enumeration<
       [
         'apartment',
@@ -1012,6 +1016,7 @@ export interface ApiPropertyProperty extends Struct.CollectionTypeSchema {
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'apartment'>;
     publishedAt: Schema.Attribute.DateTime;
+    qrCodeImage: Schema.Attribute.Media<'images'>;
     state: Schema.Attribute.String;
     status: Schema.Attribute.Enumeration<
       ['active', 'inactive', 'maintenance', 'sold']
@@ -1596,6 +1601,7 @@ export interface PluginUsersPermissionsUser
       'oneToMany',
       'api::maintenance.maintenance'
     >;
+    nextBillDate: Schema.Attribute.Date;
     password: Schema.Attribute.Password &
       Schema.Attribute.Private &
       Schema.Attribute.SetMinMaxLength<{

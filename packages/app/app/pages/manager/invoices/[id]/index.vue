@@ -106,6 +106,7 @@ async function fetchInvoice() {
             'populate[0]': 'resident',
             'populate[1]': 'property',
             'populate[2]': 'payments',
+            'populate[3]': 'payments.paymentSlip',
         })
         const res = await fetch(`${STRAPI_URL}/api/billings?filters[id][$eq]=${invoiceId}&${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
@@ -137,6 +138,94 @@ async function deleteInvoice() {
     } finally {
         isDeleting.value = false
         showDeleteModal.value = false
+    }
+}
+
+// ─── Payment Approval ─────────────────────────────────────────────────────────
+const approvingPaymentId = ref<number | null>(null)
+const rejectingPaymentId = ref<number | null>(null)
+const viewSlipUrl = ref<string | null>(null)
+const showSlipModal = ref(false)
+
+function getSlipUrl(pay: any) {
+    const slip = pay?.paymentSlip as any
+    if (!slip) return null
+    const url = slip?.formats?.medium?.url || slip?.formats?.small?.url || slip?.url
+    return url ? (url.startsWith('http') ? url : `${STRAPI_URL}${url}`) : null
+}
+
+function viewSlip(pay: any) {
+    const url = getSlipUrl(pay)
+    if (url) {
+        viewSlipUrl.value = url
+        showSlipModal.value = true
+    }
+}
+
+async function approvePayment(pay: any) {
+    if (!invoice.value) return
+    approvingPaymentId.value = pay.id
+    try {
+        // Update payment status to completed
+        const payRes = await fetch(`${STRAPI_URL}/api/payments/${pay.documentId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token.value}` },
+            body: JSON.stringify({ data: { status: 'completed' } }),
+        })
+        if (!payRes.ok) throw new Error('Failed to approve payment')
+
+        // Update billing: status=paid, paidDate=today, paidAmount=total
+        await fetch(`${STRAPI_URL}/api/billings/${invoice.value.documentId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token.value}` },
+            body: JSON.stringify({
+                data: {
+                    status: 'paid',
+                    paidDate: new Date().toISOString().split('T')[0],
+                    paidAmount: invoice.value.amount,
+                },
+            }),
+        })
+
+        showToast('success', t.value.paymentApproved || 'Payment approved successfully')
+        await fetchInvoice()
+    } catch (e: any) {
+        showToast('error', e?.message || 'Failed to approve payment')
+    } finally {
+        approvingPaymentId.value = null
+    }
+}
+
+async function rejectPayment(pay: any) {
+    if (!invoice.value) return
+    rejectingPaymentId.value = pay.id
+    try {
+        // Update payment status to failed
+        const payRes = await fetch(`${STRAPI_URL}/api/payments/${pay.documentId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token.value}` },
+            body: JSON.stringify({ data: { status: 'failed' } }),
+        })
+        if (!payRes.ok) throw new Error('Failed to reject payment')
+
+        // Revert billing status back to pending (if no other completed payments)
+        const hasOtherCompleted = invoice.value.payments?.some(
+            (p: any) => p.id !== pay.id && p.status === 'completed'
+        )
+        if (!hasOtherCompleted) {
+            await fetch(`${STRAPI_URL}/api/billings/${invoice.value.documentId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token.value}` },
+                body: JSON.stringify({ data: { status: 'pending' } }),
+            })
+        }
+
+        showToast('success', t.value.paymentRejected || 'Payment rejected')
+        await fetchInvoice()
+    } catch (e: any) {
+        showToast('error', e?.message || 'Failed to reject payment')
+    } finally {
+        rejectingPaymentId.value = null
     }
 }
 
@@ -194,7 +283,8 @@ onMounted(async () => {
                 <i class="ti-alert-circle text-2xl text-red-500"></i>
             </div>
             <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ errorMessage }}</h3>
-            <NuxtLink to="/manager/invoices" class="mt-4 text-sm text-primary-600 hover:underline">{{ t.backToInvoices }}
+            <NuxtLink to="/manager/invoices" class="mt-4 text-sm text-primary-600 hover:underline">{{ t.backToInvoices
+                }}
             </NuxtLink>
         </div>
 
@@ -326,22 +416,66 @@ onMounted(async () => {
 
                     <!-- Related Payments -->
                     <div v-if="invoice.payments?.length"
-                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-3">
+                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">{{
                             t.paymentHistory }}</h3>
                         <div v-for="pay in invoice.payments" :key="pay.id"
-                            class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
-                            <div>
-                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ pay.refNo }}</p>
-                                <p class="text-xs text-gray-400">{{ formatDate(pay.date) }} · {{ pay.method }}</p>
+                            class="border border-gray-100 dark:border-gray-800 rounded-xl p-4 space-y-3">
+                            <!-- Payment header row -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-full flex items-center justify-center"
+                                        :class="pay.status === 'completed' ? 'bg-emerald-100 dark:bg-emerald-900/30' : pay.status === 'failed' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-amber-100 dark:bg-amber-900/30'">
+                                        <i class="text-sm"
+                                            :class="pay.status === 'completed' ? 'ti-check text-emerald-600 dark:text-emerald-400' : pay.status === 'failed' ? 'ti-close text-red-600 dark:text-red-400' : 'ti-clock text-amber-600 dark:text-amber-400'"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ pay.refNo }}</p>
+                                        <p class="text-xs text-gray-400">{{ formatDate(pay.date) }} · {{ pay.method }}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
+                                        :class="paymentStatusColors[pay.status] || paymentStatusColors.pending">
+                                        {{ pay.status }}
+                                    </span>
+                                    <p class="text-sm font-bold text-gray-900 dark:text-white mt-1">{{
+                                        formatCurrency(pay.amount, pay.currency) }}</p>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
-                                    :class="paymentStatusColors[pay.status] || paymentStatusColors.pending">
-                                    {{ pay.status }}
-                                </span>
-                                <span class="text-sm font-semibold text-gray-900 dark:text-white">{{
-                                    formatCurrency(pay.amount, pay.currency) }}</span>
+
+                            <!-- Payment slip thumbnail -->
+                            <div v-if="getSlipUrl(pay)" class="flex items-center gap-3">
+                                <img :src="getSlipUrl(pay)!" alt="Payment slip"
+                                    class="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity"
+                                    @click="viewSlip(pay)" />
+                                <button @click="viewSlip(pay)"
+                                    class="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
+                                    <i class="ti-eye text-sm"></i>
+                                    {{ t.viewSlip || 'View Payment Slip' }}
+                                </button>
+                            </div>
+
+                            <!-- Approve / Reject buttons -->
+                            <div v-if="pay.status === 'pending' || pay.status === 'reviewing'"
+                                class="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                                <button @click="approvePayment(pay)" :disabled="approvingPaymentId === pay.id"
+                                    class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg transition-colors">
+                                    <div v-if="approvingPaymentId === pay.id"
+                                        class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin">
+                                    </div>
+                                    <i v-else class="ti-check text-sm"></i>
+                                    {{ t.approvePayment || 'Approve' }}
+                                </button>
+                                <button @click="rejectPayment(pay)" :disabled="rejectingPaymentId === pay.id"
+                                    class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-800 disabled:opacity-50 rounded-lg transition-colors">
+                                    <div v-if="rejectingPaymentId === pay.id"
+                                        class="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin">
+                                    </div>
+                                    <i v-else class="ti-close text-sm"></i>
+                                    {{ t.rejectPayment || 'Reject' }}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -386,7 +520,7 @@ onMounted(async () => {
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ invoice.property.name }}
                                 </p>
                                 <p v-if="invoice.property.city" class="text-xs text-gray-400">{{ invoice.property.city
-                                }}</p>
+                                    }}</p>
                             </div>
                         </div>
                         <p v-else class="text-sm text-gray-400">—</p>
@@ -419,7 +553,7 @@ onMounted(async () => {
                     </div>
                     <p class="text-sm text-gray-600 dark:text-gray-400">
                         {{ t.deleteInvoiceConfirm }} <strong class="text-gray-900 dark:text-white">{{ invoice?.invoiceNo
-                        }}</strong>{{ t.deleteInvoiceConfirm2 }}
+                            }}</strong>{{ t.deleteInvoiceConfirm2 }}
                     </p>
                     <div class="flex gap-3 pt-2">
                         <button @click="showDeleteModal = false"
@@ -431,6 +565,26 @@ onMounted(async () => {
                     </div>
                 </div>
             </div>
+        </Teleport>
+
+        <!-- Slip Viewer Modal -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition-all duration-200" enter-from-class="opacity-0"
+                enter-to-class="opacity-100" leave-active-class="transition-all duration-150"
+                leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <div v-if="showSlipModal && viewSlipUrl"
+                    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+                    @click.self="showSlipModal = false">
+                    <div class="relative max-w-2xl w-full">
+                        <button @click="showSlipModal = false"
+                            class="absolute -top-10 right-0 p-2 rounded-lg text-white/80 hover:text-white transition-colors">
+                            <i class="ti-close text-xl"></i>
+                        </button>
+                        <img :src="viewSlipUrl" alt="Payment Slip"
+                            class="w-full max-h-[80vh] object-contain rounded-xl bg-white dark:bg-gray-900" />
+                    </div>
+                </div>
+            </Transition>
         </Teleport>
     </div>
 </template>

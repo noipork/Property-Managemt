@@ -494,7 +494,8 @@ onMounted(async () => {
                 <div v-for="(bill, index) in bills" :key="bill.id"
                     class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-all duration-500 cursor-pointer"
                     :class="listVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'"
-                    :style="{ transitionDelay: listVisible ? `${index * 40}ms` : '0ms' }" @click="openDetail(bill)">
+                    :style="{ transitionDelay: listVisible ? `${index * 40}ms` : '0ms' }"
+                    @click="$router.push(`/resident/my-bills/${bill.id}`)">
                     <div class="flex items-center gap-4">
                         <!-- Type Icon -->
                         <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
@@ -674,13 +675,13 @@ onMounted(async () => {
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ ui.invoiceNo
-                                        }}</p>
+                                            }}</p>
                                         <p class="text-sm font-medium text-gray-900 dark:text-white font-mono">{{
                                             selectedBill.invoiceNo }}</p>
                                     </div>
                                     <div>
                                         <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ ui.invoiceType
-                                        }}</p>
+                                            }}</p>
                                         <span
                                             class="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-xs font-semibold">
                                             <i :class="typeIcons[selectedBill.type] || typeIcons.other"
@@ -696,7 +697,7 @@ onMounted(async () => {
                                             :class="isOverdue(selectedBill) ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'">
                                             {{ formatDate(selectedBill.dueDate) }}
                                             <span v-if="isOverdue(selectedBill)" class="text-xs ml-1">({{ t.overdue
-                                                }})</span>
+                                            }})</span>
                                         </p>
                                     </div>
                                     <div>
@@ -717,7 +718,7 @@ onMounted(async () => {
                                     <div v-if="selectedBill.paidAmount">
                                         <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{
                                             ui.invoicePaidAmount
-                                        }}</p>
+                                            }}</p>
                                         <p class="text-sm font-medium text-emerald-600 dark:text-emerald-400">{{
                                             formatCurrency(selectedBill.paidAmount, selectedBill.currency) }}</p>
                                     </div>
@@ -748,7 +749,7 @@ onMounted(async () => {
                                             </span>
                                             <span class="text-sm font-medium text-gray-900 dark:text-white">{{
                                                 formatCurrency(selectedBill.electricAmount, selectedBill.currency)
-                                                }}</span>
+                                            }}</span>
                                         </div>
                                         <p v-if="selectedBill.electricMeterStart != null"
                                             class="text-xs text-gray-400 mt-0.5">
@@ -768,7 +769,7 @@ onMounted(async () => {
                                             </span>
                                             <span class="text-sm font-medium text-gray-900 dark:text-white">{{
                                                 formatCurrency(selectedBill.waterAmount, selectedBill.currency)
-                                                }}</span>
+                                            }}</span>
                                         </div>
                                         <p v-if="selectedBill.waterMeterStart != null"
                                             class="text-xs text-gray-400 mt-0.5">
@@ -781,7 +782,7 @@ onMounted(async () => {
                                     <!-- Total -->
                                     <div class="flex items-center justify-between pt-1">
                                         <span class="text-sm font-bold text-gray-900 dark:text-white">{{ ui.totalAmount
-                                        }}</span>
+                                            }}</span>
                                         <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{
                                             formatCurrency(selectedBill.amount, selectedBill.currency) }}</span>
                                     </div>
@@ -791,7 +792,7 @@ onMounted(async () => {
                                 <div v-if="selectedBill.property"
                                     class="border-t border-gray-100 dark:border-gray-800 pt-4">
                                     <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">{{ ui.invoiceProperty
-                                    }}</p>
+                                        }}</p>
                                     <div class="flex items-center gap-3">
                                         <div
                                             class="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">

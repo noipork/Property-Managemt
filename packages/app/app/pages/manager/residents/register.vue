@@ -17,6 +17,7 @@ const form = ref({
     roomNumber: '',
     registrationDate: '',
     residencyStatus: 'reserved',
+    nextBillDate: '',
     // Lease fields
     leaseNo: '',
     leaseStartDate: '',
@@ -44,6 +45,13 @@ onMounted(() => {
 
 const errors = ref<Record<string, string>>({})
 const isSubmitting = ref(false)
+
+// Auto-default nextBillDate from leaseStartDate
+watch(() => form.value.leaseStartDate, (val) => {
+    if (val && !form.value.nextBillDate) {
+        form.value.nextBillDate = val
+    }
+})
 
 // ─── Modals ───────────────────────────────────────────────────────────────────
 const showRoomTakenModal = ref(false)
@@ -354,6 +362,7 @@ async function submit() {
                 roomNumber: form.value.roomNumber,
                 registrationDate: form.value.registrationDate,
                 residencyStatus: form.value.residencyStatus,
+                nextBillDate: form.value.nextBillDate || null,
             }),
         })
         if (!updateRes.ok) {
@@ -647,7 +656,7 @@ onMounted(fetchProperties)
                             :class="errors.registrationDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                             @click="($event.target as HTMLInputElement).showPicker?.()" />
                         <p v-if="errors.registrationDate" class="mt-1 text-xs text-red-500">{{ errors.registrationDate
-                        }}
+                            }}
                         </p>
                     </div>
 
@@ -664,6 +673,17 @@ onMounted(fetchProperties)
                             <i
                                 class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
+                    </div>
+
+                    <!-- Next Bill Date -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                            {{ t.nextBillDate }}
+                        </label>
+                        <input v-model="form.nextBillDate" type="date"
+                            class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
+                            @click="($event.target as HTMLInputElement).showPicker?.()" />
+                        <p class="mt-1 text-xs text-gray-400">{{ t.nextBillDateHint }}</p>
                     </div>
                 </div>
             </Transition>
@@ -728,7 +748,7 @@ onMounted(fetchProperties)
                                 :class="errors.leaseStartDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                                 @click="($event.target as HTMLInputElement).showPicker?.()" />
                             <p v-if="errors.leaseStartDate" class="mt-1 text-xs text-red-500">{{ errors.leaseStartDate
-                                }}</p>
+                            }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">

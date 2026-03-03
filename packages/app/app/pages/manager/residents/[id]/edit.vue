@@ -18,6 +18,7 @@ const form = ref({
     roomNumber: '',
     registrationDate: '',
     residencyStatus: 'reserved',
+    nextBillDate: '',
     // Lease fields
     leaseNo: '',
     leaseStartDate: '',
@@ -201,6 +202,7 @@ async function fetchResident() {
         form.value.roomNumber = data.roomNumber ?? ''
         form.value.registrationDate = data.registrationDate ?? ''
         form.value.residencyStatus = data.residencyStatus ?? 'reserved'
+        form.value.nextBillDate = data.nextBillDate ?? ''
         if (data.property) {
             form.value.propertyId = String(data.property.id)
         }
@@ -347,6 +349,7 @@ async function submit() {
                 roomNumber: form.value.roomNumber,
                 registrationDate: form.value.registrationDate,
                 residencyStatus: form.value.residencyStatus,
+                nextBillDate: form.value.nextBillDate || null,
             }),
         })
         if (!res.ok) {
@@ -551,7 +554,7 @@ onMounted(async () => {
                                 @click="($event.target as HTMLInputElement).showPicker?.()" />
                             <p v-if="errors.registrationDate" class="mt-1 text-xs text-red-500">{{
                                 errors.registrationDate
-                                }}</p>
+                            }}</p>
                         </div>
 
                         <!-- Residency Status -->
@@ -567,6 +570,17 @@ onMounted(async () => {
                                 <i
                                     class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                             </div>
+                        </div>
+
+                        <!-- Next Bill Date -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                {{ t.nextBillDate }}
+                            </label>
+                            <input v-model="form.nextBillDate" type="date"
+                                class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
+                                @click="($event.target as HTMLInputElement).showPicker?.()" />
+                            <p class="mt-1 text-xs text-gray-400">{{ t.nextBillDateHint }}</p>
                         </div>
                     </div>
                 </Transition>
@@ -642,7 +656,7 @@ onMounted(async () => {
                                     :class="errors.leaseEndDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                                     @click="($event.target as HTMLInputElement).showPicker?.()" />
                                 <p v-if="errors.leaseEndDate" class="mt-1 text-xs text-red-500">{{ errors.leaseEndDate
-                                    }}</p>
+                                }}</p>
                             </div>
                         </div>
 
@@ -655,7 +669,7 @@ onMounted(async () => {
                                 <div class="relative">
                                     <span
                                         class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium pointer-events-none">{{
-                                        form.currency }}</span>
+                                            form.currency }}</span>
                                     <input v-model="form.monthlyRent" type="number" min="0" step="0.01"
                                         placeholder="0.00"
                                         class="w-full pl-12 pr-3 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
@@ -671,7 +685,7 @@ onMounted(async () => {
                                 <div class="relative">
                                     <span
                                         class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium pointer-events-none">{{
-                                        form.currency }}</span>
+                                            form.currency }}</span>
                                     <input v-model="form.depositAmount" type="number" min="0" step="0.01"
                                         placeholder="0.00"
                                         class="w-full pl-12 pr-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors" />
@@ -693,7 +707,7 @@ onMounted(async () => {
                                         ? months + ' ' + (months !== 1 ? t.leaseDurationMonthsPlural :
                                             t.leaseDurationMonths)
                                         : Math.round((e.getTime() - s.getTime()) / 86400000) + ' ' + t.leaseDurationDays
-                                    })() }}</strong>
+                                })()}}</strong>
                             </span>
                         </div>
 

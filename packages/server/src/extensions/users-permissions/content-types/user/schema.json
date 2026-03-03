@@ -99,6 +99,9 @@
       ],
       "default": "reserved"
     },
+    "nextBillDate": {
+      "type": "date"
+    },
     "billings": {
       "type": "relation",
       "relation": "oneToMany",
