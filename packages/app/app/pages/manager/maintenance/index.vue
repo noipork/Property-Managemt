@@ -366,8 +366,22 @@ onMounted(async () => {
         onNewMaintenanceMessage((data) => {
             const target = allRequests.value.find(r => r.documentId === data.maintenanceDocumentId)
             if (!target) return
-            if (data.message?.sender?.documentId === user.value?.documentId) return
+            // Don't increment if I'm the sender
+            if (data.message?.sender?.documentId === user.value?.documentId) {
+                return
+            }
+            // Prevent duplicate increments - check if message already exists by ID
+            const messageId = data.message?.documentId || data.message?.id
+            if (messageId && target.lastProcessedMessageId === messageId) {
+                return
+            }
+            // Increment unreadCount to show badge in real-time
             target.unreadCount = (target.unreadCount ?? 0) + 1
+            target.hasStatusUpdate = true
+            // Track this message to prevent duplicates
+            if (messageId) {
+                (target as any).lastProcessedMessageId = messageId
+            }
         })
     )
 

@@ -347,8 +347,22 @@ onMounted(async () => {
         onNewMaintenanceMessage((data) => {
             const target = allRequests.value.find(r => r.documentId === data.maintenanceDocumentId)
             if (!target) return
-            if (data.message?.sender?.documentId === user.value?.documentId) return
+            // Don't increment if I'm the sender
+            if (data.message?.sender?.documentId === user.value?.documentId) {
+                return
+            }
+            // Prevent duplicate increments - check if message already exists by ID
+            const messageId = data.message?.documentId || data.message?.id
+            if (messageId && target.lastProcessedMessageId === messageId) {
+                return
+            }
+            // Increment unreadCount to show badge in real-time
             target.unreadCount = (target.unreadCount ?? 0) + 1
+            target.hasStatusUpdate = true
+            // Track this message to prevent duplicates
+            if (messageId) {
+                (target as any).lastProcessedMessageId = messageId
+            }
         })
     )
 
@@ -423,7 +437,7 @@ onUnmounted(() => {
                         class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold leading-none mb-0.5 sm:mb-1">
                         {{ t.total }}</p>
                     <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-none">{{ stats.total
-                        }}</p>
+                    }}</p>
                 </div>
             </div>
 
@@ -439,7 +453,7 @@ onUnmounted(() => {
                         class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold leading-none mb-0.5 sm:mb-1">
                         {{ t.pending }}</p>
                     <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-none">{{ stats.pending
-                        }}</p>
+                    }}</p>
                 </div>
                 <span v-if="stats.pending > 0"
                     class="ml-auto sm:hidden w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
@@ -694,9 +708,9 @@ onUnmounted(() => {
                                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
                                     {{ ui.cancelConfirm }}
                                     <strong class="text-gray-900 dark:text-white block mt-1">{{ cancelTarget?.title
-                                        }}</strong>
+                                    }}</strong>
                                     <span class="text-xs font-mono text-gray-400">{{ cancelTarget?.requestNumber
-                                        }}</span>
+                                    }}</span>
                                 </p>
                             </div>
                         </div>
