@@ -5,7 +5,7 @@ interface PlanLimits {
 }
 
 export const usePlanLimit = () => {
-    const { token } = useAuth()
+    const { token, user } = useAuth()
     const config = useRuntimeConfig()
     const STRAPI_URL = config.public.strapiUrl
 
@@ -32,7 +32,11 @@ export const usePlanLimit = () => {
     async function fetchPropertyCount(): Promise<number> {
         if (!token.value) return 0
         try {
-            const res = await fetch(`${STRAPI_URL}/api/properties?pagination[pageSize]=1`, {
+            const params = new URLSearchParams({ 'pagination[pageSize]': '1' })
+            if (user.value?.documentId) {
+                params.set('filters[owner][documentId][$eq]', user.value.documentId)
+            }
+            const res = await fetch(`${STRAPI_URL}/api/properties?${params}`, {
                 headers: { 'Authorization': `Bearer ${token.value}` },
             })
             if (!res.ok) return 0

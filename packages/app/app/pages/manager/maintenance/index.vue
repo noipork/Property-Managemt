@@ -73,8 +73,15 @@ const cleanupFns: Array<() => void> = []
 
 async function fetchProperties() {
     try {
+        const params = new URLSearchParams({
+            'pagination[pageSize]': '200',
+            'fields[0]': 'name',
+        })
+        if (user.value?.documentId) {
+            params.set('filters[owner][documentId][$eq]', user.value.documentId)
+        }
         const res = await fetch(
-            `${STRAPI_URL}/api/properties?pagination[pageSize]=200&fields[0]=name`,
+            `${STRAPI_URL}/api/properties?${params}`,
             { headers: { Authorization: `Bearer ${token.value}` } }
         )
         const data = await res.json()
@@ -188,6 +195,8 @@ async function fetchRequests() {
 
         if (filterPropertyId.value) {
             params.set('filters[property][documentId][$eq]', filterPropertyId.value)
+        } else if (user.value?.documentId) {
+            params.set('filters[property][owner][documentId][$eq]', user.value.documentId)
         }
         if (filterStatus.value) {
             params.set('filters[status][$eq]', filterStatus.value)

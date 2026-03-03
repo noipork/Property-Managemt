@@ -87,8 +87,15 @@ const statusLabels = computed(() => ({
 // ─── Fetch Properties ─────────────────────────────────────────────────────────
 async function fetchProperties() {
     try {
+        const params = new URLSearchParams({
+            'pagination[pageSize]': '200',
+            'fields[0]': 'name',
+        })
+        if (user.value?.documentId) {
+            params.set('filters[owner][documentId][$eq]', user.value.documentId)
+        }
         const res = await fetch(
-            `${STRAPI_URL}/api/properties?pagination[pageSize]=200&fields[0]=name`,
+            `${STRAPI_URL}/api/properties?${params}`,
             { headers: { Authorization: `Bearer ${token.value}` } }
         )
         const data = await res.json()
@@ -388,7 +395,7 @@ onMounted(async () => {
                 <!-- Excerpt -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.excerpt
-                        }}</label>
+                    }}</label>
                     <textarea v-model="form.excerpt" rows="2" :placeholder="t.excerptPlaceholder"
                         class="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"></textarea>
                 </div>
@@ -495,7 +502,7 @@ onMounted(async () => {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.expiryDate
-                            }}</label>
+                        }}</label>
                         <input v-model="form.expiryDate" type="datetime-local"
                             class="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500" />
                     </div>

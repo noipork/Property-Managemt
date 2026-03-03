@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 
 const { t } = useI18n()
-const { token } = useAuth()
+const { token, user } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
@@ -39,7 +39,15 @@ const residentsList = ref<Resident[]>([])
 
 async function fetchProperties() {
     try {
-        const res = await fetch(`${STRAPI_URL}/api/properties?pagination[pageSize]=200&fields[0]=name&fields[1]=city`, {
+        const params = new URLSearchParams({
+            'pagination[pageSize]': '200',
+            'fields[0]': 'name',
+            'fields[1]': 'city',
+        })
+        if (user.value?.documentId) {
+            params.set('filters[owner][documentId][$eq]', user.value.documentId)
+        }
+        const res = await fetch(`${STRAPI_URL}/api/properties?${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
         })
         const data = await res.json()
@@ -257,7 +265,8 @@ onMounted(async () => {
         <!-- Header -->
         <div class="flex items-center gap-3 transition-all duration-500"
             :class="headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3'">
-            <NuxtLink to="/manager/invoices" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+            <NuxtLink to="/manager/invoices"
+                class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
                 <i class="ti-arrow-left text-gray-500 dark:text-gray-400"></i>
             </NuxtLink>
             <div>
@@ -312,7 +321,7 @@ onMounted(async () => {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t.invoiceType
-                        }} *</label>
+                            }} *</label>
                         <select v-model="form.type"
                             class="w-full px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
                             <option v-for="tp in invoiceTypes" :key="tp" :value="tp">{{ typeLabels[tp as keyof typeof
@@ -352,7 +361,7 @@ onMounted(async () => {
                 <!-- Room Rent -->
                 <div class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
                     <span class="text-sm text-gray-600 dark:text-gray-400">{{ t.roomRent }} ({{ t.unitTypePrice
-                    }})</span>
+                        }})</span>
                     <div class="w-32">
                         <input v-model.number="form.unitTypePrice" type="number" step="0.01" min="0"
                             class="w-full px-3 py-1.5 text-sm text-right text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />

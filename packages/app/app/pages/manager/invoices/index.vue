@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 
 const { t } = useI18n()
-const { token } = useAuth()
+const { token, user } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
@@ -73,8 +73,16 @@ const propertiesList = ref<Property[]>([])
 
 async function fetchProperties() {
     try {
+        const params = new URLSearchParams({
+            'pagination[pageSize]': '200',
+            'fields[0]': 'name',
+            'fields[1]': 'city',
+        })
+        if (user.value?.documentId) {
+            params.set('filters[owner][documentId][$eq]', user.value.documentId)
+        }
         const res = await fetch(
-            `${STRAPI_URL}/api/properties?pagination[pageSize]=200&fields[0]=name&fields[1]=city`,
+            `${STRAPI_URL}/api/properties?${params}`,
             { headers: { Authorization: `Bearer ${token.value}` } }
         )
         const data = await res.json()
@@ -154,6 +162,8 @@ async function fetchInvoices() {
         if (filterPropertyId.value) {
             const prop = propertiesList.value.find(p => String(p.id) === filterPropertyId.value)
             if (prop) params.set('filters[property][documentId][$eq]', prop.documentId)
+        } else if (user.value?.documentId) {
+            params.set('filters[property][owner][documentId][$eq]', user.value.documentId)
         }
         if (filterType.value)
             params.set('filters[type][$eq]', filterType.value)

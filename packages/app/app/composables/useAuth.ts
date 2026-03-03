@@ -21,7 +21,7 @@ function mapStrapiRoleToUserRole(strapiRole: any): UserRole {
 function restoreToken(): string | null {
     try { return localStorage.getItem('authToken') } catch { return null }
 }
-function restoreUser(): { id: number; documentId: string; name: string; email: string; role: UserRole } | null {
+function restoreUser(): { id: number; documentId: string; name: string; email: string; role: UserRole; property?: { id: number; documentId: string; name: string } | null } | null {
     try {
         const raw = localStorage.getItem('authUser')
         return raw ? JSON.parse(raw) : null
@@ -29,7 +29,7 @@ function restoreUser(): { id: number; documentId: string; name: string; email: s
 }
 
 const _token = ref<string | null>(restoreToken())
-const _user = ref<{ id: number; documentId: string; name: string; email: string; role: UserRole } | null>(restoreUser())
+const _user = ref<{ id: number; documentId: string; name: string; email: string; role: UserRole; property?: { id: number; documentId: string; name: string } | null } | null>(restoreUser())
 const _isAuthenticated = ref<boolean>(!!_token.value)
 
 export const useAuth = () => {
@@ -77,6 +77,7 @@ export const useAuth = () => {
                 name: userData.username || userData.email.split('@')[0],
                 email: userData.email,
                 role: mapStrapiRoleToUserRole(userData.role),
+                property: userData.property ? { id: userData.property.id, documentId: userData.property.documentId, name: userData.property.name } : null,
             }
 
             if (process.client) {
@@ -176,6 +177,7 @@ export const useAuth = () => {
                 name: name,
                 email: userData.email,
                 role: mapStrapiRoleToUserRole(userData.role),
+                property: userData.property ? { id: userData.property.id, documentId: userData.property.documentId, name: userData.property.name } : null,
             }
 
             if (process.client) {

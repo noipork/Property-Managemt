@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 
 const { t } = useI18n()
-const { token } = useAuth()
+const { token, user } = useAuth()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
 
@@ -116,7 +116,14 @@ async function fetchProperties() {
     try {
         isLoading.value = true
         cardsVisible.value = false
-        const res = await fetch(`${STRAPI_URL}/api/properties?sort=createdAt:desc&populate=*`, {
+        const params = new URLSearchParams({
+            'sort': 'createdAt:desc',
+            'populate': '*',
+        })
+        if (user.value?.documentId) {
+            params.set('filters[owner][documentId][$eq]', user.value.documentId)
+        }
+        const res = await fetch(`${STRAPI_URL}/api/properties?${params}`, {
             headers: { 'Authorization': `Bearer ${token.value}` },
         })
         if (!res.ok) throw new Error('Failed to fetch')

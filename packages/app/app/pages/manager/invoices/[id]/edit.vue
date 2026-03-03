@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 
 const { t } = useI18n()
-const { token } = useAuth()
+const { token, user } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
@@ -46,7 +46,15 @@ const residentsList = ref<Resident[]>([])
 
 async function fetchProperties() {
     try {
-        const res = await fetch(`${STRAPI_URL}/api/properties?pagination[pageSize]=200&fields[0]=name&fields[1]=city`, {
+        const params = new URLSearchParams({
+            'pagination[pageSize]': '200',
+            'fields[0]': 'name',
+            'fields[1]': 'city',
+        })
+        if (user.value?.documentId) {
+            params.set('filters[owner][documentId][$eq]', user.value.documentId)
+        }
+        const res = await fetch(`${STRAPI_URL}/api/properties?${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
         })
         const data = await res.json()
@@ -344,7 +352,7 @@ onMounted(async () => {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t.dueDate
-                            }} *</label>
+                                }} *</label>
                             <input v-model="form.dueDate" type="date"
                                 class="w-full px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark]"
                                 :class="errors.dueDate ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'" />
@@ -368,7 +376,7 @@ onMounted(async () => {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t.description
-                        }} *</label>
+                            }} *</label>
                         <input v-model="form.description" type="text" :placeholder="t.invoiceDescriptionPlaceholder"
                             class="w-full px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                             :class="errors.description ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'" />
@@ -376,7 +384,7 @@ onMounted(async () => {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t.notes
-                        }}</label>
+                            }}</label>
                         <textarea v-model="form.notes" rows="2" :placeholder="t.invoiceNotesPlaceholder"
                             class="w-full px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
                     </div>

@@ -332,8 +332,15 @@ function handleTyping() {
 // ─── Fetch Properties ─────────────────────────────────────────────────────────
 async function fetchProperties() {
     try {
+        const params = new URLSearchParams({
+            'pagination[pageSize]': '200',
+            'fields[0]': 'name',
+        })
+        if (user.value?.documentId) {
+            params.set('filters[owner][documentId][$eq]', user.value.documentId)
+        }
         const res = await fetch(
-            `${STRAPI_URL}/api/properties?pagination[pageSize]=200&fields[0]=name`,
+            `${STRAPI_URL}/api/properties?${params}`,
             { headers: { Authorization: `Bearer ${token.value}` } }
         )
         const data = await res.json()
@@ -1051,9 +1058,9 @@ onUnmounted(() => {
                                     <div class="flex items-center gap-1 mt-1 px-1"
                                         :class="msg.sender?.id === user?.id ? 'justify-end' : 'justify-start'">
                                         <span class="text-[10px] text-gray-400">{{ formatMessageTime(msg.createdAt)
-                                            }}</span>
+                                        }}</span>
                                         <span v-if="msg.isEdited" class="text-[10px] text-gray-400">({{ t.edited
-                                            }})</span>
+                                        }})</span>
                                     </div>
                                 </div>
                             </div>
@@ -1276,7 +1283,7 @@ onUnmounted(() => {
                                         <span class="text-gray-600 dark:text-gray-400">{{ t.broadcastSending }}</span>
                                         <span class="font-medium text-gray-900 dark:text-white">{{
                                             broadcastProgress.current
-                                            }}/{{ broadcastProgress.total }}</span>
+                                        }}/{{ broadcastProgress.total }}</span>
                                     </div>
                                     <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                         <div class="h-full bg-amber-500 rounded-full transition-all duration-300"

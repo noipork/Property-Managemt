@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import type { UnitTypeEntry } from '~/components/UnitTypesEditor.vue'
 
 const { t } = useI18n()
-const { token } = useAuth()
+const { token, user } = useAuth()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
 
@@ -123,6 +123,7 @@ async function handleSubmit() {
         const payload: Record<string, unknown> = {
             ...form.value,
             totalUnits: computedTotalUnits.value,
+            owner: user.value?.id ?? undefined,
         }
 
         const res = await fetch(`${STRAPI_URL}/api/properties`, {

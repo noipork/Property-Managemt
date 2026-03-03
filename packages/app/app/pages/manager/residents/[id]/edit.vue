@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 
 const { t } = useI18n()
-const { token } = useAuth()
+const { token, user } = useAuth()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
 const router = useRouter()
@@ -222,8 +222,16 @@ async function fetchResident() {
 async function fetchProperties() {
     isLoadingProperties.value = true
     try {
+        const params = new URLSearchParams({
+            'pagination[pageSize]': '200',
+            'fields[0]': 'name',
+            'fields[1]': 'city',
+        })
+        if (user.value?.documentId) {
+            params.set('filters[owner][documentId][$eq]', user.value.documentId)
+        }
         const res = await fetch(
-            `${STRAPI_URL}/api/properties?pagination[pageSize]=200&fields[0]=name&fields[1]=city`,
+            `${STRAPI_URL}/api/properties?${params}`,
             { headers: { Authorization: `Bearer ${token.value}` } }
         )
         const data = await res.json()
@@ -554,7 +562,7 @@ onMounted(async () => {
                                 @click="($event.target as HTMLInputElement).showPicker?.()" />
                             <p v-if="errors.registrationDate" class="mt-1 text-xs text-red-500">{{
                                 errors.registrationDate
-                            }}</p>
+                                }}</p>
                         </div>
 
                         <!-- Residency Status -->
@@ -656,7 +664,7 @@ onMounted(async () => {
                                     :class="errors.leaseEndDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                                     @click="($event.target as HTMLInputElement).showPicker?.()" />
                                 <p v-if="errors.leaseEndDate" class="mt-1 text-xs text-red-500">{{ errors.leaseEndDate
-                                }}</p>
+                                    }}</p>
                             </div>
                         </div>
 
