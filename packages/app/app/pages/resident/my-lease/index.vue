@@ -80,6 +80,7 @@ function dismissToast(id: number) {
 // ─── Computed ─────────────────────────────────────────────────────────────────
 const statusColors: Record<string, string> = {
     pending: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+    reviewing: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
     active: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
     expired: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
     terminated: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
@@ -88,6 +89,7 @@ const statusColors: Record<string, string> = {
 
 const statusLabels = computed(() => ({
     pending: t.value.leaseStatusPending || 'Pending',
+    reviewing: t.value.leaseStatusReviewing || 'Under Review',
     active: t.value.statusActive,
     expired: t.value.statusExpired,
     terminated: t.value.leaseTerminated || 'Terminated',
@@ -170,6 +172,31 @@ const ui = computed(() => ({
 function hydrateFormFromLease(current?: Lease | null) {
     const data = current || lease.value
     if (!data) return
+
+    // If current lease has no data, try to find previous lease with data
+    const hasData = data.residentFullName || data.residentPhone || data.residentAddress
+    if (!hasData && allLeases.value.length > 1) {
+        // Find most recent completed lease (has accepted info)
+        const previousLease = allLeases.value
+            .filter(l => l.documentId !== data.documentId && l.acceptedAt)
+            .sort((a, b) => new Date(b.acceptedAt!).getTime() - new Date(a.acceptedAt!).getTime())[0]
+
+        if (previousLease) {
+            leaseForm.value = {
+                residentFullName: previousLease.residentFullName || '',
+                residentPhone: previousLease.residentPhone || '',
+                residentAddress: previousLease.residentAddress || '',
+                emergencyContactName: previousLease.emergencyContactName || '',
+                emergencyContactPhone: previousLease.emergencyContactPhone || '',
+                identityDocumentType: previousLease.identityDocumentType || '',
+                identityDocumentNumber: previousLease.identityDocumentNumber || '',
+            }
+            existingDocuments.value = previousLease.identityDocuments || []
+            uploadedFiles.value = []
+            return
+        }
+    }
+
     leaseForm.value = {
         residentFullName: data.residentFullName || '',
         residentPhone: data.residentPhone || '',
@@ -363,13 +390,13 @@ async function acceptLease() {
                 data: {
                     ...cleanedFormData(),
                     identityDocuments: allDocIds,
-                    status: 'active',
+                    status: 'reviewing',
                     acceptedAt: new Date().toISOString(),
                 },
             }),
         })
         if (!res.ok) throw new Error('Accept failed')
-        showToast('success', t.value.leaseAccepted)
+        showToast('success', t.value.leaseSubmittedForReview || 'Lease submitted for manager review')
         await fetchLease()
     } catch {
         showToast('error', t.value.leaseAcceptError)
@@ -713,13 +740,22 @@ onMounted(async () => {
                         class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-5">
                         <!-- Section header -->
                         <div class="flex items-start justify-between gap-3">
-                            <div>
+                            <div class="flex-1">
                                 <h3
                                     class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                                     {{ ui.completeYourInfo }}
                                 </h3>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ ui.infoRequiredToAccept }}
                                 </p>
+                                <!-- Auto-filled notice -->
+                                <div v-if="existingDocuments.length > 0 && (leaseForm.residentFullName || leaseForm.residentPhone)"
+                                    class="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                                    <i class="fa-solid fa-circle-info text-blue-500 text-xs"></i>
+                                    <span class="text-xs text-blue-700 dark:text-blue-300">
+                                        {{ t.autoFilledFromPrevious
+                                            || 'Information auto-filled from your previous lease' }}
+                                    </span>
+                                </div>
                             </div>
                             <span
                                 class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold"
@@ -1041,18 +1077,34 @@ onMounted(async () => {
                         <div v-if="lease.identityDocuments?.length"
                             class="pt-3 border-t border-gray-100 dark:border-gray-800">
                             <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">{{ ui.uploadDocuments }}</p>
-                            <div class="flex flex-col gap-2">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                 <div v-for="doc in lease.identityDocuments" :key="doc.id"
-                                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                                    <i
-                                        :class="[fileTypeIcon(doc.name), 'text-base shrink-0', isImageFile(doc.name) ? 'text-blue-400' : /\.pdf$/i.test(doc.name) ? 'text-red-400' : 'text-gray-400']"></i>
-                                    <span class="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">{{ doc.name
-                                        }}</span>
-                                    <a :href="STRAPI_URL + doc.url" target="_blank" rel="noopener"
-                                        class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                                        View
-                                    </a>
+                                    @click="openLightbox(STRAPI_URL + doc.url, doc.name)"
+                                    class="group relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-400 transition-all cursor-pointer bg-gray-50 dark:bg-gray-800">
+                                    <!-- Image preview -->
+                                    <img v-if="isImageFile(doc.name)" :src="STRAPI_URL + doc.url" :alt="doc.name"
+                                        class="w-full h-full object-cover" />
+                                    <!-- PDF/Other icon -->
+                                    <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2">
+                                        <i
+                                            :class="[fileTypeIcon(doc.name), 'text-4xl', /\.pdf$/i.test(doc.name) ? 'text-red-400' : 'text-gray-400']"></i>
+                                        <span
+                                            class="text-xs text-gray-500 dark:text-gray-400 font-medium px-2 text-center truncate w-full">{{
+                                                doc.ext.toUpperCase() }}</span>
+                                    </div>
+                                    <!-- Overlay on hover -->
+                                    <div
+                                        class="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                        <div class="flex flex-col items-center gap-1">
+                                            <i class="fa-solid fa-eye text-white text-xl"></i>
+                                            <span class="text-white text-xs font-medium">View</span>
+                                        </div>
+                                    </div>
+                                    <!-- File name label -->
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                        <p class="text-xs text-white font-medium truncate">{{ doc.name }}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

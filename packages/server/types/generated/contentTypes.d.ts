@@ -643,7 +643,7 @@ export interface ApiLeaseLease extends Struct.CollectionTypeSchema {
     residentPhone: Schema.Attribute.String;
     startDate: Schema.Attribute.Date & Schema.Attribute.Required;
     status: Schema.Attribute.Enumeration<
-      ['pending', 'active', 'expired', 'terminated', 'cancelled']
+      ['pending', 'reviewing', 'active', 'expired', 'terminated', 'cancelled']
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'pending'>;

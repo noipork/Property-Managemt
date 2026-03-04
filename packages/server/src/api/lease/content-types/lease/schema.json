@@ -23,6 +23,7 @@
       "default": "pending",
       "enum": [
         "pending",
+        "reviewing",
         "active",
         "expired",
         "terminated",

@@ -12,7 +12,7 @@ const route = useRoute()
 
 function isActive(path: string) {
     if (path === '/') return route.path === '/'
-    return route.path.startsWith(path)
+    return route.path === path || route.path.startsWith(path + '/')
 }
 
 // Manager menu - full property management access
@@ -20,7 +20,7 @@ const managerMenuSections = computed(() => [
     {
         title: t.value.main,
         items: [
-            { name: t.value.dashboard, icon: 'ti-dashboard', badge: '', path: '/' },
+            { name: t.value.dashboard, icon: 'ti-dashboard', badge: '', path: '/manager/dashboard' },
             { name: t.value.properties, icon: 'ti-home', badge: '', path: '/manager/properties' },
             { name: t.value.residents, icon: 'ti-user', badge: '', path: '/manager/residents' },
             { name: t.value.leases, icon: 'ti-file', badge: '', path: '/manager/leases' },
@@ -59,7 +59,7 @@ const residentMenuSections = computed(() => [
     {
         title: t.value.overview,
         items: [
-            { name: t.value.dashboard, icon: 'ti-dashboard', badge: '', path: '/' },
+            { name: t.value.dashboard, icon: 'ti-dashboard', badge: '', path: '/resident/dashboard' },
             { name: t.value.myLease, icon: 'ti-file', badge: '', path: '/resident/my-lease' },
         ],
     },

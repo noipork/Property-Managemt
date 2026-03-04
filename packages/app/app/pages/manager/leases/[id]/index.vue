@@ -30,6 +30,7 @@ interface Lease {
     residentAddress: string | null
     emergencyContactName: string | null
     emergencyContactPhone: string | null
+    identityDocuments?: { id: number; url: string; name: string; ext: string }[]
     createdAt: string
     resident: { id: number; username: string; email: string; roomNumber: string | null } | null
     property: { id: number; documentId: string; name: string; city: string } | null
@@ -43,6 +44,41 @@ const errorMessage = ref('')
 // Delete
 const showDeleteModal = ref(false)
 const isDeleting = ref(false)
+
+// Approve/Reject
+const showApproveModal = ref(false)
+const showRejectModal = ref(false)
+const isApproving = ref(false)
+const isRejecting = ref(false)
+const rejectionReason = ref('')
+
+// Expire
+const showExpireModal = ref(false)
+const isExpiring = ref(false)
+
+// Lightbox
+const lightboxSrc = ref<string | null>(null)
+const lightboxName = ref('')
+
+function openLightbox(src: string, name: string) {
+    lightboxSrc.value = src
+    lightboxName.value = name
+}
+
+function closeLightbox() {
+    lightboxSrc.value = null
+    lightboxName.value = ''
+}
+
+function isImageFile(nameOrExt: string): boolean {
+    return /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(nameOrExt)
+}
+
+function fileTypeIcon(nameOrExt: string): string {
+    if (isImageFile(nameOrExt)) return 'fa-solid fa-image'
+    if (/\.pdf$/i.test(nameOrExt)) return 'fa-solid fa-file-pdf'
+    return 'fa-solid fa-file'
+}
 
 // Renew
 const showRenewModal = ref(false)
@@ -135,6 +171,7 @@ async function renewLease() {
 
 const statusColors: Record<string, string> = {
     pending: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+    reviewing: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
     active: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
     expired: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
     terminated: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
@@ -143,6 +180,7 @@ const statusColors: Record<string, string> = {
 
 const statusLabels = computed(() => ({
     pending: t.value.pending,
+    reviewing: t.value.leaseStatusReviewing || 'Under Review',
     active: t.value.active,
     expired: t.value.statusExpired,
     terminated: t.value.leaseTerminated,
@@ -186,6 +224,7 @@ async function fetchLease() {
             'populate[0]': 'resident',
             'populate[1]': 'property',
             'populate[2]': 'unitType',
+            'populate[3]': 'identityDocuments',
         })
         const res = await fetch(`${STRAPI_URL}/api/leases/${leaseDocumentId}?${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
@@ -198,6 +237,85 @@ async function fetchLease() {
         errorMessage.value = t.value.leaseLoadError
     } finally {
         isLoading.value = false
+    }
+}
+
+async function approveLease() {
+    if (!lease.value) return
+    isApproving.value = true
+    try {
+        const res = await fetch(`${STRAPI_URL}/api/leases/${lease.value.documentId}`, {
+            method: 'PUT',
+            headers: {
+                Authorization: `Bearer ${token.value}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                data: { status: 'active' },
+            }),
+        })
+        if (!res.ok) throw new Error('Approve failed')
+        showToast('success', t.value.leaseApproved || 'Lease approved and activated')
+        showApproveModal.value = false
+        await fetchLease()
+    } catch {
+        showToast('error', t.value.leaseApproveError || 'Failed to approve lease')
+    } finally {
+        isApproving.value = false
+    }
+}
+
+async function rejectLease() {
+    if (!lease.value) return
+    isRejecting.value = true
+    try {
+        const res = await fetch(`${STRAPI_URL}/api/leases/${lease.value.documentId}`, {
+            method: 'PUT',
+            headers: {
+                Authorization: `Bearer ${token.value}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                data: {
+                    status: 'pending',
+                    notes: rejectionReason.value ? `Rejection reason: ${rejectionReason.value}\n\n${lease.value.notes || ''}` : lease.value.notes,
+                },
+            }),
+        })
+        if (!res.ok) throw new Error('Reject failed')
+        showToast('success', t.value.leaseRejected || 'Lease returned to pending')
+        showRejectModal.value = false
+        rejectionReason.value = ''
+        await fetchLease()
+    } catch {
+        showToast('error', t.value.leaseRejectError || 'Failed to reject lease')
+    } finally {
+        isRejecting.value = false
+    }
+}
+
+async function expireLease() {
+    if (!lease.value) return
+    isExpiring.value = true
+    try {
+        const res = await fetch(`${STRAPI_URL}/api/leases/${lease.value.documentId}`, {
+            method: 'PUT',
+            headers: {
+                Authorization: `Bearer ${token.value}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                data: { status: 'expired' },
+            }),
+        })
+        if (!res.ok) throw new Error('Expire failed')
+        showToast('success', t.value.leaseExpired || 'Lease marked as expired')
+        showExpireModal.value = false
+        await fetchLease()
+    } catch {
+        showToast('error', t.value.leaseExpireError || 'Failed to expire lease')
+    } finally {
+        isExpiring.value = false
     }
 }
 
@@ -260,6 +378,44 @@ onMounted(async () => {
             </div>
         </Teleport>
 
+        <!-- Lightbox -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition-all duration-200" enter-from-class="opacity-0 scale-95"
+                enter-to-class="opacity-100 scale-100" leave-active-class="transition-all duration-150"
+                leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+                <div v-if="lightboxSrc" class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    @click.self="closeLightbox()">
+                    <!-- Backdrop -->
+                    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="closeLightbox()"></div>
+                    <!-- Content -->
+                    <div class="relative z-10 max-w-4xl w-full flex flex-col items-center gap-3">
+                        <!-- Image -->
+                        <img v-if="isImageFile(lightboxName)" :src="lightboxSrc" :alt="lightboxName"
+                            class="max-h-[80vh] max-w-full rounded-xl shadow-2xl object-contain" />
+                        <!-- PDF / other: open in new tab -->
+                        <div v-else
+                            class="bg-white dark:bg-gray-900 rounded-xl p-10 flex flex-col items-center gap-4 shadow-2xl">
+                            <i class="fa-solid fa-file-pdf text-5xl text-red-500"></i>
+                            <p class="text-sm text-gray-700 dark:text-gray-300 font-medium">{{ lightboxName }}</p>
+                            <a :href="lightboxSrc" target="_blank" rel="noopener"
+                                class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                Open file
+                            </a>
+                        </div>
+                        <!-- Footer bar -->
+                        <div class="flex items-center justify-between w-full px-1">
+                            <span class="text-sm text-white/80 truncate max-w-xs">{{ lightboxName }}</span>
+                            <button @click="closeLightbox()"
+                                class="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors">
+                                <i class="fa-solid fa-xmark"></i> Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+
         <!-- Loading -->
         <div v-if="isLoading" class="flex items-center justify-center py-20">
             <div class="flex flex-col items-center gap-3">
@@ -299,6 +455,18 @@ onMounted(async () => {
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
+                    <template v-if="lease.status === 'reviewing'">
+                        <button @click="showApproveModal = true"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors">
+                            <i class="fa-solid fa-check text-sm"></i>
+                            {{ t.approveLease || 'Approve' }}
+                        </button>
+                        <button @click="showRejectModal = true"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors">
+                            <i class="fa-solid fa-xmark text-sm"></i>
+                            {{ t.rejectLease || 'Reject' }}
+                        </button>
+                    </template>
                     <button @click="openRenewModal"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors">
                         <i class="fa-solid fa-rotate text-sm"></i>
@@ -332,7 +500,7 @@ onMounted(async () => {
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.leaseNo }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white font-mono">{{ lease.leaseNo
-                                    }}</p>
+                                }}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.status }}</p>
@@ -392,7 +560,7 @@ onMounted(async () => {
                         </div>
                         <div class="flex items-center justify-between pt-2">
                             <span class="text-base font-bold text-gray-900 dark:text-white">{{ t.leaseMonthlyRent
-                                }}</span>
+                            }}</span>
                             <span class="text-xl font-bold text-primary-600 dark:text-primary-400">{{
                                 formatCurrency(lease.monthlyRent, lease.currency) }}</span>
                         </div>
@@ -413,7 +581,7 @@ onMounted(async () => {
                             <div v-if="lease.residentFullName">
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.fullName }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ lease.residentFullName
-                                    }}</p>
+                                }}</p>
                             </div>
                             <div v-if="lease.residentPhone">
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.leasePhone }}</p>
@@ -451,6 +619,44 @@ onMounted(async () => {
                                     <p class="text-xs text-gray-400 mb-0.5">{{ t.leasePhone }}</p>
                                     <p class="text-sm font-medium text-gray-900 dark:text-white">{{
                                         lease.emergencyContactPhone }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Uploaded Documents -->
+                        <div v-if="lease.identityDocuments?.length"
+                            class="pt-3 border-t border-gray-100 dark:border-gray-800">
+                            <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">
+                                {{ t.leaseIdentityDocuments
+                                    || 'Identity Documents' }}</p>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <div v-for="doc in lease.identityDocuments" :key="doc.id"
+                                    @click="openLightbox(STRAPI_URL + doc.url, doc.name)"
+                                    class="group relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-400 transition-all cursor-pointer bg-gray-50 dark:bg-gray-800">
+                                    <!-- Image preview -->
+                                    <img v-if="isImageFile(doc.name)" :src="STRAPI_URL + doc.url" :alt="doc.name"
+                                        class="w-full h-full object-cover" />
+                                    <!-- PDF/Other icon -->
+                                    <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2">
+                                        <i
+                                            :class="[fileTypeIcon(doc.name), 'text-4xl', /\.pdf$/i.test(doc.name) ? 'text-red-400' : 'text-gray-400']"></i>
+                                        <span
+                                            class="text-xs text-gray-500 dark:text-gray-400 font-medium px-2 text-center truncate w-full">{{
+                                                doc.ext.toUpperCase() }}</span>
+                                    </div>
+                                    <!-- Overlay on hover -->
+                                    <div
+                                        class="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                        <div class="flex flex-col items-center gap-1">
+                                            <i class="fa-solid fa-eye text-white text-xl"></i>
+                                            <span class="text-white text-xs font-medium">View</span>
+                                        </div>
+                                    </div>
+                                    <!-- File name label -->
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                        <p class="text-xs text-white font-medium truncate">{{ doc.name }}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -561,8 +767,15 @@ onMounted(async () => {
                     <!-- Dates timeline -->
                     <div
                         class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
-                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">{{
-                            t.leaseTimeline }}</h3>
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">{{
+                                t.leaseTimeline }}</h3>
+                            <button v-if="lease?.status === 'active'" @click="showExpireModal = true"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors">
+                                <i class="fa-solid fa-clock text-xs"></i>
+                                {{ t.expireNow || 'Expire Now' }}
+                            </button>
+                        </div>
                         <div class="space-y-3">
                             <div class="flex items-center gap-3">
                                 <div
@@ -631,7 +844,7 @@ onMounted(async () => {
                     </div>
                     <p class="text-sm text-gray-600 dark:text-gray-400">
                         {{ t.deleteLeaseConfirm }} <strong class="text-gray-900 dark:text-white">{{ lease?.leaseNo
-                            }}</strong>{{
+                        }}</strong>{{
                                 t.deleteLeaseConfirm2 }}
                     </p>
                     <div class="flex gap-3 pt-2">
@@ -679,7 +892,7 @@ onMounted(async () => {
                         <!-- Duration presets -->
                         <div>
                             <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">{{ t.renewQuickSelect
-                            }}</p>
+                                }}</p>
                             <div class="flex gap-2">
                                 <button @click="applyDurationPreset(3)"
                                     class="flex-1 px-3 py-2 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700 dark:hover:text-emerald-400 transition-colors">
@@ -707,7 +920,7 @@ onMounted(async () => {
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{
                                     t.leaseEndDate
-                                }}</label>
+                                    }}</label>
                                 <input v-model="renewEndDate" type="date"
                                     class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-colors" />
                             </div>
@@ -738,6 +951,133 @@ onMounted(async () => {
                                 </span>
                                 <span v-else>{{ t.renewLeaseConfirm }}</span>
                             </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+
+        <!-- Approve Modal -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition-opacity duration-200" enter-from-class="opacity-0"
+                enter-to-class="opacity-100" leave-active-class="transition-opacity duration-200"
+                leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <div v-if="showApproveModal"
+                    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                                <i class="fa-solid fa-check text-emerald-600 dark:text-emerald-400 text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 dark:text-white">
+                                    {{ t.approveLease || 'Approveb Lease' }}
+                                </h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    {{ t.activateLeaseDesc || 'Activate this lease agreement' }}</p>
+
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            {{ t.approveLeaseConfirm || 'Approve and activate lease' }} <strong
+                                class="text-gray-900 dark:text-white">{{ lease?.leaseNo }}</strong>{{ t.questionMark ||
+                                    '?' }}
+                        </p>
+                        <div class="flex gap-3 pt-2">
+                            <button @click="showApproveModal = false"
+                                class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">{{
+                                    t.cancel }}</button>
+                            <button @click="approveLease" :disabled="isApproving"
+                                class="flex-1 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg transition-colors">{{
+                                    isApproving ? t.approving || 'Approving…' : t.approve || 'Approve' }}</button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+
+        <!-- Reject Modal -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition-opacity duration-200" enter-from-class="opacity-0"
+                enter-to-class="opacity-100" leave-active-class="transition-opacity duration-200"
+                leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <div v-if="showRejectModal"
+                    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                                <i class="fa-solid fa-xmark text-orange-600 dark:text-orange-400 text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 dark:text-white">
+                                    {{ t.rejectLease || 'Reject Lease' }}
+                                </h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    {{ t.returnToPendingDesc || 'Return to pending status' }}</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            {{ t.rejectLeaseConfirm || 'Reject lease' }} <strong
+                                class="text-gray-900 dark:text-white">{{
+                                    lease?.leaseNo }}</strong>{{ t.andReturnToPending || ' and return it to pending status?'
+                                }}
+                        </p>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{
+                                t.rejectionReason
+                                || 'Reason (optional)' }}</label>
+                            <textarea v-model="rejectionReason" rows="3"
+                                class="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                :placeholder="t.rejectionReasonPlaceholder || 'Explain why the lease is being rejected...'"></textarea>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button @click="showRejectModal = false; rejectionReason = ''"
+                                class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">{{
+                                    t.cancel }}</button>
+                            <button @click="rejectLease" :disabled="isRejecting"
+                                class="flex-1 px-4 py-2 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded-lg transition-colors">{{
+                                    isRejecting ? t.rejecting || 'Rejecting…' : t.reject || 'Reject' }}</button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+
+        <!-- Expire Modal -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition-opacity duration-200" enter-from-class="opacity-0"
+                enter-to-class="opacity-100" leave-active-class="transition-opacity duration-200"
+                leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <div v-if="showExpireModal"
+                    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                <i class="fa-solid fa-clock text-red-600 dark:text-red-400 text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 dark:text-white">
+                                    {{ t.expireLease || 'Expire Lease' }}
+                                </h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    {{ t.expireLeaseDesc || 'Mark lease as expired' }}</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            {{ t.expireLeaseConfirm || 'Are you sure you want to expire lease' }} <strong
+                                class="text-gray-900 dark:text-white">{{ lease?.leaseNo }}</strong>{{ t.questionMark ||
+                            '?' }}
+                        </p>
+                        <div class="flex gap-3 pt-2">
+                            <button @click="showExpireModal = false"
+                                class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">{{
+                                    t.cancel }}</button>
+                            <button @click="expireLease" :disabled="isExpiring"
+                                class="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors">{{
+                                    isExpiring ? t.expiring || 'Expiring…' : t.expireNow || 'Expire Now' }}</button>
                         </div>
                     </div>
                 </div>

@@ -8,6 +8,7 @@ const STRAPI_URL = config.public.strapiUrl
 const route = useRoute()
 const router = useRouter()
 const billId = route.params.id as string
+const userRole = computed(() => user.value?.role)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Bill {
@@ -247,7 +248,7 @@ async function submitPayment() {
         })
         if (!paymentRes.ok) throw new Error('Payment creation failed')
 
-        // Step 4: Update billing status to reviewing (partiallyPaid)
+        // Step 4: Update billing status to reviewing
         await fetch(`${STRAPI_URL}/api/billings/${bill.value.documentId}`, {
             method: 'PUT',
             headers: {
@@ -255,7 +256,7 @@ async function submitPayment() {
                 Authorization: `Bearer ${token.value}`,
             },
             body: JSON.stringify({
-                data: { status: 'partiallyPaid' },
+                data: { status: 'reviewing' },
             }),
         })
 
@@ -274,6 +275,11 @@ const headerVisible = ref(false)
 const mainVisible = ref(false)
 
 onMounted(async () => {
+    if (userRole.value === 'manager') {
+        router.replace('/manager')
+        return
+    }
+
     await fetchBill()
     await nextTick()
     requestAnimationFrame(() => requestAnimationFrame(() => {
