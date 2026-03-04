@@ -5,7 +5,7 @@ const { t } = useI18n()
 const { token, user } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
-const { onNewMaintenanceMessage, onMaintenanceUpdated, joinMaintenance, leaveMaintenance, isConnected } = useSocket()
+const { onNewMaintenanceMessage, onMaintenanceUpdated, isConnected } = useSocket()
 const STRAPI_URL = config.public.strapiUrl
 const LAST_SEEN_KEY = 'pm-maint-last-seen-manager'
 
@@ -31,6 +31,7 @@ interface MaintenanceRequest {
     property: { id: number; documentId: string; name: string } | null
     unreadCount?: number
     hasStatusUpdate?: boolean
+    lastProcessedMessageId?: string | number
 }
 
 interface Property {
@@ -68,7 +69,6 @@ const isDeleting = ref(false)
 
 // ─── Properties list ──────────────────────────────────────────────────────────
 const propertiesList = ref<Property[]>([])
-const joinedMaintenances = new Set<string>()
 const cleanupFns: Array<() => void> = []
 
 async function fetchProperties() {
@@ -225,26 +225,11 @@ async function fetchRequests() {
             unreadCount: Array.isArray(m.messages) ? m.messages.length : 0,
             hasStatusUpdate: (m.updatedAt ? new Date(m.updatedAt).getTime() : 0) > (lastSeenMap[m.documentId] ?? 0),
         }))
-        if (isConnected.value) joinMaintenanceRooms()
     } catch {
         showToast('error', t.value.maintenanceLoadError)
     } finally {
         isLoading.value = false
     }
-}
-
-function joinMaintenanceRooms() {
-    allRequests.value.forEach((req) => {
-        if (req.documentId && !joinedMaintenances.has(req.documentId)) {
-            joinMaintenance(req.documentId)
-            joinedMaintenances.add(req.documentId)
-        }
-    })
-}
-
-function leaveMaintenanceRooms() {
-    joinedMaintenances.forEach(id => leaveMaintenance(id))
-    joinedMaintenances.clear()
 }
 
 function loadLastSeenMap(): Record<string, number> {
@@ -264,10 +249,6 @@ watch([filterPropertyId, filterStatus, filterCategory, filterPriority, searchQue
 
 watch(currentPage, () => {
     nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
-})
-
-watch(isConnected, (connected) => {
-    if (connected) joinMaintenanceRooms()
 })
 
 // ─── Delete ───────────────────────────────────────────────────────────────────
@@ -405,7 +386,6 @@ onMounted(async () => {
 onUnmounted(() => {
     cleanupFns.forEach(fn => fn())
     cleanupFns.length = 0
-    leaveMaintenanceRooms()
 })
 </script>
 
@@ -473,7 +453,7 @@ onUnmounted(() => {
                     <select v-model="filterStatus"
                         class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
                         <option value="">{{ t.allStatuses }}</option>
-                        <option v-for="s in statuses" :key="s" :value="s">{{ statusLabels[s] }}</option>
+                        <option v-for="s in statuses" :key="s" :value="s">{{ (statusLabels as any)[s] }}</option>
                     </select>
                     <i
                         class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
@@ -484,7 +464,7 @@ onUnmounted(() => {
                     <select v-model="filterCategory"
                         class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
                         <option value="">{{ t.allCategories }}</option>
-                        <option v-for="c in categories" :key="c" :value="c">{{ categoryLabels[c] }}</option>
+                        <option v-for="c in categories" :key="c" :value="c">{{ (categoryLabels as any)[c] }}</option>
                     </select>
                     <i
                         class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
@@ -495,7 +475,7 @@ onUnmounted(() => {
                     <select v-model="filterPriority"
                         class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
                         <option value="">{{ t.allPriorities }}</option>
-                        <option v-for="p in priorities" :key="p" :value="p">{{ priorityLabels[p] }}</option>
+                        <option v-for="p in priorities" :key="p" :value="p">{{ (priorityLabels as any)[p] }}</option>
                     </select>
                     <i
                         class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
@@ -570,11 +550,11 @@ onUnmounted(() => {
                             <span :class="statusColors[req.status]"
                                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold">
                                 <span :class="statusDotColors[req.status]" class="w-1.5 h-1.5 rounded-full"></span>
-                                {{ statusLabels[req.status] }}
+                                {{ (statusLabels as any)[req.status] }}
                             </span>
                             <span :class="priorityColors[req.priority]"
                                 class="px-2 py-0.5 rounded-full text-xs font-medium">
-                                {{ priorityLabels[req.priority] }}
+                                {{ (priorityLabels as any)[req.priority] }}
                             </span>
                         </div>
                         <p class="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">{{ req.description }}</p>

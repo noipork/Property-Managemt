@@ -1,0 +1,82 @@
+{
+  "kind": "collectionType",
+  "collectionName": "notifications",
+  "info": {
+    "singularName": "notification",
+    "pluralName": "notifications",
+    "displayName": "Notification",
+    "description": "Notifications for users across all collections"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "message": {
+      "type": "text",
+      "required": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "announcement",
+        "billing",
+        "payment",
+        "lease",
+        "maintenance",
+        "message",
+        "conversation",
+        "property",
+        "system"
+      ],
+      "required": true
+    },
+    "priority": {
+      "type": "enumeration",
+      "enum": [
+        "low",
+        "normal",
+        "high",
+        "urgent"
+      ],
+      "default": "normal",
+      "required": true
+    },
+    "isRead": {
+      "type": "boolean",
+      "default": false
+    },
+    "readAt": {
+      "type": "datetime"
+    },
+    "relatedDocumentId": {
+      "type": "string"
+    },
+    "actionUrl": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "json"
+    },
+    "recipients": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "notifications"
+    },
+    "sender": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "property": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property.property"
+    }
+  }
+}

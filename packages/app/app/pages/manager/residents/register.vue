@@ -664,7 +664,7 @@ onMounted(fetchProperties)
                             :class="errors.registrationDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                             @click="($event.target as HTMLInputElement).showPicker?.()" />
                         <p v-if="errors.registrationDate" class="mt-1 text-xs text-red-500">{{ errors.registrationDate
-                        }}
+                            }}
                         </p>
                     </div>
 
@@ -756,7 +756,7 @@ onMounted(fetchProperties)
                                 :class="errors.leaseStartDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                                 @click="($event.target as HTMLInputElement).showPicker?.()" />
                             <p v-if="errors.leaseStartDate" class="mt-1 text-xs text-red-500">{{ errors.leaseStartDate
-                                }}</p>
+                            }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -769,6 +769,47 @@ onMounted(fetchProperties)
                             <p v-if="errors.leaseEndDate" class="mt-1 text-xs text-red-500">{{ errors.leaseEndDate }}
                             </p>
                         </div>
+                    </div>
+
+                    <!-- Quick Duration Buttons -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Quick duration:</span>
+                        <button type="button" @click="() => {
+                            if (!form.leaseStartDate) {
+                                form.leaseStartDate = new Date().toISOString().split('T')[0]
+                            }
+                            const start = new Date(form.leaseStartDate)
+                            const end = new Date(start)
+                            end.setMonth(end.getMonth() + 3)
+                            form.leaseEndDate = end.toISOString().split('T')[0]
+                        }"
+                            class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-primary-300 dark:hover:border-primary-600 rounded-lg transition-colors">
+                            3 Months
+                        </button>
+                        <button type="button" @click="() => {
+                            if (!form.leaseStartDate) {
+                                form.leaseStartDate = new Date().toISOString().split('T')[0]
+                            }
+                            const start = new Date(form.leaseStartDate)
+                            const end = new Date(start)
+                            end.setMonth(end.getMonth() + 6)
+                            form.leaseEndDate = end.toISOString().split('T')[0]
+                        }"
+                            class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-primary-300 dark:hover:border-primary-600 rounded-lg transition-colors">
+                            6 Months
+                        </button>
+                        <button type="button" @click="() => {
+                            if (!form.leaseStartDate) {
+                                form.leaseStartDate = new Date().toISOString().split('T')[0]
+                            }
+                            const start = new Date(form.leaseStartDate)
+                            const end = new Date(start)
+                            end.setFullYear(end.getFullYear() + 1)
+                            form.leaseEndDate = end.toISOString().split('T')[0]
+                        }"
+                            class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-primary-300 dark:hover:border-primary-600 rounded-lg transition-colors">
+                            1 Year
+                        </button>
                     </div>
 
                     <!-- Monthly Rent + Deposit (row) -->

@@ -281,9 +281,25 @@ function handleTyping() {
 async function fetchManagers() {
     isLoadingManagers.value = true
     try {
+        // First, get the current user's property from their profile
+        const userRes = await fetch(`${STRAPI_URL}/api/users/${user.value?.id}?populate[property][fields][0]=documentId&populate[property][fields][1]=name`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        const userData = await userRes.json()
+        const userProperty = userData?.property
+
+        if (!userProperty?.documentId) {
+            managers.value = []
+            isLoadingManagers.value = false
+            return
+        }
+
+        // Fetch all managers (role 3) and filter client-side by property
+        // The users endpoint doesn't support nested relation filters like content-types do
         const params = new URLSearchParams({
             'filters[role][id][$eq]': '3', // Manager role
             'pagination[pageSize]': '200',
+            'populate[property][fields][0]': 'documentId',
             'fields[0]': 'username',
             'fields[1]': 'email',
             'fields[2]': 'roomNumber',
@@ -292,14 +308,20 @@ async function fetchManagers() {
             headers: { Authorization: `Bearer ${token.value}` },
         })
         const data = await res.json()
-        managers.value = (Array.isArray(data) ? data : (data.data ?? [])).map((u: any) => ({
-            id: u.id,
-            documentId: u.documentId,
-            username: u.username,
-            email: u.email,
-            roomNumber: u.roomNumber,
-        }))
-    } catch {
+        const allManagers = Array.isArray(data) ? data : (data.data ?? [])
+
+        // Filter managers by property on the client side
+        managers.value = allManagers
+            .filter((u: any) => u.property?.documentId === userProperty.documentId)
+            .map((u: any) => ({
+                id: u.id,
+                documentId: u.documentId,
+                username: u.username,
+                email: u.email,
+                roomNumber: u.roomNumber,
+            }))
+    } catch (err) {
+        console.error('Error fetching managers:', err)
         showToast('error', t.value.loadManagersError || 'Failed to load managers')
     } finally {
         isLoadingManagers.value = false
@@ -781,9 +803,9 @@ onUnmounted(() => {
                                     <div class="flex items-center gap-1 mt-1 px-1"
                                         :class="msg.sender?.id === user?.id ? 'justify-end' : 'justify-start'">
                                         <span class="text-[10px] text-gray-400">{{ formatMessageTime(msg.createdAt)
-                                        }}</span>
+                                            }}</span>
                                         <span v-if="msg.isEdited" class="text-[10px] text-gray-400">({{ t.edited
-                                        }})</span>
+                                            }})</span>
                                     </div>
                                 </div>
                             </div>

@@ -67,6 +67,85 @@ export default factories.createCoreController('api::maintenance-message.maintena
             message: messagePayload,
           });
         }
+
+        // ─── Create notification for users NOT in the maintenance room ────
+        const maintenanceRoom = io.sockets.adapter.rooms.get(`maintenance:${maintenanceDocumentId}`);
+
+        // Helper: check if a user has any socket in the maintenance room
+        const isUserInRoom = (userDocId: string): boolean => {
+          if (!maintenanceRoom) return false;
+          const userSockets = io.sockets.adapter.rooms.get(`user:${userDocId}`);
+          if (!userSockets) return false;
+          for (const socketId of userSockets) {
+            if (maintenanceRoom.has(socketId)) return true;
+          }
+          return false;
+        };
+
+        const truncatedMessage = (message.message?.length > 100)
+          ? message.message.substring(0, 100) + '...'
+          : message.message || 'New message';
+
+        const notificationBase = {
+          type: 'maintenance' as const,
+          priority: 'normal' as const,
+          relatedDocumentId: maintenanceDocumentId,
+          metadata: {
+            maintenanceDocumentId,
+            requestNumber: maintenance?.requestNumber,
+            senderUsername: user.username,
+            senderDocumentId: user.documentId,
+          },
+          senderId: user.documentId,
+          propertyId: maintenance?.property?.documentId,
+        };
+
+        // If the sender is NOT the resident → notify the resident
+        if (maintenance?.resident?.documentId && maintenance.resident.documentId !== user.documentId) {
+          if (!isUserInRoom(maintenance.resident.documentId)) {
+            try {
+              await strapi.service('api::notification.notification').createAndNotify({
+                ...notificationBase,
+                title: `Maintenance update from ${user.username}`,
+                message: truncatedMessage,
+                actionUrl: `/resident/maintenance/${maintenanceDocumentId}`,
+                recipientId: maintenance.resident.documentId,
+              });
+            } catch (err) {
+              strapi.log.error(`[Notification] Failed to notify resident for maintenance message:`, err);
+            }
+          }
+        }
+
+        // If the sender IS the resident → notify managers of the property
+        if (maintenance?.resident?.documentId === user.documentId && maintenance?.property?.documentId) {
+          try {
+            const managers = await strapi.documents('plugin::users-permissions.user').findMany({
+              filters: {
+                role: { id: { $eq: 3 } },
+                property: { documentId: { $eq: maintenance.property.documentId } },
+              },
+              fields: ['documentId', 'username'],
+            });
+
+            for (const manager of managers) {
+              if (!manager.documentId || isUserInRoom(manager.documentId)) continue;
+              try {
+                await strapi.service('api::notification.notification').createAndNotify({
+                  ...notificationBase,
+                  title: `Maintenance message from ${user.username}`,
+                  message: truncatedMessage,
+                  actionUrl: `/manager/maintenance/${maintenanceDocumentId}`,
+                  recipientId: manager.documentId,
+                });
+              } catch (err) {
+                strapi.log.error(`[Notification] Failed to notify manager ${manager.documentId}:`, err);
+              }
+            }
+          } catch (err) {
+            strapi.log.error(`[Notification] Failed to fetch managers for maintenance notification:`, err);
+          }
+        }
       }
     }
 

@@ -159,10 +159,13 @@ export default factories.createCoreController('api::message.message', ({ strapi 
       const conversationDocumentId = ctx.request.body?.data?.conversation
 
       if (conversationDocumentId) {
-        // Fetch the conversation to get participants
+        // Fetch the conversation to get participants and property
         const conversations = await strapi.documents('api::conversation.conversation').findMany({
           filters: { documentId: { $eq: conversationDocumentId } },
-          populate: { participants: { fields: ['documentId', 'username', 'email'] } },
+          populate: {
+            participants: { fields: ['documentId', 'username', 'email'] },
+            property: { fields: ['documentId', 'name'] },
+          },
         })
         const conversation = conversations?.[0]
 
@@ -188,6 +191,9 @@ export default factories.createCoreController('api::message.message', ({ strapi 
 
         // Also notify each participant's personal room (for conversation list updates)
         if (conversation?.participants) {
+          // Get the set of socket IDs currently in the conversation room
+          const conversationRoom = io.sockets.adapter.rooms.get(`conversation:${conversationDocumentId}`)
+
           for (const participant of conversation.participants) {
             io.to(`user:${participant.documentId}`).emit('conversation-updated', {
               conversationDocumentId,
@@ -196,6 +202,49 @@ export default factories.createCoreController('api::message.message', ({ strapi 
               senderDocumentId: user.documentId,
               senderUsername: user.username,
             })
+
+            // Skip the sender — they don't need a notification for their own message
+            if (participant.documentId === user.documentId) continue
+
+            // Check if this participant has any socket in the conversation room
+            let isInConversationRoom = false
+            if (conversationRoom) {
+              const participantSockets = io.sockets.adapter.rooms.get(`user:${participant.documentId}`)
+              if (participantSockets) {
+                for (const socketId of participantSockets) {
+                  if (conversationRoom.has(socketId)) {
+                    isInConversationRoom = true
+                    break
+                  }
+                }
+              }
+            }
+
+            // Only create a notification if the participant is NOT viewing the conversation
+            if (!isInConversationRoom) {
+              try {
+                await strapi.service('api::notification.notification').createAndNotify({
+                  title: `New message from ${user.username}`,
+                  message: message.content.length > 100
+                    ? message.content.substring(0, 100) + '...'
+                    : message.content,
+                  type: 'message',
+                  priority: 'normal',
+                  relatedDocumentId: conversationDocumentId,
+                  actionUrl: `/messages`,
+                  metadata: {
+                    conversationDocumentId,
+                    senderUsername: user.username,
+                    senderDocumentId: user.documentId,
+                  },
+                  recipientId: participant.documentId,
+                  senderId: user.documentId,
+                  propertyId: conversation.property?.documentId,
+                })
+              } catch (err) {
+                strapi.log.error(`[Notification] Failed to create message notification for ${participant.documentId}:`, err)
+              }
+            }
           }
         }
       }

@@ -125,6 +125,12 @@
       "relation": "oneToMany",
       "target": "api::maintenance.maintenance",
       "mappedBy": "resident"
+    },
+    "notifications": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::notification.notification",
+      "mappedBy": "recipient"
     }
   }
 }

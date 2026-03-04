@@ -824,6 +824,70 @@ export interface ApiMessageMessage extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiNotificationNotification
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'notifications';
+  info: {
+    description: 'Notifications for users across all collections';
+    displayName: 'Notification';
+    pluralName: 'notifications';
+    singularName: 'notification';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    actionUrl: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    isRead: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification.notification'
+    > &
+      Schema.Attribute.Private;
+    message: Schema.Attribute.Text & Schema.Attribute.Required;
+    metadata: Schema.Attribute.JSON;
+    priority: Schema.Attribute.Enumeration<
+      ['low', 'normal', 'high', 'urgent']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'normal'>;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    publishedAt: Schema.Attribute.DateTime;
+    readAt: Schema.Attribute.DateTime;
+    recipients: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    relatedDocumentId: Schema.Attribute.String;
+    sender: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    type: Schema.Attribute.Enumeration<
+      [
+        'announcement',
+        'billing',
+        'payment',
+        'lease',
+        'maintenance',
+        'message',
+        'conversation',
+        'property',
+        'system',
+      ]
+    > &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
   collectionName: 'payments';
   info: {
@@ -1602,6 +1666,10 @@ export interface PluginUsersPermissionsUser
       'api::maintenance.maintenance'
     >;
     nextBillDate: Schema.Attribute.Date;
+    notifications: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification.notification'
+    >;
     password: Schema.Attribute.Password &
       Schema.Attribute.Private &
       Schema.Attribute.SetMinMaxLength<{
@@ -1657,6 +1725,7 @@ declare module '@strapi/strapi' {
       'api::maintenance-message.maintenance-message': ApiMaintenanceMessageMaintenanceMessage;
       'api::maintenance.maintenance': ApiMaintenanceMaintenance;
       'api::message.message': ApiMessageMessage;
+      'api::notification.notification': ApiNotificationNotification;
       'api::payment.payment': ApiPaymentPayment;
       'api::plan.plan': ApiPlanPlan;
       'api::property.property': ApiPropertyProperty;

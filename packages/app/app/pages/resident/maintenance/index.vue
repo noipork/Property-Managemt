@@ -5,7 +5,7 @@ const { t } = useI18n()
 const { token, user } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
-const { onNewMaintenanceMessage, onMaintenanceUpdated, joinMaintenance, leaveMaintenance, isConnected } = useSocket()
+const { onNewMaintenanceMessage, onMaintenanceUpdated, isConnected } = useSocket()
 const STRAPI_URL = config.public.strapiUrl
 const LAST_SEEN_KEY = 'pm-maint-last-seen-resident'
 
@@ -30,6 +30,7 @@ interface MaintenanceRequest {
     property: { id: number; documentId: string; name: string } | null
     unreadCount?: number
     hasStatusUpdate?: boolean
+    lastProcessedMessageId?: string | number
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -231,26 +232,11 @@ async function fetchRequests() {
             unreadCount: Array.isArray(m.messages) ? m.messages.length : 0,
             hasStatusUpdate: (m.updatedAt ? new Date(m.updatedAt).getTime() : 0) > (lastSeenMap[m.documentId] ?? 0),
         }))
-        if (isConnected.value) joinMaintenanceRooms()
     } catch {
         showToast('error', t.value.maintenanceLoadError || 'Failed to load requests')
     } finally {
         isLoading.value = false
     }
-}
-
-function joinMaintenanceRooms() {
-    allRequests.value.forEach((req) => {
-        if (req.documentId && !joinedMaintenances.has(req.documentId)) {
-            joinMaintenance(req.documentId)
-            joinedMaintenances.add(req.documentId)
-        }
-    })
-}
-
-function leaveMaintenanceRooms() {
-    joinedMaintenances.forEach(id => leaveMaintenance(id))
-    joinedMaintenances.clear()
 }
 
 function loadLastSeenMap(): Record<string, number> {
@@ -321,10 +307,6 @@ function formatDate(dateStr: string | null) {
 // ─── Watch ────────────────────────────────────────────────────────────────────
 watch([searchQuery, filterStatus, filterCategory], () => { currentPage.value = 1 })
 
-watch(isConnected, (connected) => {
-    if (connected) joinMaintenanceRooms()
-})
-
 // ─── Entry Animation ─────────────────────────────────────────────────────────
 const headerVisible = ref(false)
 const statsVisible = ref(false)
@@ -377,7 +359,6 @@ onMounted(async () => {
 onUnmounted(() => {
     cleanupFns.forEach(fn => fn())
     cleanupFns.length = 0
-    leaveMaintenanceRooms()
 })
 </script>
 
@@ -437,7 +418,7 @@ onUnmounted(() => {
                         class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold leading-none mb-0.5 sm:mb-1">
                         {{ t.total }}</p>
                     <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-none">{{ stats.total
-                    }}</p>
+                        }}</p>
                 </div>
             </div>
 
@@ -453,7 +434,7 @@ onUnmounted(() => {
                         class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold leading-none mb-0.5 sm:mb-1">
                         {{ t.pending }}</p>
                     <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-none">{{ stats.pending
-                    }}</p>
+                        }}</p>
                 </div>
                 <span v-if="stats.pending > 0"
                     class="ml-auto sm:hidden w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
@@ -708,9 +689,9 @@ onUnmounted(() => {
                                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
                                     {{ ui.cancelConfirm }}
                                     <strong class="text-gray-900 dark:text-white block mt-1">{{ cancelTarget?.title
-                                    }}</strong>
+                                        }}</strong>
                                     <span class="text-xs font-mono text-gray-400">{{ cancelTarget?.requestNumber
-                                    }}</span>
+                                        }}</span>
                                 </p>
                             </div>
                         </div>
