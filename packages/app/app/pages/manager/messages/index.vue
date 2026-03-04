@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { token, user } = useAuth()
 const { joinConversation, leaveConversation, onNewMessage, onConversationUpdated, onUserTyping, onUserStopTyping, onConversationCreated, onConversationDeleted, onMessagesRead, emitTyping, emitStopTyping, isConnected } = useSocket()
 const config = useRuntimeConfig()
@@ -638,21 +638,59 @@ function formatTime(dateStr: string | null) {
     const date = new Date(dateStr)
     const now = new Date()
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+    const isThai = lang.value === 'TH'
 
     if (diffDays === 0) {
-        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        return date.toLocaleTimeString(isThai ? 'th-TH' : 'en-US', { hour: '2-digit', minute: '2-digit' })
     } else if (diffDays === 1) {
         return t.value.yesterday
     } else if (diffDays < 7) {
-        return date.toLocaleDateString('en-US', { weekday: 'short' })
+        return date.toLocaleDateString(isThai ? 'th-TH' : 'en-US', { weekday: 'short', ...(isThai ? { calendar: 'buddhist' } : {}) })
     } else {
-        return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+        return date.toLocaleDateString(isThai ? 'th-TH' : 'en-GB', { day: '2-digit', month: 'short', ...(isThai ? { calendar: 'buddhist' } : {}) })
     }
 }
 
 function formatMessageTime(dateStr: string) {
-    return new Date(dateStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    const isThai = lang.value === 'TH'
+    return new Date(dateStr).toLocaleTimeString(isThai ? 'th-TH' : 'en-US', { hour: '2-digit', minute: '2-digit' })
 }
+
+function getDayLabel(dateStr: string): string {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const msgDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    const diffDays = Math.round((today.getTime() - msgDay.getTime()) / (1000 * 60 * 60 * 24))
+    const isThai = lang.value === 'TH'
+    if (diffDays === 0) return t.value.today ?? 'Today'
+    if (diffDays === 1) return t.value.yesterday ?? 'Yesterday'
+    return date.toLocaleDateString(isThai ? 'th-TH' : 'en-GB', {
+        weekday: 'long', day: '2-digit', month: 'short', year: 'numeric',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
+}
+
+function dayKey(dateStr: string): string {
+    const d = new Date(dateStr)
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+}
+
+// Messages interleaved with day-separator markers
+type MessageOrSeparator = (Message & { _type?: 'message' }) | { _type: 'separator'; label: string; key: string }
+const messagesWithDaySeparators = computed<MessageOrSeparator[]>(() => {
+    const result: MessageOrSeparator[] = []
+    let lastDay = ''
+    for (const msg of messages.value) {
+        const dk = dayKey(msg.createdAt)
+        if (dk !== lastDay) {
+            lastDay = dk
+            result.push({ _type: 'separator', label: getDayLabel(msg.createdAt), key: dk })
+        }
+        result.push({ ...msg, _type: 'message' })
+    }
+    return result
+})
 
 // ─── Filtered Conversations ───────────────────────────────────────────────────
 const filteredConversations = computed(() => {
@@ -1036,34 +1074,49 @@ onUnmounted(() => {
 
                         <!-- Messages -->
                         <template v-else>
-                            <div v-for="msg in messages" :key="msg.id" class="flex"
-                                :class="msg.sender?.id === user?.id ? 'justify-end' : 'justify-start'">
-                                <div class="max-w-[75%] sm:max-w-[65%]"
-                                    :class="msg.sender?.id === user?.id ? 'order-1' : ''">
-                                    <!-- Message Bubble -->
-                                    <div class="px-4 py-2 rounded-2xl"
-                                        :class="msg.sender?.id === user?.id
-                                            ? 'bg-primary-600 text-white rounded-br-md'
-                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md'">
-                                        <p class="text-sm whitespace-pre-wrap break-words">{{ msg.content }}</p>
-                                        <!-- Images -->
-                                        <div v-if="msg.images && msg.images.length > 0"
-                                            class="mt-2 flex flex-wrap gap-2">
-                                            <img v-for="img in msg.images" :key="img.id" :src="STRAPI_URL + img.url"
-                                                alt="Image"
-                                                class="max-w-[200px] max-h-[200px] rounded-lg object-cover cursor-pointer" />
+                            <template v-for="item in messagesWithDaySeparators"
+                                :key="item._type === 'separator' ? item.key : (item as any).id">
+                                <!-- Day Separator -->
+                                <div v-if="item._type === 'separator'" class="flex items-center gap-3 my-2">
+                                    <div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                                    <span
+                                        class="text-[11px] font-medium text-gray-400 dark:text-gray-500 px-2 shrink-0">
+                                        {{ (item as any).label }}
+                                    </span>
+                                    <div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                                </div>
+
+                                <!-- Message -->
+                                <div v-else class="flex"
+                                    :class="(item as any).sender?.id === user?.id ? 'justify-end' : 'justify-start'">
+                                    <div class="max-w-[75%] sm:max-w-[65%]"
+                                        :class="(item as any).sender?.id === user?.id ? 'order-1' : ''">
+                                        <!-- Message Bubble -->
+                                        <div class="px-4 py-2 rounded-2xl"
+                                            :class="(item as any).sender?.id === user?.id
+                                                ? 'bg-primary-600 text-white rounded-br-md'
+                                                : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md'">
+                                            <p class="text-sm whitespace-pre-wrap break-words">{{ (item as any).content
+                                            }}</p>
+                                            <!-- Images -->
+                                            <div v-if="(item as any).images && (item as any).images.length > 0"
+                                                class="mt-2 flex flex-wrap gap-2">
+                                                <img v-for="img in (item as any).images" :key="img.id"
+                                                    :src="STRAPI_URL + img.url" alt="Image"
+                                                    class="max-w-[200px] max-h-[200px] rounded-lg object-cover cursor-pointer" />
+                                            </div>
+                                        </div>
+                                        <!-- Time -->
+                                        <div class="flex items-center gap-1 mt-1 px-1"
+                                            :class="(item as any).sender?.id === user?.id ? 'justify-end' : 'justify-start'">
+                                            <span class="text-[10px] text-gray-400">{{ formatMessageTime((item as
+                                                any).createdAt) }}</span>
+                                            <span v-if="(item as any).isEdited" class="text-[10px] text-gray-400">({{
+                                                t.edited }})</span>
                                         </div>
                                     </div>
-                                    <!-- Time -->
-                                    <div class="flex items-center gap-1 mt-1 px-1"
-                                        :class="msg.sender?.id === user?.id ? 'justify-end' : 'justify-start'">
-                                        <span class="text-[10px] text-gray-400">{{ formatMessageTime(msg.createdAt)
-                                        }}</span>
-                                        <span v-if="msg.isEdited" class="text-[10px] text-gray-400">({{ t.edited
-                                        }})</span>
-                                    </div>
                                 </div>
-                            </div>
+                            </template>
                         </template>
                     </div>
 

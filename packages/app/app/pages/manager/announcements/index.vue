@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { token, user } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
@@ -253,7 +253,11 @@ function goToAnnouncement(documentId: string) {
 
 function formatDate(dateStr: string | null) {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const isThai = lang.value === 'TH'
+    return new Date(dateStr).toLocaleDateString(isThai ? 'th-TH' : 'en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
 }
 
 function toggleSortDir() {
@@ -494,7 +498,7 @@ onMounted(async () => {
                                 {{ statusLabels[ann.status] }}
                             </span>
                             <span class="text-xs text-gray-400">{{ formatDate(ann.publishDate || ann.createdAt)
-                                }}</span>
+                            }}</span>
                         </div>
 
                         <!-- Title -->
@@ -545,7 +549,7 @@ onMounted(async () => {
                 class="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-800">
                 <div class="flex items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                     <span>{{ totalCount }} {{ totalCount !== 1 ? t.announcementFoundPlural : t.announcementFound
-                        }}</span>
+                    }}</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <button @click="currentPage = Math.max(1, currentPage - 1)" :disabled="currentPage === 1"

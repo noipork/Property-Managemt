@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { token } = useAuth()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
@@ -63,7 +63,11 @@ const invoiceStatusColors: Record<string, string> = {
 
 function formatDate(dateStr: string | null) {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const isThai = lang.value === 'TH'
+    return new Date(dateStr).toLocaleDateString(isThai ? 'th-TH' : 'en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
 }
 
 function formatCurrency(amount: number | null, currency = 'THB') {
@@ -120,7 +124,8 @@ onMounted(fetchPayment)
                 <i class="ti-alert-circle text-2xl text-red-500"></i>
             </div>
             <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ errorMessage }}</h3>
-            <NuxtLink to="/manager/payments" class="mt-4 text-sm text-primary-600 hover:underline">{{ t.backToPayments }}
+            <NuxtLink to="/manager/payments" class="mt-4 text-sm text-primary-600 hover:underline">{{ t.backToPayments
+                }}
             </NuxtLink>
         </div>
 
@@ -166,13 +171,13 @@ onMounted(fetchPayment)
                                         class="text-sm text-gray-500"></i>
                                     <span class="text-sm font-medium text-gray-900 dark:text-white">{{
                                         methodLabels[payment.method as keyof typeof methodLabels] || payment.method
-                                        }}</span>
+                                    }}</span>
                                 </div>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paymentDate }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(payment.date)
-                                    }}</p>
+                                }}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paymentAmount }}</p>
@@ -181,7 +186,7 @@ onMounted(fetchPayment)
                             </div>
                             <div v-if="payment.transactionId">
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paymentTransactionId
-                                    }}</p>
+                                }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white font-mono">{{
                                     payment.transactionId }}</p>
                             </div>
@@ -219,7 +224,7 @@ onMounted(fetchPayment)
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{
                                     payment.billing.invoiceNo }}</p>
                                 <p class="text-xs text-gray-400">{{ t.dueDate }}: {{ formatDate(payment.billing.dueDate)
-                                    }}</p>
+                                }}</p>
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
@@ -272,7 +277,7 @@ onMounted(fetchPayment)
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ payment.property.name }}
                                 </p>
                                 <p v-if="payment.property.city" class="text-xs text-gray-400">{{ payment.property.city
-                                    }}</p>
+                                }}</p>
                             </div>
                         </div>
                         <p v-else class="text-sm text-gray-400">—</p>

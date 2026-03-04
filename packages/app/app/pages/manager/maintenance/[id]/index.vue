@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { token, user } = useAuth()
 const { joinMaintenance, leaveMaintenance, onNewMaintenanceMessage, onMaintenanceUpdated, isConnected } = useSocket()
 const router = useRouter()
@@ -131,12 +131,20 @@ function dismissToast(id: number) { const i = toasts.value.findIndex(t => t.id =
 
 function formatDate(dateStr: string | null) {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const isThai = lang.value === 'TH'
+    return new Date(dateStr).toLocaleDateString(isThai ? 'th-TH' : 'en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
 }
 
 function formatDateTime(dateStr: string | null) {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    const isThai = lang.value === 'TH'
+    return new Date(dateStr).toLocaleString(isThai ? 'th-TH' : 'en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
 }
 
 function formatCurrency(amount: number | null) {
@@ -148,13 +156,17 @@ function formatMessageTime(dateStr: string) {
     const date = new Date(dateStr)
     const now = new Date()
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+    const isThai = lang.value === 'TH'
 
     if (diffDays === 0) {
-        return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+        return date.toLocaleTimeString(isThai ? 'th-TH' : 'en-GB', { hour: '2-digit', minute: '2-digit' })
     } else if (diffDays === 1) {
-        return `${t.value.yesterday} ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+        return `${t.value.yesterday} ${date.toLocaleTimeString(isThai ? 'th-TH' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}`
     } else {
-        return date.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+        return date.toLocaleString(isThai ? 'th-TH' : 'en-GB', {
+            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+            ...(isThai ? { calendar: 'buddhist' } : {}),
+        })
     }
 }
 
@@ -572,7 +584,7 @@ onUnmounted(() => {
                                             {{ msg.sender?.username || 'Unknown' }}
                                         </span>
                                         <span class="text-[10px] text-gray-400">{{ formatMessageTime(msg.createdAt)
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                     <div class="rounded-2xl px-4 py-2.5 text-sm"
                                         :class="msg.sender?.id === user?.id
@@ -650,7 +662,7 @@ onUnmounted(() => {
                                 class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
                                 <span class="text-gray-500 dark:text-gray-400">{{ t.property }}</span>
                                 <span class="font-medium text-gray-900 dark:text-white">{{ request.property.name
-                                }}</span>
+                                    }}</span>
                             </div>
 
                             <!-- Room -->
@@ -665,7 +677,7 @@ onUnmounted(() => {
                                 class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
                                 <span class="text-gray-500 dark:text-gray-400">{{ t.residentInfo }}</span>
                                 <span class="font-medium text-gray-900 dark:text-white">{{ request.resident.username
-                                }}</span>
+                                    }}</span>
                             </div>
 
                             <!-- Category -->

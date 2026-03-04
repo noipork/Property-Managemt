@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { token, user } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
@@ -111,12 +111,20 @@ function dismissToast(id: number) { const i = toasts.value.findIndex(t => t.id =
 
 function formatDate(dateStr: string | null) {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const isThai = lang.value === 'TH'
+    return new Date(dateStr).toLocaleDateString(isThai ? 'th-TH' : 'en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
 }
 
 function formatDateTime(dateStr: string | null) {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    const isThai = lang.value === 'TH'
+    return new Date(dateStr).toLocaleString(isThai ? 'th-TH' : 'en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
 }
 
 function getImageUrl(img: { url: string; formats?: any } | null) {
@@ -243,8 +251,9 @@ onMounted(async () => {
             class="text-center py-16 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
             <i class="ti-alert-circle text-4xl text-red-400 mb-4"></i>
             <p class="text-gray-600 dark:text-gray-400">{{ errorMessage }}</p>
-            <NuxtLink to="/manager/announcements" class="mt-4 text-sm text-primary-600 hover:underline">{{ t.backToAnnouncements
-            }}</NuxtLink>
+            <NuxtLink to="/manager/announcements" class="mt-4 text-sm text-primary-600 hover:underline">{{
+                t.backToAnnouncements
+                }}</NuxtLink>
         </div>
 
         <template v-else-if="announcement">

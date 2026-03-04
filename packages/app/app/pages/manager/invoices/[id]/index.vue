@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { token } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
@@ -80,7 +80,11 @@ const paymentStatusColors: Record<string, string> = {
 
 function formatDate(dateStr: string | null) {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const isThai = lang.value === 'TH'
+    return new Date(dateStr).toLocaleDateString(isThai ? 'th-TH' : 'en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
 }
 
 function formatCurrency(amount: number | null, currency = 'THB') {
@@ -284,7 +288,7 @@ onMounted(async () => {
             </div>
             <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ errorMessage }}</h3>
             <NuxtLink to="/manager/invoices" class="mt-4 text-sm text-primary-600 hover:underline">{{ t.backToInvoices
-                }}
+            }}
             </NuxtLink>
         </div>
 
@@ -520,7 +524,7 @@ onMounted(async () => {
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ invoice.property.name }}
                                 </p>
                                 <p v-if="invoice.property.city" class="text-xs text-gray-400">{{ invoice.property.city
-                                    }}</p>
+                                }}</p>
                             </div>
                         </div>
                         <p v-else class="text-sm text-gray-400">—</p>
@@ -553,7 +557,7 @@ onMounted(async () => {
                     </div>
                     <p class="text-sm text-gray-600 dark:text-gray-400">
                         {{ t.deleteInvoiceConfirm }} <strong class="text-gray-900 dark:text-white">{{ invoice?.invoiceNo
-                            }}</strong>{{ t.deleteInvoiceConfirm2 }}
+                        }}</strong>{{ t.deleteInvoiceConfirm2 }}
                     </p>
                     <div class="flex gap-3 pt-2">
                         <button @click="showDeleteModal = false"

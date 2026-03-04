@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { token } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
@@ -200,7 +200,11 @@ function dismissToast(id: number) { const i = toasts.value.findIndex(t => t.id =
 
 function formatDate(dateStr: string | null) {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const isThai = lang.value === 'TH'
+    return new Date(dateStr).toLocaleDateString(isThai ? 'th-TH' : 'en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
 }
 
 function formatCurrency(amount: number | null, currency = 'THB') {
@@ -500,7 +504,7 @@ onMounted(async () => {
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.leaseNo }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white font-mono">{{ lease.leaseNo
-                                }}</p>
+                                    }}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.status }}</p>
@@ -560,7 +564,7 @@ onMounted(async () => {
                         </div>
                         <div class="flex items-center justify-between pt-2">
                             <span class="text-base font-bold text-gray-900 dark:text-white">{{ t.leaseMonthlyRent
-                            }}</span>
+                                }}</span>
                             <span class="text-xl font-bold text-primary-600 dark:text-primary-400">{{
                                 formatCurrency(lease.monthlyRent, lease.currency) }}</span>
                         </div>
@@ -581,7 +585,7 @@ onMounted(async () => {
                             <div v-if="lease.residentFullName">
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.fullName }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ lease.residentFullName
-                                }}</p>
+                                    }}</p>
                             </div>
                             <div v-if="lease.residentPhone">
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.leasePhone }}</p>
@@ -844,7 +848,7 @@ onMounted(async () => {
                     </div>
                     <p class="text-sm text-gray-600 dark:text-gray-400">
                         {{ t.deleteLeaseConfirm }} <strong class="text-gray-900 dark:text-white">{{ lease?.leaseNo
-                        }}</strong>{{
+                            }}</strong>{{
                                 t.deleteLeaseConfirm2 }}
                     </p>
                     <div class="flex gap-3 pt-2">
@@ -892,7 +896,7 @@ onMounted(async () => {
                         <!-- Duration presets -->
                         <div>
                             <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">{{ t.renewQuickSelect
-                                }}</p>
+                            }}</p>
                             <div class="flex gap-2">
                                 <button @click="applyDurationPreset(3)"
                                     class="flex-1 px-3 py-2 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700 dark:hover:text-emerald-400 transition-colors">
@@ -920,7 +924,7 @@ onMounted(async () => {
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{
                                     t.leaseEndDate
-                                    }}</label>
+                                }}</label>
                                 <input v-model="renewEndDate" type="date"
                                     class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-colors" />
                             </div>
@@ -1069,7 +1073,7 @@ onMounted(async () => {
                         <p class="text-sm text-gray-600 dark:text-gray-400">
                             {{ t.expireLeaseConfirm || 'Are you sure you want to expire lease' }} <strong
                                 class="text-gray-900 dark:text-white">{{ lease?.leaseNo }}</strong>{{ t.questionMark ||
-                            '?' }}
+                                    '?' }}
                         </p>
                         <div class="flex gap-3 pt-2">
                             <button @click="showExpireModal = false"

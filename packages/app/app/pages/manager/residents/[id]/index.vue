@@ -4,7 +4,7 @@ import { Chart, registerables } from 'chart.js'
 
 Chart.register(...registerables)
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { token } = useAuth()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
@@ -59,7 +59,11 @@ const unitTypeLabels: Record<string, string> = {
 
 function formatDate(dateStr: string | null | undefined) {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const isThai = lang.value === 'TH'
+    return new Date(dateStr).toLocaleDateString(isThai ? 'th-TH' : 'en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
 }
 
 async function fetchResident() {
@@ -258,9 +262,13 @@ const chartData = computed(() => {
 
     // Get last 6 months of data
     const last6Months = billingHistory.value.slice(0, 6).reverse()
+    const isThai = lang.value === 'TH'
     const labels = last6Months.map(bill => {
         const date = new Date(bill.dueDate)
-        return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+        return date.toLocaleDateString(isThai ? 'th-TH' : 'en-US', {
+            month: 'short', year: '2-digit',
+            ...(isThai ? { calendar: 'buddhist' } : {}),
+        })
     })
 
     if (chartType.value === 'billing') {
@@ -811,7 +819,11 @@ async function openInvoiceModal() {
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
     invoiceForm.value.dueDate = endOfMonth.toISOString().split('T')[0]
     // Set default description
-    const monthName = now.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+    const isThai = lang.value === 'TH'
+    const monthName = now.toLocaleString(isThai ? 'th-TH' : 'en-US', {
+        month: 'long', year: 'numeric',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
     invoiceForm.value.description = `Monthly Rent - ${monthName}`
 
     // Fetch latest billing to auto-fill meter start readings
@@ -1572,7 +1584,7 @@ async function createInvoice() {
                                     <div v-if="isEditMode && editInvoiceForm" class="flex items-center gap-3">
                                         <div class="flex-1 space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitTypePrice
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.unitTypePrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
@@ -1585,7 +1597,7 @@ async function createInvoice() {
                                     </div>
                                     <div v-else class="flex items-center justify-between">
                                         <span class="text-sm text-gray-600 dark:text-gray-400">{{ t.unitTypePrice
-                                            }}</span>
+                                        }}</span>
                                         <span class="text-lg font-bold text-gray-900 dark:text-white">{{
                                             selectedInvoice.currency }} {{
                                                 selectedInvoice.unitTypePrice?.toLocaleString('en-US')
@@ -1605,28 +1617,28 @@ async function createInvoice() {
                                         class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterStart
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.electricMeterStart"
                                                 disabled
                                                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterEnd
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.electricMeterEnd"
                                                 min="0" step="0.01"
                                                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitPrice
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.electricUnitPrice"
                                                 min="0" step="0.01"
                                                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.total
-                                                }}</label>
+                                            }}</label>
                                             <div
                                                 class="px-3 py-2 text-sm bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg">
                                                 <span class="font-semibold text-yellow-700 dark:text-yellow-400">{{
@@ -1662,7 +1674,7 @@ async function createInvoice() {
                                     <div
                                         class="mt-3 pt-3 border-t border-yellow-200 dark:border-yellow-800/30 flex items-center justify-between">
                                         <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.total
-                                            }}</span>
+                                        }}</span>
                                         <span class="text-lg font-bold text-yellow-700 dark:text-yellow-400">
                                             {{ isEditMode && editInvoiceForm ? editInvoiceForm.currency :
                                                 selectedInvoice.currency }}
@@ -1685,28 +1697,28 @@ async function createInvoice() {
                                         class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterStart
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.waterMeterStart"
                                                 disabled
                                                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterEnd
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.waterMeterEnd" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitPrice
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.waterUnitPrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.total
-                                                }}</label>
+                                            }}</label>
                                             <div
                                                 class="px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg">
                                                 <span class="font-semibold text-blue-700 dark:text-blue-400">{{
@@ -1742,7 +1754,7 @@ async function createInvoice() {
                                     <div
                                         class="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800/30 flex items-center justify-between">
                                         <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.total
-                                            }}</span>
+                                        }}</span>
                                         <span class="text-lg font-bold text-blue-700 dark:text-blue-400">
                                             {{ isEditMode && editInvoiceForm ? editInvoiceForm.currency :
                                                 selectedInvoice.currency }}
@@ -1896,7 +1908,7 @@ async function createInvoice() {
                                     <div class="flex items-center gap-3">
                                         <div class="flex-1 space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitTypePrice
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="invoiceForm.unitTypePrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
@@ -1921,28 +1933,28 @@ async function createInvoice() {
                                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterStart
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="invoiceForm.electricMeterStart" min="0"
                                                 step="0.01" disabled
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterEnd
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="invoiceForm.electricMeterEnd" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitPrice
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="invoiceForm.electricUnitPrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.total
-                                            }}</label>
+                                                }}</label>
                                             <div
                                                 class="px-3 py-2 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg">
                                                 <span class="font-semibold text-yellow-700 dark:text-yellow-400">
@@ -1966,28 +1978,28 @@ async function createInvoice() {
                                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterStart
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="invoiceForm.waterMeterStart" min="0"
                                                 step="0.01" disabled
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterEnd
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="invoiceForm.waterMeterEnd" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitPrice
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="invoiceForm.waterUnitPrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.total
-                                            }}</label>
+                                                }}</label>
                                             <div
                                                 class="px-3 py-2 bg-blue-100 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg">
                                                 <span class="font-semibold text-blue-700 dark:text-blue-400">
@@ -2002,7 +2014,7 @@ async function createInvoice() {
                                 <!-- Notes -->
                                 <div class="space-y-1.5">
                                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.notes
-                                    }}</label>
+                                        }}</label>
                                     <textarea v-model="invoiceForm.notes" rows="2"
                                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                                         :placeholder="t.invoiceNotesPlaceholder"></textarea>

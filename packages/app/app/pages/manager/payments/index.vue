@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { token, user } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
@@ -179,7 +179,11 @@ function goToPayment(id: number) {
 
 function formatDate(dateStr: string | null) {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const isThai = lang.value === 'TH'
+    return new Date(dateStr).toLocaleDateString(isThai ? 'th-TH' : 'en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
 }
 
 function formatCurrency(amount: number | null, currency = 'THB') {
@@ -270,7 +274,7 @@ onMounted(async () => {
                 <!-- Date Range -->
                 <div class="flex items-center gap-1.5">
                     <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t.filterPaymentDate
-                    }}</span>
+                        }}</span>
                     <input v-model="filterDateFrom" type="date"
                         class="px-2 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
                         @click="($event.target as HTMLInputElement).showPicker?.()" />
