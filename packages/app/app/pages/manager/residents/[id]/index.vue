@@ -228,6 +228,7 @@ interface BillingItem {
     waterUnitPrice?: number
     waterUnitsUsed?: number
     waterAmount?: number
+    assetAmount?: number | null
     notes?: string | null
 }
 
@@ -561,18 +562,18 @@ const paymentStatusColors: Record<string, string> = {
 }
 
 const billingTypeIcons: Record<string, string> = {
-    monthlyRent: 'ti-file',
-    utilities: 'ti-file',
-    maintenance: 'ti-file',
-    deposit: 'ti-file',
-    lateFee: 'ti-file',
+    monthlyRent: 'fa-solid fa-file',
+    utilities: 'fa-solid fa-file',
+    maintenance: 'fa-solid fa-file',
+    deposit: 'fa-solid fa-file',
+    lateFee: 'fa-solid fa-file',
 }
 
 const paymentMethodIcons: Record<string, string> = {
-    creditCard: 'ti-wallet',
-    bankTransfer: 'ti-wallet',
-    cash: 'ti-wallet',
-    promptPay: 'ti-wallet',
+    creditCard: 'fa-solid fa-wallet',
+    bankTransfer: 'fa-solid fa-wallet',
+    cash: 'fa-solid fa-wallet',
+    promptPay: 'fa-solid fa-wallet',
 }
 
 // ─── View Invoice Modal ───────────────────────────────────────────────────────
@@ -615,6 +616,7 @@ async function viewInvoice(bill: BillingItem) {
             waterUnitPrice: data.data.waterUnitPrice,
             waterUnitsUsed: data.data.waterUnitsUsed,
             waterAmount: data.data.waterAmount,
+            assetAmount: data.data.assetAmount ?? null,
             notes: data.data.notes,
         }
     } catch (err) {
@@ -740,6 +742,48 @@ function getTranslatedType(type: string) {
 const showInvoiceModal = ref(false)
 const isCreatingInvoice = ref(false)
 
+// ─── Approved Assets ──────────────────────────────────────────────────────────
+interface ApprovedAsset {
+    id: number
+    documentId: string
+    name: string
+    price: number
+    currency: string
+}
+
+const approvedAssets = ref<ApprovedAsset[]>([])
+const isLoadingApprovedAssets = ref(false)
+
+async function fetchApprovedAssets() {
+    isLoadingApprovedAssets.value = true
+    try {
+        const params = new URLSearchParams({
+            'filters[resident][id][$eq]': residentId,
+            'filters[status][$eq]': 'approved',
+            'populate[0]': 'asset',
+            'pagination[pageSize]': '50',
+        })
+        const res = await fetch(`${STRAPI_URL}/api/asset-requests?${params}`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        approvedAssets.value = (data.data ?? [])
+            .filter((r: any) => r.asset)
+            .map((r: any) => ({
+                id: r.asset.id,
+                documentId: r.asset.documentId,
+                name: r.asset.name,
+                price: r.asset.price ?? 0,
+                currency: r.asset.currency || 'THB',
+            }))
+    } catch (err) {
+        console.error('Error fetching approved assets:', err)
+    } finally {
+        isLoadingApprovedAssets.value = false
+    }
+}
+
 interface InvoiceForm {
     type: string
     description: string
@@ -789,8 +833,12 @@ const waterAmount = computed(() => {
     return waterUnitsUsed.value * invoiceForm.value.waterUnitPrice
 })
 
+const approvedAssetTotal = computed(() =>
+    approvedAssets.value.reduce((sum, a) => sum + a.price, 0)
+)
+
 const totalAmount = computed(() => {
-    return invoiceForm.value.unitTypePrice + electricAmount.value + waterAmount.value
+    return invoiceForm.value.unitTypePrice + electricAmount.value + waterAmount.value + approvedAssetTotal.value
 })
 
 async function openInvoiceModal() {
@@ -817,7 +865,7 @@ async function openInvoiceModal() {
     // Set default due date to end of current month
     const now = new Date()
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    invoiceForm.value.dueDate = endOfMonth.toISOString().split('T')[0]
+    invoiceForm.value.dueDate = endOfMonth.toISOString().split('T')[0] ?? ''
     // Set default description
     const isThai = lang.value === 'TH'
     const monthName = now.toLocaleString(isThai ? 'th-TH' : 'en-US', {
@@ -825,6 +873,9 @@ async function openInvoiceModal() {
         ...(isThai ? { calendar: 'buddhist' } : {}),
     })
     invoiceForm.value.description = `Monthly Rent - ${monthName}`
+
+    // Fetch approved assets for this resident
+    fetchApprovedAssets()
 
     // Fetch latest billing to auto-fill meter start readings
     try {
@@ -860,6 +911,7 @@ async function openInvoiceModal() {
 
 function closeInvoiceModal() {
     showInvoiceModal.value = false
+    approvedAssets.value = []
     // Reset form
     invoiceForm.value = {
         type: 'monthlyRent',
@@ -912,6 +964,7 @@ async function createInvoice() {
                 waterUnitPrice: invoiceForm.value.waterUnitPrice,
                 waterUnitsUsed: waterUnitsUsed.value,
                 waterAmount: waterAmount.value,
+                assetAmount: approvedAssetTotal.value || null,
                 notes: invoiceForm.value.notes || null,
                 resident: resident.value?.id,
                 property: resident.value?.property?.id || null,
@@ -950,7 +1003,7 @@ async function createInvoice() {
                 <div class="flex items-center gap-3">
                     <button @click="$router.back()"
                         class="p-2 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                        <i class="ti-arrow-left text-lg"></i>
+                        <i class="fa-solid fa-arrow-left text-lg"></i>
                     </button>
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.residentInfo }}</h1>
@@ -959,7 +1012,7 @@ async function createInvoice() {
                 </div>
                 <NuxtLink v-if="resident" :to="`/manager/residents/${residentId}/edit`"
                     class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
-                    <i class="ti-pencil text-sm"></i>
+                    <i class="fa-solid fa-pen text-sm"></i>
                     {{ t.edit }}
                 </NuxtLink>
             </div>
@@ -973,7 +1026,7 @@ async function createInvoice() {
         <!-- Error -->
         <div v-else-if="errorMessage"
             class="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
-            <i class="ti-alert-circle text-base"></i>
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
             {{ errorMessage }}
         </div>
 
@@ -986,7 +1039,7 @@ async function createInvoice() {
                         <!-- Avatar -->
                         <div
                             class="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
-                            <i class="ti-user text-3xl text-primary-600 dark:text-primary-400"></i>
+                            <i class="fa-solid fa-user text-3xl text-primary-600 dark:text-primary-400"></i>
                         </div>
                         <!-- Info -->
                         <div class="flex-1 min-w-0">
@@ -1010,17 +1063,17 @@ async function createInvoice() {
                                     :class="resident.confirmed
                                         ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
                                         : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'">
-                                    <i :class="resident.confirmed ? 'ti-check' : 'ti-time'"></i>
+                                    <i :class="resident.confirmed ? 'fa-solid fa-check' : 'fa-solid fa-clock'"></i>
                                     {{ resident.confirmed ? t.residentConfirmed : t.residentUnconfirmed }}
                                 </span>
                                 <span v-if="resident.blocked"
                                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
-                                    <i class="ti-na"></i>
+                                    <i class="fa-solid fa-ban"></i>
                                     {{ t.residentBlocked }}
                                 </span>
                                 <span
                                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
-                                    <i class="ti-id-badge"></i>
+                                    <i class="fa-solid fa-id-badge"></i>
                                     {{ t.residentRole }}
                                 </span>
                             </div>
@@ -1036,12 +1089,12 @@ async function createInvoice() {
                     class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
                     <div class="flex items-center justify-between">
                         <h3 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                            <i class="ti-receipt text-primary-600 dark:text-primary-400"></i>
+                            <i class="fa-solid fa-receipt text-primary-600 dark:text-primary-400"></i>
                             {{ t.leaseDetails }}
                         </h3>
                         <NuxtLink v-if="lease" :to="`/manager/residents/${residentId}/edit#lease`"
                             class="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
-                            <i class="ti-pencil text-xs"></i> {{ t.edit }}
+                            <i class="fa-solid fa-pen text-xs"></i> {{ t.edit }}
                         </NuxtLink>
                     </div>
 
@@ -1054,7 +1107,7 @@ async function createInvoice() {
 
                     <!-- No lease -->
                     <div v-else-if="!lease" class="flex items-center gap-2 py-2 text-sm text-gray-400">
-                        <i class="ti-info-alt text-gray-300"></i>
+                        <i class="fa-solid fa-circle-info text-gray-300"></i>
                         No lease record found.
                     </div>
 
@@ -1065,7 +1118,7 @@ async function createInvoice() {
                             <span
                                 class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
                                 :class="leaseStatusColors[lease.status] || leaseStatusColors.pending">
-                                <i class="ti-check-box text-xs"></i>
+                                <i class="fa-solid fa-square-check text-xs"></i>
                                 {{ lease.status.charAt(0).toUpperCase() + lease.status.slice(1) }}
                             </span>
                             <span
@@ -1074,7 +1127,7 @@ async function createInvoice() {
                             </span>
                             <span v-if="lease.acceptedAt"
                                 class="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                                <i class="ti-check"></i> Accepted {{ formatDate(lease.acceptedAt) }}
+                                <i class="fa-solid fa-check"></i> Accepted {{ formatDate(lease.acceptedAt) }}
                             </span>
                         </div>
 
@@ -1115,7 +1168,7 @@ async function createInvoice() {
                         <!-- Duration badge -->
                         <div
                             class="flex items-center gap-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 rounded-lg text-xs text-primary-700 dark:text-primary-300">
-                            <i class="ti-calendar shrink-0"></i>
+                            <i class="fa-solid fa-calendar shrink-0"></i>
                             <span>{{ t.leaseDuration }}:
                                 <strong>{{(() => {
                                     const s = new Date(lease.startDate)
@@ -1133,7 +1186,7 @@ async function createInvoice() {
                         <!-- Notes -->
                         <div v-if="lease.notes"
                             class="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2">
-                            <i class="ti-comment-alt mr-1"></i>{{ lease.notes }}
+                            <i class="fa-solid fa-comment mr-1"></i>{{ lease.notes }}
                         </div>
                     </template>
                 </div>
@@ -1145,7 +1198,7 @@ async function createInvoice() {
                 <div
                     class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
                     <h3 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <i class="ti-home text-primary-600 dark:text-primary-400"></i>
+                        <i class="fa-solid fa-house text-primary-600 dark:text-primary-400"></i>
                         {{ t.unitInfo }}
                     </h3>
 
@@ -1156,7 +1209,7 @@ async function createInvoice() {
                                 t.roomNumber }}</p>
                             <div v-if="resident.roomNumber"
                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200">
-                                <i class="ti-key text-gray-500 dark:text-gray-400"></i>
+                                <i class="fa-solid fa-key text-gray-500 dark:text-gray-400"></i>
                                 {{ resident.roomNumber }}
                             </div>
                             <p v-else class="text-sm text-gray-400">—</p>
@@ -1167,7 +1220,7 @@ async function createInvoice() {
                             <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{
                                 t.registrationDate }}</p>
                             <p class="text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                                <i class="ti-calendar text-gray-400 text-xs"></i>
+                                <i class="fa-solid fa-calendar text-gray-400 text-xs"></i>
                                 {{ formatDate(resident.registrationDate) }}
                             </p>
                         </div>
@@ -1181,7 +1234,7 @@ async function createInvoice() {
                                 :class="new Date(resident.nextBillDate) <= new Date()
                                     ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'
                                     : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'">
-                                <i class="ti-bell text-xs"></i>
+                                <i class="fa-solid fa-bell text-xs"></i>
                                 {{ formatDate(resident.nextBillDate) }}
                             </div>
                             <p v-else class="text-sm text-gray-400">—</p>
@@ -1246,7 +1299,7 @@ async function createInvoice() {
                     <div class="flex items-start justify-between gap-4 flex-wrap">
                         <div>
                             <h3 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                <i class="ti-chart-line text-primary-600 dark:text-primary-400"></i>
+                                <i class="fa-solid fa-chart-line text-primary-600 dark:text-primary-400"></i>
                                 {{ t.billingAnalytics }}
                             </h3>
                             <p class="text-xs text-gray-400 mt-0.5">{{ t.billingAnalyticsSubtitle }}</p>
@@ -1257,21 +1310,21 @@ async function createInvoice() {
                                 class="px-3 py-1.5 text-xs font-medium rounded-md transition-all" :class="chartType === 'billing'
                                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'">
-                                <i class="ti-receipt mr-1"></i>
+                                <i class="fa-solid fa-receipt mr-1"></i>
                                 {{ t.billRate }}
                             </button>
                             <button @click="chartType = 'electric'"
                                 class="px-3 py-1.5 text-xs font-medium rounded-md transition-all" :class="chartType === 'electric'
                                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'">
-                                <i class="ti-bolt mr-1"></i>
+                                <i class="fa-solid fa-bolt mr-1"></i>
                                 {{ t.electricMeter }}
                             </button>
                             <button @click="chartType = 'water'"
                                 class="px-3 py-1.5 text-xs font-medium rounded-md transition-all" :class="chartType === 'water'
                                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'">
-                                <i class="ti-droplet mr-1"></i>
+                                <i class="fa-solid fa-droplet mr-1"></i>
                                 {{ t.waterMeter }}
                             </button>
                         </div>
@@ -1295,20 +1348,20 @@ async function createInvoice() {
                                 class="px-4 py-2 text-sm font-medium rounded-md transition-all" :class="historyTab === 'billing'
                                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'">
-                                <i class="ti-file mr-1.5"></i>
+                                <i class="fa-solid fa-file mr-1.5"></i>
                                 {{ t.billingHistory }}
                             </button>
                             <button @click="historyTab = 'payment'"
                                 class="px-4 py-2 text-sm font-medium rounded-md transition-all" :class="historyTab === 'payment'
                                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'">
-                                <i class="ti-wallet mr-1.5"></i>
+                                <i class="fa-solid fa-wallet mr-1.5"></i>
                                 {{ t.paymentHistory }}
                             </button>
                         </div>
                         <button v-if="historyTab === 'billing'" @click="openInvoiceModal"
                             class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
-                            <i class="ti-plus text-sm"></i>
+                            <i class="fa-solid fa-plus text-sm"></i>
                             {{ t.createInvoice }}
                         </button>
                     </div>
@@ -1325,7 +1378,7 @@ async function createInvoice() {
                         <div v-else-if="billingHistory.length === 0" class="text-center py-8">
                             <div
                                 class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
-                                <i class="ti-file text-xl text-gray-400"></i>
+                                <i class="fa-solid fa-file text-xl text-gray-400"></i>
                             </div>
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ t.noBillingHistory }}</p>
                         </div>
@@ -1336,7 +1389,7 @@ async function createInvoice() {
                                 <!-- Icon -->
                                 <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
                                     :class="bill.status === 'paid' ? 'bg-emerald-100 dark:bg-emerald-900/30' : bill.status === 'overdue' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-amber-100 dark:bg-amber-900/30'">
-                                    <i class="ti-file text-lg"
+                                    <i class="fa-solid fa-file text-lg"
                                         :class="bill.status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : bill.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'"></i>
                                 </div>
 
@@ -1351,11 +1404,11 @@ async function createInvoice() {
                                     </div>
                                     <p class="font-medium text-gray-900 dark:text-white mt-1">{{ bill.description }}</p>
                                     <p class="text-xs text-gray-400 mt-1">
-                                        <i class="ti-calendar mr-1"></i>
+                                        <i class="fa-solid fa-calendar mr-1"></i>
                                         {{ t.dueDate }}: {{ formatDate(bill.dueDate) }}
                                         <template v-if="bill.paidDate">
                                             <span class="mx-2">•</span>
-                                            <i class="ti-check mr-1"></i>
+                                            <i class="fa-solid fa-check mr-1"></i>
                                             {{ t.paidOn }} {{ formatDate(bill.paidDate) }}
                                         </template>
                                     </p>
@@ -1382,7 +1435,7 @@ async function createInvoice() {
                                 {{ t.loading }}
                             </span>
                             <span v-else class="inline-flex items-center gap-1">
-                                <i class="ti-chevron-down"></i>
+                                <i class="fa-solid fa-chevron-down"></i>
                                 {{ t.loadMore }}
                             </span>
                         </button>
@@ -1400,7 +1453,7 @@ async function createInvoice() {
                         <div v-else-if="paymentHistory.length === 0" class="text-center py-8">
                             <div
                                 class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
-                                <i class="ti-wallet text-xl text-gray-400"></i>
+                                <i class="fa-solid fa-wallet text-xl text-gray-400"></i>
                             </div>
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ t.noPaymentHistory }}</p>
                         </div>
@@ -1411,7 +1464,7 @@ async function createInvoice() {
                                 <!-- Icon -->
                                 <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
                                     :class="payment.status === 'completed' ? 'bg-emerald-100 dark:bg-emerald-900/30' : payment.status === 'refunded' ? 'bg-gray-100 dark:bg-gray-800' : 'bg-amber-100 dark:bg-amber-900/30'">
-                                    <i class="ti-wallet text-lg"
+                                    <i class="fa-solid fa-wallet text-lg"
                                         :class="payment.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' : payment.status === 'refunded' ? 'text-gray-500 dark:text-gray-400' : 'text-amber-600 dark:text-amber-400'"></i>
                                 </div>
 
@@ -1429,11 +1482,11 @@ async function createInvoice() {
                                         {{ getTranslatedType(payment.method) }}
                                     </p>
                                     <p class="text-xs text-gray-400 mt-1">
-                                        <i class="ti-calendar mr-1"></i>
+                                        <i class="fa-solid fa-calendar mr-1"></i>
                                         {{ formatDate(payment.date) }}
                                         <template v-if="payment.billing?.invoiceNo">
                                             <span class="mx-2">•</span>
-                                            <i class="ti-file-invoice mr-1"></i>
+                                            <i class="fa-solid fa-file-invoice mr-1"></i>
                                             {{ payment.billing.invoiceNo }}
                                         </template>
                                     </p>
@@ -1458,7 +1511,7 @@ async function createInvoice() {
                                 {{ t.loading }}
                             </span>
                             <span v-else class="inline-flex items-center gap-1">
-                                <i class="ti-chevron-down"></i>
+                                <i class="fa-solid fa-chevron-down"></i>
                                 {{ t.loadMore }}
                             </span>
                         </button>
@@ -1494,7 +1547,7 @@ async function createInvoice() {
                                 </div>
                                 <button @click="closeViewInvoiceModal"
                                     class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                                    <i class="ti-close text-lg"></i>
+                                    <i class="fa-solid fa-xmark text-lg"></i>
                                 </button>
                             </div>
 
@@ -1559,7 +1612,7 @@ async function createInvoice() {
                                             @click="($event.target as HTMLInputElement).showPicker?.()" />
                                         <p v-else
                                             class="text-sm text-gray-900 dark:text-white flex items-center gap-1.5">
-                                            <i class="ti-calendar text-gray-400 text-xs"></i>
+                                            <i class="fa-solid fa-calendar text-gray-400 text-xs"></i>
                                             {{ formatDate(selectedInvoice.dueDate) }}
                                         </p>
                                     </div>
@@ -1568,7 +1621,7 @@ async function createInvoice() {
                                             class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{
                                                 t.paidOn }}</label>
                                         <p class="text-sm text-gray-900 dark:text-white flex items-center gap-1.5">
-                                            <i class="ti-check text-emerald-500 text-xs"></i>
+                                            <i class="fa-solid fa-check text-emerald-500 text-xs"></i>
                                             {{ formatDate(selectedInvoice.paidDate) }}
                                         </p>
                                     </div>
@@ -1579,13 +1632,13 @@ async function createInvoice() {
                                     class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                                     <h4
                                         class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
-                                        <i class="ti-home text-primary-500"></i>
+                                        <i class="fa-solid fa-house text-primary-500"></i>
                                         {{ t.roomRent }}
                                     </h4>
                                     <div v-if="isEditMode && editInvoiceForm" class="flex items-center gap-3">
                                         <div class="flex-1 space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitTypePrice
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.unitTypePrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
@@ -1598,7 +1651,7 @@ async function createInvoice() {
                                     </div>
                                     <div v-else class="flex items-center justify-between">
                                         <span class="text-sm text-gray-600 dark:text-gray-400">{{ t.unitTypePrice
-                                        }}</span>
+                                            }}</span>
                                         <span class="text-lg font-bold text-gray-900 dark:text-white">{{
                                             selectedInvoice.currency }} {{
                                                 selectedInvoice.unitTypePrice?.toLocaleString('en-US')
@@ -1611,35 +1664,35 @@ async function createInvoice() {
                                     class="bg-yellow-50 dark:bg-yellow-900/10 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800/30">
                                     <h4
                                         class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
-                                        <i class="ti-bolt text-yellow-500"></i>
+                                        <i class="fa-solid fa-bolt text-yellow-500"></i>
                                         {{ t.electricMeter }}
                                     </h4>
                                     <div v-if="isEditMode && editInvoiceForm"
                                         class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterStart
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.electricMeterStart"
                                                 disabled
                                                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterEnd
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.electricMeterEnd"
                                                 min="0" step="0.01"
                                                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitPrice
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.electricUnitPrice"
                                                 min="0" step="0.01"
                                                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.total
-                                            }}</label>
+                                                }}</label>
                                             <div
                                                 class="px-3 py-2 text-sm bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg">
                                                 <span class="font-semibold text-yellow-700 dark:text-yellow-400">{{
@@ -1675,7 +1728,7 @@ async function createInvoice() {
                                     <div
                                         class="mt-3 pt-3 border-t border-yellow-200 dark:border-yellow-800/30 flex items-center justify-between">
                                         <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.total
-                                        }}</span>
+                                            }}</span>
                                         <span class="text-lg font-bold text-yellow-700 dark:text-yellow-400">
                                             {{ isEditMode && editInvoiceForm ? editInvoiceForm.currency :
                                                 selectedInvoice.currency }}
@@ -1691,35 +1744,35 @@ async function createInvoice() {
                                     class="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-4 border border-blue-200 dark:border-blue-800/30">
                                     <h4
                                         class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
-                                        <i class="ti-droplet text-blue-500"></i>
+                                        <i class="fa-solid fa-droplet text-blue-500"></i>
                                         {{ t.waterMeter }}
                                     </h4>
                                     <div v-if="isEditMode && editInvoiceForm"
                                         class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterStart
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.waterMeterStart"
                                                 disabled
                                                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterEnd
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.waterMeterEnd" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitPrice
-                                            }}</label>
+                                                }}</label>
                                             <input type="number" v-model.number="editInvoiceForm.waterUnitPrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.total
-                                            }}</label>
+                                                }}</label>
                                             <div
                                                 class="px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg">
                                                 <span class="font-semibold text-blue-700 dark:text-blue-400">{{
@@ -1755,12 +1808,29 @@ async function createInvoice() {
                                     <div
                                         class="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800/30 flex items-center justify-between">
                                         <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.total
-                                        }}</span>
+                                            }}</span>
                                         <span class="text-lg font-bold text-blue-700 dark:text-blue-400">
                                             {{ isEditMode && editInvoiceForm ? editInvoiceForm.currency :
                                                 selectedInvoice.currency }}
                                             {{ isEditMode && editInvoiceForm ? editWaterAmount.toLocaleString('en-US') :
                                                 (selectedInvoice.waterAmount || 0).toLocaleString('en-US') }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Notes -->
+                                <div v-if="selectedInvoice.assetAmount || (isEditMode && editInvoiceForm)"
+                                    class="space-y-1.5">
+                                    <label
+                                        class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asset
+                                        Add-ons</label>
+                                    <div
+                                        class="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800/30 rounded-lg">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">Asset add-on
+                                            charges</span>
+                                        <span class="text-sm font-semibold text-purple-700 dark:text-purple-400">
+                                            {{ selectedInvoice.currency }} {{ (selectedInvoice.assetAmount ||
+                                                0).toLocaleString('en-US') }}
                                         </span>
                                     </div>
                                 </div>
@@ -1808,14 +1878,14 @@ async function createInvoice() {
                                             class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                             <span v-if="isUpdatingInvoice"
                                                 class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                            <i v-else class="ti-check text-sm"></i>
+                                            <i v-else class="fa-solid fa-check text-sm"></i>
                                             {{ t.update }}
                                         </button>
                                     </template>
                                     <template v-else>
                                         <button v-if="selectedInvoice?.status === 'pending'" @click="enableEditMode"
                                             class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
-                                            <i class="ti-pencil text-sm"></i>
+                                            <i class="fa-solid fa-pen text-sm"></i>
                                             {{ t.edit }}
                                         </button>
                                         <button @click="closeViewInvoiceModal"
@@ -1858,7 +1928,7 @@ async function createInvoice() {
                                 </div>
                                 <button @click="closeInvoiceModal"
                                     class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                                    <i class="ti-close text-lg"></i>
+                                    <i class="fa-solid fa-xmark text-lg"></i>
                                 </button>
                             </div>
 
@@ -1903,13 +1973,13 @@ async function createInvoice() {
                                     class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                                     <h4
                                         class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
-                                        <i class="ti-home text-primary-500"></i>
+                                        <i class="fa-solid fa-house text-primary-500"></i>
                                         {{ t.roomRent }}
                                     </h4>
                                     <div class="flex items-center gap-3">
                                         <div class="flex-1 space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitTypePrice
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.unitTypePrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
@@ -1928,34 +1998,34 @@ async function createInvoice() {
                                     class="bg-yellow-50 dark:bg-yellow-900/10 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800/30">
                                     <h4
                                         class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
-                                        <i class="ti-bolt text-yellow-500"></i>
+                                        <i class="fa-solid fa-bolt text-yellow-500"></i>
                                         {{ t.electricMeter }}
                                     </h4>
                                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterStart
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.electricMeterStart" min="0"
                                                 step="0.01" disabled
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterEnd
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.electricMeterEnd" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitPrice
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.electricUnitPrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.total
-                                                }}</label>
+                                            }}</label>
                                             <div
                                                 class="px-3 py-2 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg">
                                                 <span class="font-semibold text-yellow-700 dark:text-yellow-400">
@@ -1973,34 +2043,34 @@ async function createInvoice() {
                                     class="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-4 border border-blue-200 dark:border-blue-800/30">
                                     <h4
                                         class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
-                                        <i class="ti-droplet text-blue-500"></i>
+                                        <i class="fa-solid fa-droplet text-blue-500"></i>
                                         {{ t.waterMeter }}
                                     </h4>
                                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterStart
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.waterMeterStart" min="0"
                                                 step="0.01" disabled
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.meterEnd
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.waterMeterEnd" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.unitPrice
-                                                }}</label>
+                                            }}</label>
                                             <input type="number" v-model.number="invoiceForm.waterUnitPrice" min="0"
                                                 step="0.01"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.total
-                                                }}</label>
+                                            }}</label>
                                             <div
                                                 class="px-3 py-2 bg-blue-100 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg">
                                                 <span class="font-semibold text-blue-700 dark:text-blue-400">
@@ -2012,10 +2082,55 @@ async function createInvoice() {
                                     </div>
                                 </div>
 
+                                <!-- Approved Asset Add-ons -->
+                                <div
+                                    class="bg-emerald-50 dark:bg-emerald-900/10 rounded-lg p-4 border border-emerald-200 dark:border-emerald-800/30">
+                                    <h4
+                                        class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                                        <i class="fa-solid fa-box text-emerald-500"></i>
+                                        {{ t.assetAddOns }}
+                                    </h4>
+                                    <!-- Loading -->
+                                    <div v-if="isLoadingApprovedAssets" class="flex items-center gap-2 py-1">
+                                        <div
+                                            class="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin">
+                                        </div>
+                                        <span class="text-xs text-gray-400">{{ t.loading }}</span>
+                                    </div>
+                                    <!-- Empty -->
+                                    <div v-else-if="approvedAssets.length === 0"
+                                        class="text-xs text-gray-400 flex items-center gap-1.5 py-1">
+                                        <i class="fa-solid fa-circle-info"></i>
+                                        {{ t.noApprovedAssets }}
+                                    </div>
+                                    <!-- Asset rows -->
+                                    <div v-else class="space-y-2">
+                                        <div v-for="asset in approvedAssets" :key="asset.documentId"
+                                            class="flex items-center justify-between text-sm">
+                                            <span class="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                                                <i class="fa-solid fa-square-check text-emerald-500 text-xs"></i>
+                                                {{ asset.name }}
+                                            </span>
+                                            <span class="font-medium text-emerald-700 dark:text-emerald-400">
+                                                {{ asset.currency }} {{ asset.price.toLocaleString('en-US') }}
+                                            </span>
+                                        </div>
+                                        <div
+                                            class="flex items-center justify-between pt-2 mt-2 border-t border-emerald-200 dark:border-emerald-800/30 text-sm font-semibold">
+                                            <span class="text-gray-700 dark:text-gray-300">{{ t.total }}</span>
+                                            <span class="text-emerald-700 dark:text-emerald-400">
+                                                {{ invoiceForm.currency }}
+                                                {{ approvedAssetTotal.toLocaleString('en-US') }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-gray-400 mt-2">{{ t.assetAddOnsDesc }}</p>
+                                </div>
+
                                 <!-- Notes -->
                                 <div class="space-y-1.5">
                                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.notes
-                                        }}</label>
+                                    }}</label>
                                     <textarea v-model="invoiceForm.notes" rows="2"
                                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                                         :placeholder="t.invoiceNotesPlaceholder"></textarea>
@@ -2045,7 +2160,7 @@ async function createInvoice() {
                                         class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                         <span v-if="isCreatingInvoice"
                                             class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                        <i v-else class="ti-check text-sm"></i>
+                                        <i v-else class="fa-solid fa-check text-sm"></i>
                                         {{ t.createInvoice }}
                                     </button>
                                 </div>

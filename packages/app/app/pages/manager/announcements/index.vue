@@ -124,13 +124,13 @@ const categoryColors: Record<string, string> = {
 }
 
 const categoryIcons: Record<string, string> = {
-    general: 'ti-info-circle',
-    maintenance: 'ti-wrench',
-    event: 'ti-calendar-event',
-    emergency: 'ti-alert-triangle',
-    policy: 'ti-file-text',
-    reminder: 'ti-bell',
-    celebration: 'ti-confetti',
+    general: 'fa-solid fa-circle-info',
+    maintenance: 'fa-solid fa-wrench',
+    event: 'fa-solid fa-calendar-days',
+    emergency: 'fa-solid fa-triangle-exclamation',
+    policy: 'fa-solid fa-file-lines',
+    reminder: 'fa-solid fa-bell',
+    celebration: 'fa-solid fa-champagne-glasses',
 }
 
 const statusLabels = computed(() => ({
@@ -309,12 +309,12 @@ onMounted(async () => {
                         :class="toast.type === 'success'
                             ? 'bg-emerald-50 dark:bg-emerald-900/80 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
                             : 'bg-red-50 dark:bg-red-900/80 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'">
-                        <i :class="toast.type === 'success' ? 'ti-check' : 'ti-alert-circle'"
+                        <i :class="toast.type === 'success' ? 'fa-solid fa-check' : 'fa-solid fa-circle-exclamation'"
                             class="text-base mt-0.5 shrink-0"></i>
                         <span class="flex-1 leading-snug">{{ toast.message }}</span>
                         <button @click="dismissToast(toast.id)"
                             class="shrink-0 opacity-50 hover:opacity-100 transition-opacity"><i
-                                class="ti-close text-xs"></i></button>
+                                class="fa-solid fa-xmark text-xs"></i></button>
                     </div>
                 </TransitionGroup>
             </div>
@@ -329,7 +329,7 @@ onMounted(async () => {
             </div>
             <NuxtLink to="/manager/announcements/create"
                 class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors shadow-sm">
-                <i class="ti-plus text-xs"></i>
+                <i class="fa-solid fa-plus text-xs"></i>
                 {{ t.createAnnouncement }}
             </NuxtLink>
         </div>
@@ -339,7 +339,7 @@ onMounted(async () => {
             :class="filtersVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
             <!-- Search - Full width on mobile -->
             <div class="relative w-full mb-3">
-                <i class="ti-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                 <input v-model="searchQuery" type="text" :placeholder="t.searchAnnouncements"
                     class="w-full pl-9 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
@@ -356,7 +356,7 @@ onMounted(async () => {
                         </option>
                     </select>
                     <i
-                        class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
 
                 <!-- Status filter -->
@@ -367,7 +367,7 @@ onMounted(async () => {
                         <option v-for="s in statuses" :key="s" :value="s">{{ statusLabels[s] }}</option>
                     </select>
                     <i
-                        class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
 
                 <!-- Category filter -->
@@ -378,7 +378,7 @@ onMounted(async () => {
                         <option v-for="c in categories" :key="c" :value="c">{{ categoryLabels[c] }}</option>
                     </select>
                     <i
-                        class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
 
                 <!-- Priority filter -->
@@ -389,7 +389,7 @@ onMounted(async () => {
                         <option v-for="p in priorities" :key="p" :value="p">{{ priorityLabels[p] }}</option>
                     </select>
                     <i
-                        class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
 
                 <!-- Pinned toggle -->
@@ -398,7 +398,7 @@ onMounted(async () => {
                     :class="filterPinned
                         ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-400'
                         : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'">
-                    <i class="ti-pin text-xs"></i>
+                    <i class="fa-solid fa-thumbtack text-xs"></i>
                     <span class="hidden sm:inline">{{ t.pinned }}</span>
                 </button>
 
@@ -417,12 +417,12 @@ onMounted(async () => {
         <!-- Empty state -->
         <div v-else-if="allAnnouncements.length === 0"
             class="text-center py-16 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
-            <i class="ti-speakerphone text-4xl text-gray-300 dark:text-gray-600 mb-4"></i>
+            <i class="fa-solid fa-bullhorn text-4xl text-gray-300 dark:text-gray-600 mb-4"></i>
             <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ t.noAnnouncements }}</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">{{ t.noAnnouncementsDesc }}</p>
             <NuxtLink to="/manager/announcements/create"
                 class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
-                <i class="ti-plus text-xs"></i>
+                <i class="fa-solid fa-plus text-xs"></i>
                 {{ t.createAnnouncement }}
             </NuxtLink>
         </div>
@@ -455,7 +455,7 @@ onMounted(async () => {
                         <!-- Pinned badge -->
                         <div v-if="ann.isPinned" class="absolute top-3 right-3">
                             <span class="w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center">
-                                <i class="ti-pin text-white text-xs"></i>
+                                <i class="fa-solid fa-thumbtack text-white text-xs"></i>
                             </span>
                         </div>
 
@@ -494,11 +494,11 @@ onMounted(async () => {
                             class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
                             <div class="flex items-center gap-3 text-xs text-gray-400">
                                 <span v-if="ann.property" class="flex items-center gap-1">
-                                    <i class="ti-home text-[10px]"></i>
+                                    <i class="fa-solid fa-house text-[10px]"></i>
                                     {{ ann.property.name }}
                                 </span>
                                 <span class="flex items-center gap-1">
-                                    <i class="ti-eye text-[10px]"></i>
+                                    <i class="fa-solid fa-eye text-[10px]"></i>
                                     {{ ann.viewCount }}
                                 </span>
                             </div>
@@ -508,12 +508,12 @@ onMounted(async () => {
                                 <NuxtLink :to="`/manager/announcements/${ann.documentId}/edit`"
                                     class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                                     title="Edit">
-                                    <i class="ti-pencil text-gray-500 dark:text-gray-400 text-sm"></i>
+                                    <i class="fa-solid fa-pen text-gray-500 dark:text-gray-400 text-sm"></i>
                                 </NuxtLink>
                                 <button @click.stop="confirmDelete(ann)"
                                     class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                     title="Delete">
-                                    <i class="ti-trash text-red-500 text-sm"></i>
+                                    <i class="fa-solid fa-trash text-red-500 text-sm"></i>
                                 </button>
                             </div>
                         </div>
@@ -531,7 +531,7 @@ onMounted(async () => {
                 <div class="flex items-center gap-2">
                     <button @click="currentPage = Math.max(1, currentPage - 1)" :disabled="currentPage === 1"
                         class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                        <i class="ti-angle-left text-gray-600 dark:text-gray-300 text-sm"></i>
+                        <i class="fa-solid fa-angle-left text-gray-600 dark:text-gray-300 text-sm"></i>
                     </button>
                     <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-300 px-2 min-w-[60px] text-center">
                         {{ currentPage }} / {{ totalPages }}
@@ -539,7 +539,7 @@ onMounted(async () => {
                     <button @click="currentPage = Math.min(totalPages, currentPage + 1)"
                         :disabled="currentPage === totalPages"
                         class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                        <i class="ti-angle-right text-gray-600 dark:text-gray-300 text-sm"></i>
+                        <i class="fa-solid fa-angle-right text-gray-600 dark:text-gray-300 text-sm"></i>
                     </button>
                 </div>
             </div>
@@ -557,7 +557,7 @@ onMounted(async () => {
                         <div class="flex items-start gap-4">
                             <div
                                 class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                                <i class="ti-alert-triangle text-red-500"></i>
+                                <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
                             </div>
                             <div>
                                 <h3 class="font-semibold text-gray-900 dark:text-white">{{ t.deleteAnnouncement }}</h3>
@@ -574,7 +574,7 @@ onMounted(async () => {
                             </button>
                             <button @click="deleteAnnouncement" :disabled="isDeleting"
                                 class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2">
-                                <i v-if="isDeleting" class="ti-reload text-xs animate-spin"></i>
+                                <i v-if="isDeleting" class="fa-solid fa-rotate text-xs animate-spin"></i>
                                 {{ t.delete }}
                             </button>
                         </div>

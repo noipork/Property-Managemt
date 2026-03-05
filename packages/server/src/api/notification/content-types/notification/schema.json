@@ -31,7 +31,8 @@
         "message",
         "conversation",
         "property",
-        "system"
+        "system",
+        "asset"
       ],
       "required": true
     },

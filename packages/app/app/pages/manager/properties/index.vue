@@ -80,13 +80,13 @@ const statusLabels = computed(() => ({
 }))
 
 const typeIcons: Record<string, string> = {
-    apartment: 'ti-home',
-    condo: 'ti-layout-grid2',
-    house: 'ti-home',
-    townhouse: 'ti-layout-column3',
-    commercial: 'ti-briefcase',
-    land: 'ti-map-alt',
-    other: 'ti-tag',
+    apartment: 'fa-solid fa-house',
+    condo: 'fa-solid fa-grip',
+    house: 'fa-solid fa-house',
+    townhouse: 'fa-solid fa-table-columns',
+    commercial: 'fa-solid fa-briefcase',
+    land: 'fa-solid fa-map',
+    other: 'fa-solid fa-tag',
 }
 
 const statusColors: Record<string, string> = {
@@ -198,14 +198,14 @@ function imageUrl(url: string) {
         <Transition name="fade">
             <div v-if="successMessage"
                 class="mb-4 p-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-center gap-2">
-                <i class="ti-check text-emerald-500"></i>
+                <i class="fa-solid fa-check text-emerald-500"></i>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400">{{ successMessage }}</p>
             </div>
         </Transition>
         <Transition name="fade">
             <div v-if="errorMessage"
                 class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2">
-                <i class="ti-alert-circle text-red-500"></i>
+                <i class="fa-solid fa-circle-exclamation text-red-500"></i>
                 <p class="text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</p>
             </div>
         </Transition>
@@ -220,8 +220,8 @@ function imageUrl(url: string) {
             <div class="mt-3 sm:mt-0">
                 <button @click="handleAddProperty" :disabled="isCheckingLimit"
                     class="inline-flex items-center gap-2 px-4 py-2.5 text-sm bg-primary-600 dark:bg-primary-700 text-white rounded-lg hover:bg-primary-700 dark:hover:bg-primary-800 transition-colors shadow-sm shadow-primary-600/20 disabled:opacity-60">
-                    <i v-if="isCheckingLimit" class="ti-reload text-xs animate-spin"></i>
-                    <i v-else class="ti-plus text-xs"></i>
+                    <i v-if="isCheckingLimit" class="fa-solid fa-rotate text-xs animate-spin"></i>
+                    <i v-else class="fa-solid fa-plus text-xs"></i>
                     {{ isCheckingLimit ? t.planLimitChecking : t.addNewProperty }}
                 </button>
             </div>
@@ -232,7 +232,8 @@ function imageUrl(url: string) {
             :class="filtersVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
             <!-- Search -->
             <div class="relative flex-1">
-                <i class="ti-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <i
+                    class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                 <input v-model="searchQuery" type="text" :placeholder="t.searchProperties"
                     class="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
@@ -266,14 +267,14 @@ function imageUrl(url: string) {
             :class="cardsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
             <div
                 class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="ti-home text-2xl text-gray-400 dark:text-gray-500"></i>
+                <i class="fa-solid fa-house text-2xl text-gray-400 dark:text-gray-500"></i>
             </div>
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">{{ t.noProperties }}</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">{{ t.noPropertiesDesc }}</p>
             <button @click="handleAddProperty" :disabled="isCheckingLimit"
                 class="inline-flex items-center gap-2 px-4 py-2.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-60">
-                <i v-if="isCheckingLimit" class="ti-reload text-xs animate-spin"></i>
-                <i v-else class="ti-plus text-xs"></i>
+                <i v-if="isCheckingLimit" class="fa-solid fa-rotate text-xs animate-spin"></i>
+                <i v-else class="fa-solid fa-plus text-xs"></i>
                 {{ isCheckingLimit ? t.planLimitChecking : t.addNewProperty }}
             </button>
         </div>
@@ -294,7 +295,7 @@ function imageUrl(url: string) {
                         <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2">
                             <div
                                 class="w-12 h-12 bg-primary-100 dark:bg-primary-900/40 rounded-xl flex items-center justify-center">
-                                <i :class="typeIcons[property.propertyType] || 'ti-home'"
+                                <i :class="typeIcons[property.propertyType] || 'fa-solid fa-house'"
                                     class="text-primary-400 dark:text-primary-500 text-2xl"></i>
                             </div>
                             <span class="text-xs text-gray-400 dark:text-gray-500">{{ t.noImages }}</span>
@@ -312,7 +313,7 @@ function imageUrl(url: string) {
                             <div class="flex items-center gap-3">
                                 <div
                                     class="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <i :class="typeIcons[property.propertyType] || 'ti-home'"
+                                    <i :class="typeIcons[property.propertyType] || 'fa-solid fa-house'"
                                         class="text-primary-600 dark:text-primary-400 text-sm"></i>
                                 </div>
                                 <div>
@@ -368,17 +369,17 @@ function imageUrl(url: string) {
                     class="border-t border-gray-100 dark:border-gray-700 px-5 py-3 flex items-center justify-end gap-2 bg-gray-50/50 dark:bg-gray-900/30">
                     <NuxtLink :to="`/manager/properties/${property.documentId}`"
                         class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                        <i class="ti-eye text-xs"></i>
+                        <i class="fa-solid fa-eye text-xs"></i>
                         {{ t.view }}
                     </NuxtLink>
                     <NuxtLink :to="`/manager/properties/${property.documentId}/edit`"
                         class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-700 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors">
-                        <i class="ti-pencil text-xs"></i>
+                        <i class="fa-solid fa-pen text-xs"></i>
                         {{ t.edit }}
                     </NuxtLink>
                     <button @click="confirmDelete(property)"
                         class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
-                        <i class="ti-trash text-xs"></i>
+                        <i class="fa-solid fa-trash text-xs"></i>
                         {{ t.delete }}
                     </button>
                 </div>
@@ -395,7 +396,7 @@ function imageUrl(url: string) {
                         <div class="flex items-center gap-3 mb-4">
                             <div
                                 class="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i class="ti-crown text-amber-500 text-lg"></i>
+                                <i class="fa-solid fa-crown text-amber-500 text-lg"></i>
                             </div>
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t.planLimitTitle }}</h3>
                         </div>
@@ -442,7 +443,7 @@ function imageUrl(url: string) {
                         <div class="flex items-center gap-3 mb-4">
                             <div
                                 class="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-                                <i class="ti-alert-circle text-red-500 text-lg"></i>
+                                <i class="fa-solid fa-circle-exclamation text-red-500 text-lg"></i>
                             </div>
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t.deleteProperty }}</h3>
                         </div>
@@ -460,8 +461,8 @@ function imageUrl(url: string) {
                             </button>
                             <button @click="handleDelete" :disabled="isDeleting"
                                 class="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2">
-                                <i v-if="isDeleting" class="ti-reload text-xs animate-spin"></i>
-                                <i v-else class="ti-trash text-xs"></i>
+                                <i v-if="isDeleting" class="fa-solid fa-rotate text-xs animate-spin"></i>
+                                <i v-else class="fa-solid fa-trash text-xs"></i>
                                 {{ t.delete }}
                             </button>
                         </div>

@@ -57,6 +57,9 @@ const showDeleteModal = ref(false)
 const isDeleting = ref(false)
 const sectionsVisible = ref(false)
 
+// Live lease counts — documentId of unitType → number of active leases
+const leaseCountByUnitType = ref<Record<string, number>>({})
+
 // Gallery lightbox
 const lightboxOpen = ref(false)
 const lightboxIndex = ref(0)
@@ -111,13 +114,13 @@ const typeLabels: Record<string, string> = {
 }
 
 const typeIcons: Record<string, string> = {
-    apartment: 'ti-home',
-    condo: 'ti-layout-grid2',
-    house: 'ti-home',
-    townhouse: 'ti-layout-column3',
-    commercial: 'ti-briefcase',
-    land: 'ti-map-alt',
-    other: 'ti-tag',
+    apartment: 'fa-solid fa-house',
+    condo: 'fa-solid fa-grip',
+    house: 'fa-solid fa-house',
+    townhouse: 'fa-solid fa-table-columns',
+    commercial: 'fa-solid fa-briefcase',
+    land: 'fa-solid fa-map',
+    other: 'fa-solid fa-tag',
 }
 
 const statusColors: Record<string, string> = {
@@ -127,26 +130,52 @@ const statusColors: Record<string, string> = {
     sold: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
 }
 
+// Live occupied count derived from active leases (overrides the stale DB value)
+const liveOccupiedUnits = computed(() => {
+    const counts = leaseCountByUnitType.value
+    if (Object.keys(counts).length === 0) {
+        // Fallback to DB value while leases haven't been fetched yet
+        return property.value?.occupiedUnits ?? 0
+    }
+    return Object.values(counts).reduce((sum, n) => sum + n, 0)
+})
+
 const occupancyPercent = computed(() => {
     if (!property.value || !property.value.totalUnits) return 0
-    return Math.round((property.value.occupiedUnits / property.value.totalUnits) * 100)
+    return Math.round((liveOccupiedUnits.value / property.value.totalUnits) * 100)
 })
 
 const vacantUnits = computed(() => {
     if (!property.value) return 0
-    return property.value.totalUnits - property.value.occupiedUnits
+    return property.value.totalUnits - liveOccupiedUnits.value
 })
 
 async function fetchProperty() {
     try {
         isLoading.value = true
         sectionsVisible.value = false
-        const res = await fetch(`${STRAPI_URL}/api/properties/${propertyId}?populate[0]=image&populate[1]=images&populate[2]=unitTypes.images`, {
-            headers: { 'Authorization': `Bearer ${token.value}` },
-        })
-        if (!res.ok) throw new Error('Failed to fetch property')
-        const json = await res.json()
+        const [propRes, leasesRes] = await Promise.all([
+            fetch(`${STRAPI_URL}/api/properties/${propertyId}?populate[0]=image&populate[1]=images&populate[2]=unitTypes.images`, {
+                headers: { 'Authorization': `Bearer ${token.value}` },
+            }),
+            fetch(`${STRAPI_URL}/api/leases?filters[property][documentId][$eq]=${propertyId}&filters[status][$eq]=active&populate[0]=unitType&pagination[pageSize]=200`, {
+                headers: { 'Authorization': `Bearer ${token.value}` },
+            }),
+        ])
+        if (!propRes.ok) throw new Error('Failed to fetch property')
+        const json = await propRes.json()
         property.value = json.data
+
+        // Build live lease count map
+        if (leasesRes.ok) {
+            const leasesJson = await leasesRes.json()
+            const counts: Record<string, number> = {}
+            for (const lease of leasesJson.data ?? []) {
+                const utDocId = lease.unitType?.documentId
+                if (utDocId) counts[utDocId] = (counts[utDocId] ?? 0) + 1
+            }
+            leaseCountByUnitType.value = counts
+        }
     } catch {
         errorMessage.value = 'Failed to load property'
     } finally {
@@ -194,7 +223,7 @@ onUnmounted(() => {
             <div class="flex items-center gap-3">
                 <button @click="$router.back()"
                     class="w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    <i class="ti-arrow-left text-gray-600 dark:text-gray-300"></i>
+                    <i class="fa-solid fa-arrow-left text-gray-600 dark:text-gray-300"></i>
                 </button>
                 <div>
                     <h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{{ t.propertyDetails }}</h1>
@@ -204,12 +233,12 @@ onUnmounted(() => {
             <div v-if="property" class="flex items-center gap-2">
                 <NuxtLink :to="`/manager/properties/${property.documentId}/edit`"
                     class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-700 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors">
-                    <i class="ti-pencil text-xs"></i>
+                    <i class="fa-solid fa-pen text-xs"></i>
                     {{ t.edit }}
                 </NuxtLink>
                 <button @click="showDeleteModal = true"
                     class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
-                    <i class="ti-trash text-xs"></i>
+                    <i class="fa-solid fa-trash text-xs"></i>
                     {{ t.delete }}
                 </button>
             </div>
@@ -218,7 +247,7 @@ onUnmounted(() => {
         <!-- Error -->
         <div v-if="errorMessage"
             class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2">
-            <i class="ti-alert-circle text-red-500 text-sm"></i>
+            <i class="fa-solid fa-circle-exclamation text-red-500 text-sm"></i>
             <p class="text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</p>
         </div>
 
@@ -245,13 +274,13 @@ onUnmounted(() => {
                         class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                         <div
                             class="opacity-0 group-hover:opacity-100 transition-opacity w-10 h-10 bg-white/90 dark:bg-gray-900/90 rounded-full flex items-center justify-center shadow-lg">
-                            <i class="ti-zoom-in text-gray-800 dark:text-gray-200"></i>
+                            <i class="fa-solid fa-magnifying-glass-plus text-gray-800 dark:text-gray-200"></i>
                         </div>
                     </div>
                     <!-- Image count badge -->
                     <div v-if="allImages.length > 1"
                         class="absolute bottom-3 right-3 flex items-center gap-1 bg-black/60 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
-                        <i class="ti-image text-[10px]"></i>
+                        <i class="fa-solid fa-image text-[10px]"></i>
                         {{ allImages.length }}
                     </div>
                 </div>
@@ -276,7 +305,7 @@ onUnmounted(() => {
                     <div class="flex items-start gap-4 mb-6">
                         <div v-if="!property.image"
                             class="w-14 h-14 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <i :class="typeIcons[property.propertyType] || 'ti-home'"
+                            <i :class="typeIcons[property.propertyType] || 'fa-solid fa-house'"
                                 class="text-primary-600 dark:text-primary-400 text-2xl"></i>
                         </div>
                         <div class="flex-1">
@@ -288,7 +317,7 @@ onUnmounted(() => {
                                 </span>
                             </div>
                             <p class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                <i class="ti-location-pin text-xs"></i>
+                                <i class="fa-solid fa-location-dot text-xs"></i>
                                 {{ property.address }}, {{ property.city }}
                                 <template v-if="property.state">, {{ property.state }}</template>
                                 <template v-if="property.zipCode"> {{ property.zipCode }}</template>
@@ -306,8 +335,7 @@ onUnmounted(() => {
                         </div>
                         <div class="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-center">
                             <p class="text-xs text-emerald-600 dark:text-emerald-400 mb-1">{{ t.occupied }}</p>
-                            <p class="text-xl font-bold text-emerald-700 dark:text-emerald-300">{{
-                                property.occupiedUnits }}
+                            <p class="text-xl font-bold text-emerald-700 dark:text-emerald-300">{{ liveOccupiedUnits }}
                             </p>
                         </div>
                         <div class="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl text-center">
@@ -344,7 +372,7 @@ onUnmounted(() => {
                     :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'"
                     :style="{ transitionDelay: sectionsVisible ? '100ms' : '0ms' }">
                     <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                        <i class="ti-info-alt text-primary-500"></i>
+                        <i class="fa-solid fa-circle-info text-primary-500"></i>
                         {{ t.propertyInfo }}
                     </h3>
                     <dl class="space-y-3">
@@ -357,7 +385,7 @@ onUnmounted(() => {
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.areaLabel }}</dt>
                             <dd class="text-sm font-medium text-gray-900 dark:text-white">{{
                                 Number(property.area).toLocaleString('en-US')
-                                }} {{ property.areaUnit }}</dd>
+                            }} {{ property.areaUnit }}</dd>
                         </div>
                         <div v-if="property.yearBuilt" class="flex justify-between">
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.yearBuiltLabel }}</dt>
@@ -375,7 +403,7 @@ onUnmounted(() => {
                     :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'"
                     :style="{ transitionDelay: sectionsVisible ? '200ms' : '0ms' }">
                     <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                        <i class="ti-wallet text-primary-500"></i>
+                        <i class="fa-solid fa-wallet text-primary-500"></i>
                         {{ t.financialInfo }}
                     </h3>
                     <dl class="space-y-3">
@@ -394,7 +422,7 @@ onUnmounted(() => {
                         <div v-if="property.monthlyRent" class="flex justify-between">
                             <dt class="text-sm text-gray-500 dark:text-gray-400">Est. Monthly Revenue</dt>
                             <dd class="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                                {{ (Number(property.monthlyRent) * property.occupiedUnits).toLocaleString('en-US') }} {{
+                                {{ (Number(property.monthlyRent) * liveOccupiedUnits).toLocaleString('en-US') }} {{
                                     property.currency
                                 }}
                             </dd>
@@ -409,10 +437,10 @@ onUnmounted(() => {
                 :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'"
                 :style="{ transitionDelay: sectionsVisible ? '300ms' : '0ms' }">
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <i class="ti-layout-grid2 text-primary-500"></i>
+                    <i class="fa-solid fa-grip text-primary-500"></i>
                     {{ t.unitTypes }}
                     <span class="ml-auto text-xs font-normal text-gray-400 dark:text-gray-500">
-                        {{ property.totalUnits }} {{ t.totalUnitsLabel }}
+                        {{ liveOccupiedUnits }} / {{ property.totalUnits }} {{ t.occupied?.toLowerCase() }}
                     </span>
                 </h3>
                 <div class="space-y-3">
@@ -423,44 +451,67 @@ onUnmounted(() => {
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ ut.name
-                                    }}</span>
+                                        }}</span>
                                     <span
                                         class="text-xs px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400 capitalize">
                                         {{ ut.unitType?.replace(/^br(\d)$/, '$1BR') ?? ut.unitType }}
                                     </span>
+                                    <!-- Live status badge driven by active lease count -->
                                     <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="{
-                                        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400': ut.status === 'available',
-                                        'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400': ut.status === 'occupied',
+                                        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400': (leaseCountByUnitType[ut.documentId] ?? 0) === 0 && ut.status !== 'maintenance' && ut.status !== 'unavailable',
+                                        'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400': (leaseCountByUnitType[ut.documentId] ?? 0) > 0,
                                         'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400': ut.status === 'maintenance',
                                         'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400': ut.status === 'unavailable',
                                     }">
-                                        {{ t['unitStatus' + ut.status.charAt(0).toUpperCase() + ut.status.slice(1) as
-                                            keyof typeof
-                                            t] ?? ut.status }}
+                                        {{ (leaseCountByUnitType[ut.documentId] ?? 0) > 0
+                                            ? (t.unitStatusOccupied ?? 'Occupied')
+                                            : ut.status === 'maintenance'
+                                                ? (t.unitStatusMaintenance ?? 'Maintenance')
+                                                : ut.status === 'unavailable'
+                                                    ? (t.unitStatusUnavailable ?? 'Unavailable')
+                                                    : (t.unitStatusAvailable ?? 'Available') }}
+                                    </span>
+                                    <!-- Resident / lease count chip -->
+                                    <span v-if="(leaseCountByUnitType[ut.documentId] ?? 0) > 0"
+                                        class="text-xs px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 flex items-center gap-1">
+                                        <i class="fa-solid fa-user-check text-[9px]"></i>
+                                        {{ leaseCountByUnitType[ut.documentId] }} / {{ ut.quantity }}
                                     </span>
                                 </div>
                                 <div
                                     class="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
                                     <span class="flex items-center gap-1">
-                                        <i class="ti-home"></i>
+                                        <i class="fa-solid fa-house"></i>
                                         {{ ut.quantity }} {{ ut.quantity === 1 ? 'unit' : 'units' }}
                                     </span>
                                     <span v-if="ut.area" class="flex items-center gap-1">
-                                        <i class="ti-ruler-alt-2"></i>
+                                        <i class="fa-solid fa-ruler"></i>
                                         {{ Number(ut.area).toLocaleString('en-US') }} {{ ut.areaUnit }}
                                     </span>
                                     <span v-if="ut.price"
                                         class="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
-                                        <i class="ti-tag"></i>
+                                        <i class="fa-solid fa-tag"></i>
                                         {{ Number(ut.price).toLocaleString('en-US') }} {{ ut.currency }} / mo
                                     </span>
+                                </div>
+                                <!-- Mini occupancy bar per unit type -->
+                                <div v-if="ut.quantity > 0" class="mt-2">
+                                    <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div class="h-full rounded-full transition-all duration-500" :class="(leaseCountByUnitType[ut.documentId] ?? 0) === 0
+                                            ? 'bg-gray-300 dark:bg-gray-600'
+                                            : (leaseCountByUnitType[ut.documentId] ?? 0) >= ut.quantity
+                                                ? 'bg-blue-500'
+                                                : 'bg-violet-400'"
+                                            :style="{ width: Math.min(((leaseCountByUnitType[ut.documentId] ?? 0) / ut.quantity) * 100, 100) + '%' }">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <!-- Description + images -->
                         <div v-if="ut.description || ut.images?.length" class="p-3 space-y-2">
                             <p v-if="ut.description" class="text-xs text-gray-500 dark:text-gray-400">{{ ut.description
-                            }}</p>
+                                }}</p>
                             <div v-if="ut.images?.length" class="flex gap-2 flex-wrap">
                                 <div v-for="(img, imgIdx) in ut.images" :key="img.id"
                                     class="relative w-24 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer group"
@@ -470,7 +521,7 @@ onUnmounted(() => {
                                     <div
                                         class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                                         <i
-                                            class="ti-zoom-in text-white opacity-0 group-hover:opacity-100 transition-opacity text-sm"></i>
+                                            class="fa-solid fa-magnifying-glass-plus text-white opacity-0 group-hover:opacity-100 transition-opacity text-sm"></i>
                                     </div>
                                 </div>
                             </div>
@@ -492,7 +543,7 @@ onUnmounted(() => {
                     <!-- Close -->
                     <button @click="lightboxOpen = false"
                         class="absolute top-4 right-4 z-10 w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors">
-                        <i class="ti-close"></i>
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
 
                     <!-- Counter -->
@@ -503,7 +554,7 @@ onUnmounted(() => {
                     <!-- Prev -->
                     <button v-if="lightboxImages.length > 1" @click.stop="lightboxPrev"
                         class="absolute left-3 md:left-6 z-10 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/25 text-white rounded-full transition-colors">
-                        <i class="ti-angle-left"></i>
+                        <i class="fa-solid fa-chevron-left"></i>
                     </button>
 
                     <!-- Main image -->
@@ -518,7 +569,7 @@ onUnmounted(() => {
                     <!-- Next -->
                     <button v-if="lightboxImages.length > 1" @click.stop="lightboxNext"
                         class="absolute right-3 md:right-6 z-10 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/25 text-white rounded-full transition-colors">
-                        <i class="ti-angle-right"></i>
+                        <i class="fa-solid fa-chevron-right"></i>
                     </button>
 
                     <!-- Thumbnail strip -->
@@ -545,7 +596,7 @@ onUnmounted(() => {
                         <div class="flex items-center gap-3 mb-4">
                             <div
                                 class="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-                                <i class="ti-alert-circle text-red-500 text-lg"></i>
+                                <i class="fa-solid fa-circle-exclamation text-red-500 text-lg"></i>
                             </div>
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t.deleteProperty }}</h3>
                         </div>
@@ -557,8 +608,8 @@ onUnmounted(() => {
                             </button>
                             <button @click="handleDelete" :disabled="isDeleting"
                                 class="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2">
-                                <i v-if="isDeleting" class="ti-reload text-xs animate-spin"></i>
-                                <i v-else class="ti-trash text-xs"></i>
+                                <i v-if="isDeleting" class="fa-solid fa-rotate text-xs animate-spin"></i>
+                                <i v-else class="fa-solid fa-trash text-xs"></i>
                                 {{ t.delete }}
                             </button>
                         </div>

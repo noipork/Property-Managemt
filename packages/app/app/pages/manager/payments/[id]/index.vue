@@ -49,8 +49,8 @@ const methodLabels = computed(() => ({
 }))
 
 const methodIcons: Record<string, string> = {
-    creditCard: 'ti-credit-card', bankTransfer: 'ti-exchange-vertical',
-    cash: 'ti-money', promptPay: 'ti-mobile', other: 'ti-wallet',
+    creditCard: 'fa-solid fa-credit-card', bankTransfer: 'fa-solid fa-right-left',
+    cash: 'fa-solid fa-money-bill', promptPay: 'fa-solid fa-mobile-screen', other: 'fa-solid fa-wallet',
 }
 
 const invoiceStatusColors: Record<string, string> = {
@@ -84,7 +84,7 @@ async function fetchPayment() {
             'populate[2]': 'billing',
             'populate[3]': 'paymentSlip',
         })
-        const res = await fetch(`${STRAPI_URL}/api/payments?filters[id][$eq]=${paymentId}&${params}`, {
+        const res = await fetch(`${STRAPI_URL}/api/payments?filters[documentId][$eq]=${paymentId}&${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
         })
         if (!res.ok) throw new Error('Not found')
@@ -129,11 +129,11 @@ onMounted(async () => {
         <!-- Error -->
         <div v-else-if="errorMessage" class="flex flex-col items-center justify-center py-20 text-center">
             <div class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-                <i class="ti-alert-circle text-2xl text-red-500"></i>
+                <i class="fa-solid fa-circle-exclamation text-2xl text-red-500"></i>
             </div>
             <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ errorMessage }}</h3>
             <NuxtLink to="/manager/payments" class="mt-4 text-sm text-primary-600 hover:underline">{{ t.backToPayments
-                }}
+            }}
             </NuxtLink>
         </div>
 
@@ -143,7 +143,7 @@ onMounted(async () => {
                 <div class="flex items-center gap-3">
                     <NuxtLink to="/manager/payments"
                         class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                        <i class="ti-arrow-left text-gray-500 dark:text-gray-400"></i>
+                        <i class="fa-solid fa-arrow-left text-gray-500 dark:text-gray-400"></i>
                     </NuxtLink>
                     <div>
                         <div class="flex items-center gap-3">
@@ -175,17 +175,17 @@ onMounted(async () => {
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paymentMethod }}</p>
                                 <div class="flex items-center gap-1.5">
-                                    <i :class="methodIcons[payment.method] || 'ti-wallet'"
+                                    <i :class="methodIcons[payment.method] || 'fa-solid fa-wallet'"
                                         class="text-sm text-gray-500"></i>
                                     <span class="text-sm font-medium text-gray-900 dark:text-white">{{
                                         methodLabels[payment.method as keyof typeof methodLabels] || payment.method
-                                    }}</span>
+                                        }}</span>
                                 </div>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paymentDate }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(payment.date)
-                                }}</p>
+                                    }}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paymentAmount }}</p>
@@ -194,7 +194,7 @@ onMounted(async () => {
                             </div>
                             <div v-if="payment.transactionId">
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paymentTransactionId
-                                }}</p>
+                                    }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white font-mono">{{
                                     payment.transactionId }}</p>
                             </div>
@@ -232,7 +232,7 @@ onMounted(async () => {
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{
                                     payment.billing.invoiceNo }}</p>
                                 <p class="text-xs text-gray-400">{{ t.dueDate }}: {{ formatDate(payment.billing.dueDate)
-                                }}</p>
+                                    }}</p>
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
@@ -241,7 +241,7 @@ onMounted(async () => {
                                 </span>
                                 <span class="text-sm font-semibold text-gray-900 dark:text-white">{{
                                     formatCurrency(payment.billing.amount, payment.billing.currency) }}</span>
-                                <i class="ti-angle-right text-gray-400 text-xs"></i>
+                                <i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i>
                             </div>
                         </NuxtLink>
                     </div>
@@ -257,14 +257,14 @@ onMounted(async () => {
                         <div v-if="payment.resident" class="flex items-center gap-3">
                             <div
                                 class="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                                <i class="ti-user text-primary-600 dark:text-primary-400"></i>
+                                <i class="fa-solid fa-user text-primary-600 dark:text-primary-400"></i>
                             </div>
                             <div>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{
                                     payment.resident.username }}</p>
                                 <p class="text-xs text-gray-400">{{ payment.resident.email }}</p>
                                 <p v-if="payment.resident.roomNumber" class="text-xs text-gray-500 dark:text-gray-400">
-                                    <i class="ti-key text-xs mr-1"></i>{{ payment.resident.roomNumber }}
+                                    <i class="fa-solid fa-key text-xs mr-1"></i>{{ payment.resident.roomNumber }}
                                 </p>
                             </div>
                         </div>
@@ -279,13 +279,13 @@ onMounted(async () => {
                         <div v-if="payment.property" class="flex items-center gap-3">
                             <div
                                 class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                                <i class="ti-home text-emerald-600 dark:text-emerald-400"></i>
+                                <i class="fa-solid fa-house text-emerald-600 dark:text-emerald-400"></i>
                             </div>
                             <div>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ payment.property.name }}
                                 </p>
                                 <p v-if="payment.property.city" class="text-xs text-gray-400">{{ payment.property.city
-                                }}</p>
+                                    }}</p>
                             </div>
                         </div>
                         <p v-else class="text-sm text-gray-400">—</p>
@@ -296,7 +296,7 @@ onMounted(async () => {
                         <p class="text-sm opacity-80">{{ t.paymentAmount }}</p>
                         <p class="text-3xl font-bold mt-1">{{ formatCurrency(payment.amount, payment.currency) }}</p>
                         <div class="flex items-center gap-2 mt-2">
-                            <i :class="methodIcons[payment.method] || 'ti-wallet'" class="text-sm opacity-80"></i>
+                            <i :class="methodIcons[payment.method] || 'fa-solid fa-wallet'" class="text-sm opacity-80"></i>
                             <p class="text-sm opacity-80">{{ methodLabels[payment.method as keyof typeof methodLabels]
                                 || payment.method }}</p>
                         </div>

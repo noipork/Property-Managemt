@@ -104,11 +104,11 @@ const methodLabels = computed(() => ({
 }))
 
 const methodIcons: Record<string, string> = {
-    creditCard: 'ti-credit-card',
-    bankTransfer: 'ti-exchange-vertical',
-    cash: 'ti-money',
-    promptPay: 'ti-mobile',
-    other: 'ti-wallet',
+    creditCard: 'fa-solid fa-credit-card',
+    bankTransfer: 'fa-solid fa-right-left',
+    cash: 'fa-solid fa-money-bill',
+    promptPay: 'fa-solid fa-mobile-screen',
+    other: 'fa-solid fa-wallet',
 }
 
 const activeFilterCount = computed(() =>
@@ -228,7 +228,7 @@ onMounted(async () => {
         <!-- Property Dropdown -->
         <div class="relative w-full sm:w-72 transition-all duration-500 delay-100"
             :class="headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
-            <i class="ti-home absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+            <i class="fa-solid fa-house absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
             <select v-model="filterPropertyId"
                 class="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none transition-colors">
                 <option value="">{{ t.allProperties }}</option>
@@ -237,14 +237,14 @@ onMounted(async () => {
                 </option>
             </select>
             <i
-                class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
         </div>
 
         <!-- Search + Filters -->
         <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 space-y-3 transition-all duration-500 delay-150"
             :class="filtersVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
             <div class="relative">
-                <i class="ti-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                 <input v-model="searchQuery" type="text" :placeholder="t.searchPayments"
                     class="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
@@ -258,7 +258,7 @@ onMounted(async () => {
                             methodLabels] || m }}</option>
                     </select>
                     <i
-                        class="ti-angle-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
                 <!-- Status -->
                 <div class="relative">
@@ -269,7 +269,7 @@ onMounted(async () => {
                             statusLabels] || s }}</option>
                     </select>
                     <i
-                        class="ti-angle-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
                 <!-- Date Range -->
                 <div class="flex items-center gap-1.5">
@@ -287,7 +287,7 @@ onMounted(async () => {
                 <button v-if="activeFilterCount > 0"
                     @click="filterMethod = ''; filterStatus = ''; filterDateFrom = ''; filterDateTo = ''"
                     class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-red-500 hover:text-red-700 dark:hover:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg transition-colors">
-                    <i class="ti-close text-xs"></i>
+                    <i class="fa-solid fa-xmark text-xs"></i>
                     Clear ({{ activeFilterCount }})
                 </button>
             </div>
@@ -304,7 +304,7 @@ onMounted(async () => {
         <!-- Empty -->
         <div v-else-if="payments.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
             <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-                <i class="ti-wallet text-2xl text-gray-400"></i>
+                <i class="fa-solid fa-wallet text-2xl text-gray-400"></i>
             </div>
             <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ t.noPayments }}</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">{{ t.noPaymentsDesc }}</p>
@@ -320,7 +320,7 @@ onMounted(async () => {
                     <!-- Icon -->
                     <div
                         class="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
-                        <i :class="methodIcons[pay.method] || 'ti-wallet'"
+                        <i :class="methodIcons[pay.method] || 'fa-solid fa-wallet'"
                             class="text-xl text-emerald-600 dark:text-emerald-400"></i>
                     </div>
 
@@ -334,11 +334,11 @@ onMounted(async () => {
                             </span>
                         </div>
                         <p v-if="pay.resident" class="text-sm text-gray-500 dark:text-gray-400 truncate">
-                            <i class="ti-user text-xs mr-1"></i>{{ pay.resident.username }}
+                            <i class="fa-solid fa-user text-xs mr-1"></i>{{ pay.resident.username }}
                             <span v-if="pay.resident.roomNumber"> · {{ pay.resident.roomNumber }}</span>
                         </p>
                         <p v-if="pay.billing" class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                            <i class="ti-receipt text-xs mr-1"></i>{{ pay.billing.invoiceNo }}
+                            <i class="fa-solid fa-receipt text-xs mr-1"></i>{{ pay.billing.invoiceNo }}
                         </p>
                     </div>
 
@@ -346,7 +346,7 @@ onMounted(async () => {
                     <div class="hidden sm:block text-center min-w-[100px]">
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold">
-                            <i :class="methodIcons[pay.method] || 'ti-wallet'" class="text-xs"></i>
+                            <i :class="methodIcons[pay.method] || 'fa-solid fa-wallet'" class="text-xs"></i>
                             {{ methodLabels[pay.method as keyof typeof methodLabels] || pay.method }}
                         </span>
                     </div>
@@ -369,7 +369,7 @@ onMounted(async () => {
                         <NuxtLink :to="`/manager/payments/${pay.id}`" @click.stop
                             class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                             :title="t.view">
-                            <i class="ti-eye text-base"></i>
+                            <i class="fa-solid fa-eye text-base"></i>
                         </NuxtLink>
                     </div>
                 </div>
@@ -378,7 +378,7 @@ onMounted(async () => {
                 <div class="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 sm:hidden">
                     <span
                         class="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-xs font-medium">
-                        <i :class="methodIcons[pay.method] || 'ti-wallet'" class="text-xs"></i>
+                        <i :class="methodIcons[pay.method] || 'fa-solid fa-wallet'" class="text-xs"></i>
                         {{ methodLabels[pay.method as keyof typeof methodLabels] || pay.method }}
                     </span>
                     <span class="text-sm font-bold text-gray-900 dark:text-white">{{ formatCurrency(pay.amount,
@@ -400,29 +400,29 @@ onMounted(async () => {
                                 <option v-for="n in pageSizeOptions" :key="n" :value="n">{{ n }}</option>
                             </select>
                             <i
-                                class="ti-angle-down absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                class="fa-solid fa-chevron-down absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
                     </div>
                 </div>
                 <div class="flex items-center gap-1">
                     <button @click="currentPage = 1" :disabled="currentPage === 1"
                         class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
-                        <i class="ti-angle-double-left text-xs"></i>
+                        <i class="fa-solid fa-angles-left text-xs"></i>
                     </button>
                     <button @click="currentPage--" :disabled="currentPage === 1"
                         class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
-                        <i class="ti-angle-left text-xs"></i>
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
                     </button>
                     <span class="px-3 py-1 text-xs text-gray-600 dark:text-gray-400">
                         {{ t.page }} {{ currentPage }} {{ t.of }} {{ totalPages || 1 }}
                     </span>
                     <button @click="currentPage++" :disabled="currentPage >= totalPages"
                         class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
-                        <i class="ti-angle-right text-xs"></i>
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
                     </button>
                     <button @click="currentPage = totalPages" :disabled="currentPage >= totalPages"
                         class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
-                        <i class="ti-angle-double-right text-xs"></i>
+                        <i class="fa-solid fa-angles-right text-xs"></i>
                     </button>
                 </div>
             </div>

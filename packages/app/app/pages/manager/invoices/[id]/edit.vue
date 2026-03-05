@@ -255,12 +255,12 @@ onMounted(async () => {
                     <div v-for="toast in toasts" :key="toast.id"
                         class="pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium"
                         :class="toast.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/80 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200' : 'bg-red-50 dark:bg-red-900/80 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'">
-                        <i :class="toast.type === 'success' ? 'ti-check-box text-emerald-500' : 'ti-alert-circle text-red-500'"
+                        <i :class="toast.type === 'success' ? 'fa-solid fa-square-check text-emerald-500' : 'fa-solid fa-circle-exclamation text-red-500'"
                             class="text-base mt-0.5 shrink-0"></i>
                         <span class="flex-1 leading-snug">{{ toast.message }}</span>
                         <button @click="dismissToast(toast.id)"
                             class="shrink-0 opacity-50 hover:opacity-100 transition-opacity"><i
-                                class="ti-close text-xs"></i></button>
+                                class="fa-solid fa-xmark text-xs"></i></button>
                     </div>
                 </TransitionGroup>
             </div>
@@ -280,7 +280,7 @@ onMounted(async () => {
                 :class="headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3'">
                 <NuxtLink :to="`/manager/invoices/${invoiceId}`"
                     class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                    <i class="ti-arrow-left text-gray-500 dark:text-gray-400"></i>
+                    <i class="fa-solid fa-arrow-left text-gray-500 dark:text-gray-400"></i>
                 </NuxtLink>
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.editInvoice }}</h1>

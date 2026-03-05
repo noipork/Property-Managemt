@@ -271,12 +271,12 @@ onMounted(async () => {
                         :class="toast.type === 'success'
                             ? 'bg-emerald-50 dark:bg-emerald-900/80 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
                             : 'bg-red-50 dark:bg-red-900/80 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'">
-                        <i :class="toast.type === 'success' ? 'ti-check-box text-emerald-500' : 'ti-alert-circle text-red-500'"
+                        <i :class="toast.type === 'success' ? 'fa-solid fa-square-check text-emerald-500' : 'fa-solid fa-circle-exclamation text-red-500'"
                             class="text-base mt-0.5 shrink-0"></i>
                         <span class="flex-1 leading-snug">{{ toast.message }}</span>
                         <button @click="dismissToast(toast.id)"
                             class="shrink-0 opacity-50 hover:opacity-100 transition-opacity">
-                            <i class="ti-close text-xs"></i>
+                            <i class="fa-solid fa-xmark text-xs"></i>
                         </button>
                     </div>
                 </TransitionGroup>
@@ -292,7 +292,7 @@ onMounted(async () => {
             </div>
             <NuxtLink to="/manager/residents/register"
                 class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
-                <i class="ti-user-add text-base"></i>
+                <i class="fa-solid fa-user-plus text-base"></i>
                 {{ t.registerResident }}
             </NuxtLink>
         </div>
@@ -300,7 +300,7 @@ onMounted(async () => {
         <!-- Property Dropdown -->
         <div class="relative w-full sm:w-72 transition-all duration-500 delay-100"
             :class="headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
-            <i class="ti-home absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+            <i class="fa-solid fa-house absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
             <select v-model="filterPropertyId" @change="filterUnitTypeId = ''"
                 class="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none transition-colors">
                 <option value="">{{ t.allProperties }}</option>
@@ -309,7 +309,7 @@ onMounted(async () => {
                 </option>
             </select>
             <i
-                class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
         </div>
 
         <!-- Search + Filters -->
@@ -317,7 +317,7 @@ onMounted(async () => {
             :class="filtersVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
             <!-- Row 1: Search -->
             <div class="relative">
-                <i class="ti-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                 <input v-model="searchQuery" type="text" :placeholder="t.searchResidents"
                     class="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
@@ -332,7 +332,7 @@ onMounted(async () => {
                         </option>
                     </select>
                     <i
-                        class="ti-angle-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
                 <!-- Status -->
                 <div class="relative">
@@ -342,7 +342,7 @@ onMounted(async () => {
                         <option v-for="s in statuses" :key="s" :value="s">{{ statusLabels[s] }}</option>
                     </select>
                     <i
-                        class="ti-angle-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
                 <!-- Date From -->
                 <div class="flex items-center gap-1.5">
@@ -360,7 +360,7 @@ onMounted(async () => {
                 <button v-if="activeFilterCount > 0"
                     @click="filterUnitTypeId = ''; filterStatus = ''; filterDateFrom = ''; filterDateTo = ''"
                     class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-red-500 hover:text-red-700 dark:hover:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg transition-colors">
-                    <i class="ti-close text-xs"></i>
+                    <i class="fa-solid fa-xmark text-xs"></i>
                     Clear ({{ activeFilterCount }})
                 </button>
             </div>
@@ -377,13 +377,13 @@ onMounted(async () => {
         <!-- Empty state -->
         <div v-else-if="residents.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
             <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-                <i class="ti-user text-2xl text-gray-400"></i>
+                <i class="fa-solid fa-user text-2xl text-gray-400"></i>
             </div>
             <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ t.noResidents }}</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">{{ t.noResidentsDesc }}</p>
             <NuxtLink to="/manager/residents/register"
                 class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
-                <i class="ti-user-add text-base"></i>
+                <i class="fa-solid fa-user-plus text-base"></i>
                 {{ t.registerResident }}
             </NuxtLink>
         </div>
@@ -400,7 +400,7 @@ onMounted(async () => {
                     <!-- Avatar -->
                     <div
                         class="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
-                        <i class="ti-user text-xl text-primary-600 dark:text-primary-400"></i>
+                        <i class="fa-solid fa-user text-xl text-primary-600 dark:text-primary-400"></i>
                     </div>
 
                     <!-- Main Info -->
@@ -424,7 +424,7 @@ onMounted(async () => {
                         <div class="text-center min-w-[60px]">
                             <span v-if="resident.roomNumber"
                                 class="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold">
-                                <i class="ti-key text-xs"></i>
+                                <i class="fa-solid fa-key text-xs"></i>
                                 {{ resident.roomNumber }}
                             </span>
                             <span v-else class="text-gray-400 text-xs">—</span>
@@ -460,17 +460,17 @@ onMounted(async () => {
                         <NuxtLink :to="`/manager/residents/${resident.id}`" @click.stop
                             class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                             :title="t.view">
-                            <i class="ti-eye text-base"></i>
+                            <i class="fa-solid fa-eye text-base"></i>
                         </NuxtLink>
                         <NuxtLink :to="`/manager/residents/${resident.id}/edit`" @click.stop
                             class="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                             :title="t.edit">
-                            <i class="ti-pencil text-base"></i>
+                            <i class="fa-solid fa-pen text-base"></i>
                         </NuxtLink>
                         <button @click.stop="confirmDelete(resident)"
                             class="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                             :title="t.delete">
-                            <i class="ti-trash text-base"></i>
+                            <i class="fa-solid fa-trash text-base"></i>
                         </button>
                     </div>
                 </div>
@@ -479,14 +479,14 @@ onMounted(async () => {
                 <div class="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 sm:hidden">
                     <span v-if="resident.roomNumber"
                         class="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-xs font-medium">
-                        <i class="ti-key text-xs"></i>
+                        <i class="fa-solid fa-key text-xs"></i>
                         {{ resident.roomNumber }}
                     </span>
                     <span v-if="resident.unitType" class="text-xs text-gray-500 dark:text-gray-400">{{
                         resident.unitType.name }}</span>
                     <span v-if="resident.nextBillDate" class="text-xs font-medium"
                         :class="new Date(resident.nextBillDate) <= new Date() ? 'text-red-500' : 'text-amber-500'">
-                        <i class="ti-bell text-xs"></i> {{ formatDate(resident.nextBillDate) }}
+                        <i class="fa-solid fa-bell text-xs"></i> {{ formatDate(resident.nextBillDate) }}
                     </span>
                     <span class="text-xs text-gray-400 ml-auto">{{ formatDate(resident.registrationDate) }}</span>
                 </div>
@@ -506,7 +506,7 @@ onMounted(async () => {
                                 <option v-for="n in pageSizeOptions" :key="n" :value="n">{{ n }}</option>
                             </select>
                             <i
-                                class="ti-angle-down absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                class="fa-solid fa-chevron-down absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
                     </div>
                 </div>
@@ -514,22 +514,22 @@ onMounted(async () => {
                 <div class="flex items-center gap-1">
                     <button @click="currentPage = 1" :disabled="currentPage === 1"
                         class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
-                        <i class="ti-angle-double-left text-xs"></i>
+                        <i class="fa-solid fa-angles-left text-xs"></i>
                     </button>
                     <button @click="currentPage--" :disabled="currentPage === 1"
                         class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
-                        <i class="ti-angle-left text-xs"></i>
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
                     </button>
                     <span class="px-3 py-1 text-xs text-gray-600 dark:text-gray-400">
                         {{ t.page }} {{ currentPage }} {{ t.of }} {{ totalPages || 1 }}
                     </span>
                     <button @click="currentPage++" :disabled="currentPage >= totalPages"
                         class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
-                        <i class="ti-angle-right text-xs"></i>
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
                     </button>
                     <button @click="currentPage = totalPages" :disabled="currentPage >= totalPages"
                         class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors">
-                        <i class="ti-angle-double-right text-xs"></i>
+                        <i class="fa-solid fa-angles-right text-xs"></i>
                     </button>
                 </div>
             </div>
@@ -543,7 +543,7 @@ onMounted(async () => {
                     <div class="flex items-center gap-3">
                         <div
                             class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                            <i class="ti-trash text-red-600 dark:text-red-400 text-lg"></i>
+                            <i class="fa-solid fa-trash text-red-600 dark:text-red-400 text-lg"></i>
                         </div>
                         <div>
                             <h3 class="font-semibold text-gray-900 dark:text-white">{{ t.removeResident }}</h3>

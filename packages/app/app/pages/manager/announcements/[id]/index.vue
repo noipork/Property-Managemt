@@ -67,13 +67,13 @@ const categoryColors: Record<string, string> = {
 }
 
 const categoryIcons: Record<string, string> = {
-    general: 'ti-info-circle',
-    maintenance: 'ti-wrench',
-    event: 'ti-calendar-event',
-    emergency: 'ti-alert-triangle',
-    policy: 'ti-file-text',
-    reminder: 'ti-bell',
-    celebration: 'ti-confetti',
+    general: 'fa-solid fa-circle-info',
+    maintenance: 'fa-solid fa-wrench',
+    event: 'fa-solid fa-calendar-days',
+    emergency: 'fa-solid fa-triangle-exclamation',
+    policy: 'fa-solid fa-file-lines',
+    reminder: 'fa-solid fa-bell',
+    celebration: 'fa-solid fa-champagne-glasses',
 }
 
 const statusLabels = computed(() => ({
@@ -232,12 +232,12 @@ onMounted(async () => {
                         :class="toast.type === 'success'
                             ? 'bg-emerald-50 dark:bg-emerald-900/80 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
                             : 'bg-red-50 dark:bg-red-900/80 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'">
-                        <i :class="toast.type === 'success' ? 'ti-check' : 'ti-alert-circle'"
+                        <i :class="toast.type === 'success' ? 'fa-solid fa-check' : 'fa-solid fa-circle-exclamation'"
                             class="text-base mt-0.5 shrink-0"></i>
                         <span class="flex-1 leading-snug">{{ toast.message }}</span>
                         <button @click="dismissToast(toast.id)"
                             class="shrink-0 opacity-50 hover:opacity-100 transition-opacity"><i
-                                class="ti-close text-xs"></i></button>
+                                class="fa-solid fa-xmark text-xs"></i></button>
                     </div>
                 </TransitionGroup>
             </div>
@@ -254,7 +254,7 @@ onMounted(async () => {
         <!-- Error -->
         <div v-else-if="errorMessage"
             class="text-center py-16 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
-            <i class="ti-alert-circle text-4xl text-red-400 mb-4"></i>
+            <i class="fa-solid fa-circle-exclamation text-4xl text-red-400 mb-4"></i>
             <p class="text-gray-600 dark:text-gray-400">{{ errorMessage }}</p>
             <NuxtLink to="/manager/announcements" class="mt-4 text-sm text-primary-600 hover:underline">{{
                 t.backToAnnouncements
@@ -268,7 +268,7 @@ onMounted(async () => {
                 <div class="flex items-start gap-4">
                     <NuxtLink to="/manager/announcements"
                         class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors shrink-0 mt-1">
-                        <i class="ti-arrow-left text-gray-500 dark:text-gray-400"></i>
+                        <i class="fa-solid fa-arrow-left text-gray-500 dark:text-gray-400"></i>
                     </NuxtLink>
                     <div>
                         <div class="flex items-center gap-2 mb-2 flex-wrap">
@@ -288,7 +288,7 @@ onMounted(async () => {
                             </span>
                             <span v-if="announcement.isPinned"
                                 class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 flex items-center gap-1">
-                                <i class="ti-pin text-[10px]"></i>
+                                <i class="fa-solid fa-thumbtack text-[10px]"></i>
                                 {{ t.pinned }}
                             </span>
                         </div>
@@ -303,12 +303,12 @@ onMounted(async () => {
                 <div class="flex items-center gap-2 shrink-0">
                     <NuxtLink :to="`/manager/announcements/${announcementDocumentId}/edit`"
                         class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2">
-                        <i class="ti-pencil text-xs"></i>
+                        <i class="fa-solid fa-pen text-xs"></i>
                         {{ t.edit }}
                     </NuxtLink>
                     <button @click="showDeleteModal = true"
                         class="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors flex items-center gap-2">
-                        <i class="ti-trash text-xs"></i>
+                        <i class="fa-solid fa-trash text-xs"></i>
                         {{ t.delete }}
                     </button>
                 </div>
@@ -353,7 +353,7 @@ onMounted(async () => {
                 :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
                 <h3
                     class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2 mb-4">
-                    <i class="ti-photos text-primary-500"></i>
+                    <i class="fa-solid fa-images text-primary-500"></i>
                     {{ t.attachImages }}
                 </h3>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -364,7 +364,7 @@ onMounted(async () => {
                             class="w-full h-full object-cover transition-transform group-hover:scale-105" />
                         <div
                             class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <i class="ti-zoom-in text-white text-lg"></i>
+                            <i class="fa-solid fa-magnifying-glass-plus text-white text-lg"></i>
                         </div>
                     </button>
                 </div>
@@ -377,7 +377,7 @@ onMounted(async () => {
                     <div>
                         <p class="text-gray-500 dark:text-gray-400 mb-1">{{ t.viewCount }}</p>
                         <p class="font-medium text-gray-900 dark:text-white flex items-center gap-1">
-                            <i class="ti-eye text-xs text-gray-400"></i>
+                            <i class="fa-solid fa-eye text-xs text-gray-400"></i>
                             {{ announcement.viewCount }}
                         </p>
                     </div>
@@ -415,7 +415,7 @@ onMounted(async () => {
                         <div class="flex items-start gap-4">
                             <div
                                 class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                                <i class="ti-alert-triangle text-red-500"></i>
+                                <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
                             </div>
                             <div>
                                 <h3 class="font-semibold text-gray-900 dark:text-white">{{ t.deleteAnnouncement }}</h3>
@@ -432,7 +432,7 @@ onMounted(async () => {
                             </button>
                             <button @click="deleteAnnouncement" :disabled="isDeleting"
                                 class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2">
-                                <i v-if="isDeleting" class="ti-reload text-xs animate-spin"></i>
+                                <i v-if="isDeleting" class="fa-solid fa-rotate text-xs animate-spin"></i>
                                 {{ t.delete }}
                             </button>
                         </div>
@@ -450,19 +450,19 @@ onMounted(async () => {
                     class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
                     <button @click.stop="showImageViewer = false"
                         class="absolute top-4 right-4 p-2 text-white/70 hover:text-white transition-colors">
-                        <i class="ti-close text-2xl"></i>
+                        <i class="fa-solid fa-xmark text-2xl"></i>
                     </button>
 
                     <!-- Navigation -->
                     <button v-if="viewerImages.length > 1"
                         @click.stop="viewerIndex = (viewerIndex - 1 + viewerImages.length) % viewerImages.length"
                         class="absolute left-4 p-3 text-white/70 hover:text-white transition-colors">
-                        <i class="ti-angle-left text-3xl"></i>
+                        <i class="fa-solid fa-angle-left text-3xl"></i>
                     </button>
                     <button v-if="viewerImages.length > 1"
                         @click.stop="viewerIndex = (viewerIndex + 1) % viewerImages.length"
                         class="absolute right-4 p-3 text-white/70 hover:text-white transition-colors">
-                        <i class="ti-angle-right text-3xl"></i>
+                        <i class="fa-solid fa-angle-right text-3xl"></i>
                     </button>
 
                     <img :src="viewerImages[viewerIndex]?.url" alt="Full size image" @click.stop

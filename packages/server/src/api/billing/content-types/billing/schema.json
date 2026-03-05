@@ -89,6 +89,9 @@
     "waterAmount": {
       "type": "decimal"
     },
+    "assetAmount": {
+      "type": "decimal"
+    },
     "resident": {
       "type": "relation",
       "relation": "manyToOne",

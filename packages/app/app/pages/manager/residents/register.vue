@@ -456,7 +456,7 @@ onMounted(fetchProperties)
             <div class="flex items-center gap-3">
                 <button @click="$router.back()"
                     class="p-2 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                    <i class="ti-arrow-left text-lg"></i>
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
                 </button>
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.registerResident }}</h1>
@@ -478,12 +478,12 @@ onMounted(fetchProperties)
                         :class="toast.type === 'success'
                             ? 'bg-emerald-50 dark:bg-emerald-900/80 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
                             : 'bg-red-50 dark:bg-red-900/80 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'">
-                        <i :class="toast.type === 'success' ? 'ti-check-box text-emerald-500' : 'ti-alert-circle text-red-500'"
+                        <i :class="toast.type === 'success' ? 'fa-solid fa-square-check text-emerald-500' : 'fa-solid fa-circle-exclamation text-red-500'"
                             class="text-base mt-0.5 shrink-0"></i>
                         <span class="flex-1 leading-snug">{{ toast.message }}</span>
                         <button @click="dismissToast(toast.id)"
                             class="shrink-0 opacity-50 hover:opacity-100 transition-opacity">
-                            <i class="ti-close text-xs"></i>
+                            <i class="fa-solid fa-xmark text-xs"></i>
                         </button>
                     </div>
                 </TransitionGroup>
@@ -497,7 +497,7 @@ onMounted(fetchProperties)
                 <div
                     class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <i class="ti-user text-primary-600 dark:text-primary-400"></i>
+                        <i class="fa-solid fa-user text-primary-600 dark:text-primary-400"></i>
                         {{ t.residentInfo }}
                     </h2>
 
@@ -524,7 +524,7 @@ onMounted(fetchProperties)
                             <button type="button" @click="copyToClipboard(form.email, 'email')" :disabled="!form.email"
                                 class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 transition-colors"
                                 title="Copy email">
-                                <i :class="copiedField === 'email' ? 'ti-check text-emerald-500' : 'ti-files'"
+                                <i :class="copiedField === 'email' ? 'fa-solid fa-check text-emerald-500' : 'fa-solid fa-copy'"
                                     class="text-sm"></i>
                             </button>
                         </div>
@@ -539,7 +539,7 @@ onMounted(fetchProperties)
                             </label>
                             <button type="button" @click="generatePassword"
                                 class="inline-flex items-center gap-1 text-xs font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors">
-                                <i class="ti-reload text-xs"></i>
+                                <i class="fa-solid fa-rotate text-xs"></i>
                                 Auto-generate
                             </button>
                         </div>
@@ -553,13 +553,13 @@ onMounted(fetchProperties)
                                     :disabled="!form.password"
                                     class="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 transition-colors"
                                     title="Copy password">
-                                    <i :class="copiedField === 'password' ? 'ti-check text-emerald-500' : 'ti-files'"
+                                    <i :class="copiedField === 'password' ? 'fa-solid fa-check text-emerald-500' : 'fa-solid fa-copy'"
                                         class="text-sm"></i>
                                 </button>
                                 <button type="button" @click="showPassword = !showPassword"
                                     class="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                                     :title="showPassword ? 'Hide password' : 'Show password'">
-                                    <i :class="showPassword ? 'ti-lock' : 'ti-eye'" class="text-sm"></i>
+                                    <i :class="showPassword ? 'fa-solid fa-lock' : 'fa-solid fa-eye'" class="text-sm"></i>
                                 </button>
                             </div>
                         </div>
@@ -574,7 +574,7 @@ onMounted(fetchProperties)
                 <div
                     class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <i class="ti-home text-primary-600 dark:text-primary-400"></i>
+                        <i class="fa-solid fa-house text-primary-600 dark:text-primary-400"></i>
                         {{ t.unitInfo }}
                     </h2>
 
@@ -593,7 +593,7 @@ onMounted(fetchProperties)
                                 </option>
                             </select>
                             <i
-                                class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
                         <p v-if="errors.propertyId" class="mt-1 text-xs text-red-500">{{ errors.propertyId }}</p>
                     </div>
@@ -615,7 +615,7 @@ onMounted(fetchProperties)
                                 </option>
                             </select>
                             <i
-                                class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
                         <p v-if="errors.unitTypeId" class="mt-1 text-xs text-red-500">{{ errors.unitTypeId }}</p>
 
@@ -637,7 +637,7 @@ onMounted(fetchProperties)
                             </div>
                             <div v-if="isUnitFull"
                                 class="flex items-center gap-1 text-red-600 dark:text-red-400 font-medium">
-                                <i class="ti-alert-circle"></i>
+                                <i class="fa-solid fa-circle-exclamation"></i>
                                 {{ t.unitFull }}
                             </div>
                         </div>
@@ -679,7 +679,7 @@ onMounted(fetchProperties)
                                 <option v-for="s in statuses" :key="s" :value="s">{{ statusLabels[s] }}</option>
                             </select>
                             <i
-                                class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
                     </div>
 
@@ -702,7 +702,7 @@ onMounted(fetchProperties)
                 <div
                     class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <i class="ti-receipt text-primary-600 dark:text-primary-400"></i>
+                        <i class="fa-solid fa-receipt text-primary-600 dark:text-primary-400"></i>
                         {{ t.leaseDetails }}
                     </h2>
 
@@ -722,7 +722,7 @@ onMounted(fetchProperties)
                                     form.leaseNo = `LSE-${d}-${Math.floor(1000 + Math.random() * 9000)}`
                                 }" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                                     :title="t.leaseRegenerate">
-                                    <i class="ti-reload text-sm"></i>
+                                    <i class="fa-solid fa-rotate text-sm"></i>
                                 </button>
                             </div>
                             <p v-if="errors.leaseNo" class="mt-1 text-xs text-red-500">{{ errors.leaseNo }}</p>
@@ -740,7 +740,7 @@ onMounted(fetchProperties)
                                     <option value="SGD">SGD</option>
                                 </select>
                                 <i
-                                    class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                    class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                             </div>
                         </div>
                     </div>
@@ -845,7 +845,7 @@ onMounted(fetchProperties)
                     <!-- Lease duration summary -->
                     <div v-if="form.leaseStartDate && form.leaseEndDate && form.leaseEndDate > form.leaseStartDate"
                         class="flex items-center gap-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 rounded-lg text-xs text-primary-700 dark:text-primary-300">
-                        <i class="ti-calendar shrink-0"></i>
+                        <i class="fa-solid fa-calendar shrink-0"></i>
                         <span>{{ t.leaseDuration }}:
                             <strong>{{
                                 (() => {
@@ -868,7 +868,7 @@ onMounted(fetchProperties)
                             </label>
                             <button type="button" @click="termsExpanded = !termsExpanded"
                                 class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors select-none">
-                                <i :class="termsExpanded ? 'ti-arrows-corner' : 'ti-fullscreen'" class="text-xs"></i>
+                                <i :class="termsExpanded ? 'fa-solid fa-compress' : 'fa-solid fa-expand'" class="text-xs"></i>
                                 {{ termsExpanded ? t.leaseTermsCollapse : t.leaseTermsExpand }}
                             </button>
                         </div>
@@ -885,7 +885,7 @@ onMounted(fetchProperties)
                             <button type="button" @mousedown.prevent="execCmd('insertUnorderedList')"
                                 title="Bullet list"
                                 class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300">
-                                <i class="ti-list text-xs"></i>
+                                <i class="fa-solid fa-list text-xs"></i>
                             </button>
                             <button type="button" @mousedown.prevent="execCmd('insertOrderedList')"
                                 title="Numbered list"
@@ -908,7 +908,7 @@ onMounted(fetchProperties)
                             <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
                             <button type="button" @mousedown.prevent="clearTerms" :title="t.leaseTermsClear"
                                 class="w-7 h-7 flex items-center justify-center rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-gray-400 hover:text-red-500">
-                                <i class="ti-trash text-xs"></i>
+                                <i class="fa-solid fa-trash text-xs"></i>
                             </button>
                             <span class="ml-auto text-xs text-gray-400 dark:text-gray-500 select-none pr-1">
                                 {{ form.terms ? form.terms.replace(/<[^>]*>/g, '').length : 0 }} chars
@@ -927,7 +927,7 @@ onMounted(fetchProperties)
                                 termsExpanded ? 'min-h-[32rem]' : 'min-h-48 max-h-96',
                             ]"></div>
                         <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
-                            <i class="ti-info-alt"></i>
+                            <i class="fa-solid fa-circle-info"></i>
                             {{ t.leaseTermsHint }}
                         </p>
                     </div>
@@ -943,7 +943,7 @@ onMounted(fetchProperties)
 
                     <!-- Status hint -->
                     <div class="flex items-start gap-2 text-xs text-gray-500 dark:text-gray-400">
-                        <i class="ti-info-alt mt-0.5 shrink-0 text-primary-500"></i>
+                        <i class="fa-solid fa-circle-info mt-0.5 shrink-0 text-primary-500"></i>
                         {{ t.leaseStatusHint }} <span class="font-semibold text-amber-600 dark:text-amber-400 mx-1">{{
                             t.leaseStatusPending }}</span> {{ t.leaseStatusHint2 }}
                     </div>
@@ -962,7 +962,7 @@ onMounted(fetchProperties)
                         class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors">
                         <div v-if="isSubmitting"
                             class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <i v-else class="ti-user-add text-base"></i>
+                        <i v-else class="fa-solid fa-user-plus text-base"></i>
                         {{ isSubmitting ? t.registering : t.registerResident }}
                     </button>
                 </div>
@@ -983,7 +983,7 @@ onMounted(fetchProperties)
                             <div class="flex flex-col items-center text-center gap-3">
                                 <div
                                     class="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-                                    <i class="ti-home text-2xl text-amber-600 dark:text-amber-400"></i>
+                                    <i class="fa-solid fa-house text-2xl text-amber-600 dark:text-amber-400"></i>
                                 </div>
                                 <div>
                                     <h3 class="text-base font-semibold text-gray-900 dark:text-white">Room Already
@@ -1021,7 +1021,7 @@ onMounted(fetchProperties)
                             <div class="flex flex-col items-center text-center gap-3">
                                 <div
                                     class="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
-                                    <i class="ti-alert-circle text-2xl text-red-600 dark:text-red-400"></i>
+                                    <i class="fa-solid fa-circle-exclamation text-2xl text-red-600 dark:text-red-400"></i>
                                 </div>
                                 <div>
                                     <h3 class="text-base font-semibold text-gray-900 dark:text-white">Registration

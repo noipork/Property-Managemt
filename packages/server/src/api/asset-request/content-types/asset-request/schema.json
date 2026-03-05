@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "asset_requests",
+  "info": {
+    "singularName": "asset-request",
+    "pluralName": "asset-requests",
+    "displayName": "Asset Request",
+    "description": "Resident requests for add-on assets"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "approved", "rejected"],
+      "default": "pending",
+      "required": true
+    },
+    "notes": {
+      "type": "text"
+    },
+    "rejectionReason": {
+      "type": "string"
+    },
+    "asset": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::asset.asset"
+    },
+    "resident": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "property": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property.property"
+    }
+  }
+}

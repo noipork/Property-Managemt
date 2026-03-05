@@ -299,12 +299,12 @@ onMounted(async () => {
                         :class="toast.type === 'success'
                             ? 'bg-emerald-50 dark:bg-emerald-900/80 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
                             : 'bg-red-50 dark:bg-red-900/80 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'">
-                        <i :class="toast.type === 'success' ? 'ti-check' : 'ti-alert-circle'"
+                        <i :class="toast.type === 'success' ? 'fa-solid fa-check' : 'fa-solid fa-circle-exclamation'"
                             class="text-base mt-0.5 shrink-0"></i>
                         <span class="flex-1 leading-snug">{{ toast.message }}</span>
                         <button @click="dismissToast(toast.id)"
                             class="shrink-0 opacity-50 hover:opacity-100 transition-opacity"><i
-                                class="ti-close text-xs"></i></button>
+                                class="fa-solid fa-xmark text-xs"></i></button>
                     </div>
                 </TransitionGroup>
             </div>
@@ -320,7 +320,7 @@ onMounted(async () => {
             :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3'">
             <NuxtLink to="/manager/announcements"
                 class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                <i class="ti-arrow-left text-gray-500 dark:text-gray-400"></i>
+                <i class="fa-solid fa-arrow-left text-gray-500 dark:text-gray-400"></i>
             </NuxtLink>
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.createAnnouncement }}</h1>
@@ -334,13 +334,13 @@ onMounted(async () => {
                 :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
                 <h3
                     class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2 mb-4">
-                    <i class="ti-photo text-primary-500"></i>
+                    <i class="fa-solid fa-image text-primary-500"></i>
                     {{ t.coverImage }}
                 </h3>
 
                 <div v-if="!coverImagePreview" @click="selectCoverImage"
                     class="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-600 transition-colors">
-                    <i class="ti-upload text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
+                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ t.dragDropImages }}</p>
                     <p class="text-xs text-gray-400 mt-1">Recommended: 1200x630px</p>
                 </div>
@@ -349,7 +349,7 @@ onMounted(async () => {
                     <img :src="coverImagePreview" alt="Cover preview" class="w-full h-48 sm:h-64 object-cover" />
                     <button type="button" @click="removeCoverImage"
                         class="absolute top-3 right-3 w-8 h-8 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-colors">
-                        <i class="ti-close text-white text-sm"></i>
+                        <i class="fa-solid fa-xmark text-white text-sm"></i>
                     </button>
                     <button type="button" @click="selectCoverImage"
                         class="absolute bottom-3 right-3 px-3 py-1.5 bg-black/50 hover:bg-black/70 rounded-lg text-white text-xs font-medium transition-colors">
@@ -363,7 +363,7 @@ onMounted(async () => {
                 :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
                 <h3
                     class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                    <i class="ti-info-circle text-primary-500"></i>
+                    <i class="fa-solid fa-circle-info text-primary-500"></i>
                     {{ t.announcementDetails }}
                 </h3>
 
@@ -380,7 +380,7 @@ onMounted(async () => {
                             </option>
                         </select>
                         <i
-                            class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                     </div>
                 </div>
 
@@ -410,37 +410,37 @@ onMounted(async () => {
                             class="flex flex-wrap items-center gap-0.5 p-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                             <button type="button" @click="execCmd('bold')"
                                 class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                <i class="ti-bold text-gray-600 dark:text-gray-400"></i>
+                                <i class="fa-solid fa-bold text-gray-600 dark:text-gray-400"></i>
                             </button>
                             <button type="button" @click="execCmd('italic')"
                                 class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                <i class="ti-italic text-gray-600 dark:text-gray-400"></i>
+                                <i class="fa-solid fa-italic text-gray-600 dark:text-gray-400"></i>
                             </button>
                             <button type="button" @click="execCmd('underline')"
                                 class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                <i class="ti-underline text-gray-600 dark:text-gray-400"></i>
+                                <i class="fa-solid fa-underline text-gray-600 dark:text-gray-400"></i>
                             </button>
                             <div class="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1"></div>
                             <button type="button" @click="execCmd('insertUnorderedList')"
                                 class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                <i class="ti-list text-gray-600 dark:text-gray-400"></i>
+                                <i class="fa-solid fa-list-ul text-gray-600 dark:text-gray-400"></i>
                             </button>
                             <button type="button" @click="execCmd('insertOrderedList')"
                                 class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                <i class="ti-list-numbers text-gray-600 dark:text-gray-400"></i>
+                                <i class="fa-solid fa-list-ol text-gray-600 dark:text-gray-400"></i>
                             </button>
                             <div class="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1"></div>
                             <button type="button" @click="execCmd('justifyLeft')"
                                 class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                <i class="ti-align-left text-gray-600 dark:text-gray-400"></i>
+                                <i class="fa-solid fa-align-left text-gray-600 dark:text-gray-400"></i>
                             </button>
                             <button type="button" @click="execCmd('justifyCenter')"
                                 class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                <i class="ti-align-center text-gray-600 dark:text-gray-400"></i>
+                                <i class="fa-solid fa-align-center text-gray-600 dark:text-gray-400"></i>
                             </button>
                             <button type="button" @click="execCmd('justifyRight')"
                                 class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                <i class="ti-align-right text-gray-600 dark:text-gray-400"></i>
+                                <i class="fa-solid fa-align-right text-gray-600 dark:text-gray-400"></i>
                             </button>
                         </div>
                         <!-- Editor -->
@@ -461,7 +461,7 @@ onMounted(async () => {
                                 <option v-for="c in categories" :key="c" :value="c">{{ categoryLabels[c] }}</option>
                             </select>
                             <i
-                                class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
                     </div>
 
@@ -474,7 +474,7 @@ onMounted(async () => {
                                 <option v-for="p in priorities" :key="p" :value="p">{{ priorityLabels[p] }}</option>
                             </select>
                             <i
-                                class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
                     </div>
 
@@ -487,7 +487,7 @@ onMounted(async () => {
                                 <option v-for="s in statuses" :key="s" :value="s">{{ statusLabels[s] }}</option>
                             </select>
                             <i
-                                class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
                     </div>
                 </div>
@@ -526,7 +526,7 @@ onMounted(async () => {
                 :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
                 <h3
                     class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2 mb-4">
-                    <i class="ti-tag text-primary-500"></i>
+                    <i class="fa-solid fa-tag text-primary-500"></i>
                     {{ t.tags }}
                 </h3>
 
@@ -535,7 +535,7 @@ onMounted(async () => {
                         class="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm">
                         {{ tag }}
                         <button type="button" @click="removeTag(idx)" class="hover:text-red-500 transition-colors">
-                            <i class="ti-close text-xs"></i>
+                            <i class="fa-solid fa-xmark text-xs"></i>
                         </button>
                     </span>
                 </div>
@@ -555,7 +555,7 @@ onMounted(async () => {
                 :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
                 <h3
                     class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2 mb-4">
-                    <i class="ti-photos text-primary-500"></i>
+                    <i class="fa-solid fa-images text-primary-500"></i>
                     {{ t.attachImages }}
                 </h3>
 
@@ -565,13 +565,13 @@ onMounted(async () => {
                         <img :src="preview" alt="Preview" class="w-full h-full object-cover" />
                         <button type="button" @click="removeAdditionalImage(idx)"
                             class="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-colors">
-                            <i class="ti-close text-white text-xs"></i>
+                            <i class="fa-solid fa-xmark text-white text-xs"></i>
                         </button>
                     </div>
 
                     <button v-if="additionalImages.length < 10" type="button" @click="selectAdditionalImages"
                         class="w-24 h-24 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg flex flex-col items-center justify-center hover:border-primary-400 dark:hover:border-primary-600 transition-colors">
-                        <i class="ti-plus text-gray-400 mb-1"></i>
+                        <i class="fa-solid fa-plus text-gray-400 mb-1"></i>
                         <span class="text-xs text-gray-400">{{ t.maxImages }}</span>
                     </button>
                 </div>
@@ -586,7 +586,7 @@ onMounted(async () => {
                 </NuxtLink>
                 <button type="submit" :disabled="isSubmitting"
                     class="px-6 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2">
-                    <i v-if="isSubmitting" class="ti-reload text-xs animate-spin"></i>
+                    <i v-if="isSubmitting" class="fa-solid fa-rotate text-xs animate-spin"></i>
                     {{ t.createAnnouncement }}
                 </button>
             </div>

@@ -20,12 +20,14 @@ const pathNotifTypes: Record<string, string[]> = {
     '/manager/leases': ['lease'],
     '/manager/announcements': ['announcement'],
     '/manager/properties': ['property'],
+    '/manager/asset-requests': ['asset'],
     '/resident/maintenance': ['maintenance'],
     '/resident/messages': ['message', 'conversation'],
     '/resident/my-bills': ['billing'],
     '/resident/payment-history': ['payment'],
     '/resident/my-lease': ['lease'],
     '/resident/dashboard': ['announcement'],
+    '/resident/assets': ['asset'],
 }
 
 function badgeCount(path: string): number {
@@ -48,6 +50,8 @@ const managerMenuSections = computed(() => [
             { name: t.value.properties, icon: 'ti-home', badge: '', path: '/manager/properties' },
             { name: t.value.residents, icon: 'ti-user', badge: '', path: '/manager/residents' },
             { name: t.value.leases, icon: 'ti-file', badge: '', path: '/manager/leases' },
+            { name: t.value.assets, icon: 'ti-package', badge: '', path: '/manager/assets' },
+
         ],
     },
     {
@@ -67,6 +71,7 @@ const managerMenuSections = computed(() => [
             // { name: t.value.calendar, icon: 'ti-calendar', badge: '', path: '/calendar' },
             { name: t.value.messages, icon: 'ti-comment', badge: '', path: '/manager/messages' },
             // { name: t.value.documents, icon: 'ti-folder', badge: '', path: '/documents' },
+            { name: t.value.assetRequests, icon: 'ti-envelope', badge: '', path: '/manager/asset-requests' },
         ],
     },
     // {
@@ -99,6 +104,7 @@ const residentMenuSections = computed(() => [
         items: [
             { name: t.value.maintenance, icon: 'ti-headphone-alt', badge: '', path: '/resident/maintenance' },
             { name: t.value.messages, icon: 'ti-comment', badge: '', path: '/resident/messages' },
+            { name: t.value.assets, icon: 'ti-package', badge: '', path: '/resident/assets' },
         ],
     },
 ])

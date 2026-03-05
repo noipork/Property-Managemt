@@ -66,8 +66,8 @@ const typeLabels = computed(() => ({
 }))
 
 const typeIcons: Record<string, string> = {
-    monthlyRent: 'ti-home', utilities: 'ti-bolt', maintenance: 'ti-wrench',
-    deposit: 'ti-shield-check', lateFee: 'ti-alert-circle', other: 'ti-file',
+    monthlyRent: 'fa-solid fa-house', utilities: 'fa-solid fa-bolt', maintenance: 'fa-solid fa-wrench',
+    deposit: 'fa-solid fa-shield-halved', lateFee: 'fa-solid fa-circle-exclamation', other: 'fa-solid fa-file',
 }
 
 const paymentStatusColors: Record<string, string> = {
@@ -112,7 +112,7 @@ async function fetchInvoice() {
             'populate[2]': 'payments',
             'populate[3]': 'payments.paymentSlip',
         })
-        const res = await fetch(`${STRAPI_URL}/api/billings?filters[id][$eq]=${invoiceId}&${params}`, {
+        const res = await fetch(`${STRAPI_URL}/api/billings?filters[documentId][$eq]=${invoiceId}&${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
         })
         if (!res.ok) throw new Error('Not found')
@@ -269,12 +269,12 @@ onMounted(async () => {
                     <div v-for="toast in toasts" :key="toast.id"
                         class="pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium"
                         :class="toast.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/80 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200' : 'bg-red-50 dark:bg-red-900/80 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'">
-                        <i :class="toast.type === 'success' ? 'ti-check-box text-emerald-500' : 'ti-alert-circle text-red-500'"
+                        <i :class="toast.type === 'success' ? 'fa-solid fa-square-check text-emerald-500' : 'fa-solid fa-circle-exclamation text-red-500'"
                             class="text-base mt-0.5 shrink-0"></i>
                         <span class="flex-1 leading-snug">{{ toast.message }}</span>
                         <button @click="dismissToast(toast.id)"
                             class="shrink-0 opacity-50 hover:opacity-100 transition-opacity"><i
-                                class="ti-close text-xs"></i></button>
+                                class="fa-solid fa-xmark text-xs"></i></button>
                     </div>
                 </TransitionGroup>
             </div>
@@ -291,11 +291,11 @@ onMounted(async () => {
         <!-- Error -->
         <div v-else-if="errorMessage" class="flex flex-col items-center justify-center py-20 text-center">
             <div class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-                <i class="ti-alert-circle text-2xl text-red-500"></i>
+                <i class="fa-solid fa-circle-exclamation text-2xl text-red-500"></i>
             </div>
             <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ errorMessage }}</h3>
             <NuxtLink to="/manager/invoices" class="mt-4 text-sm text-primary-600 hover:underline">{{ t.backToInvoices
-            }}
+                }}
             </NuxtLink>
         </div>
 
@@ -306,7 +306,7 @@ onMounted(async () => {
                 <div class="flex items-center gap-3">
                     <NuxtLink to="/manager/invoices"
                         class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                        <i class="ti-arrow-left text-gray-500 dark:text-gray-400"></i>
+                        <i class="fa-solid fa-arrow-left text-gray-500 dark:text-gray-400"></i>
                     </NuxtLink>
                     <div>
                         <div class="flex items-center gap-3">
@@ -322,12 +322,12 @@ onMounted(async () => {
                 <div class="flex items-center gap-2">
                     <NuxtLink :to="`/manager/invoices/${invoice.id}/edit`"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
-                        <i class="ti-pencil text-sm"></i>
+                        <i class="fa-solid fa-pen text-sm"></i>
                         {{ t.edit }}
                     </NuxtLink>
                     <button @click="showDeleteModal = true"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
-                        <i class="ti-trash text-sm"></i>
+                        <i class="fa-solid fa-trash text-sm"></i>
                         {{ t.delete }}
                     </button>
                 </div>
@@ -347,7 +347,7 @@ onMounted(async () => {
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.invoiceType }}</p>
                                 <div class="flex items-center gap-1.5">
-                                    <i :class="typeIcons[invoice.type] || 'ti-receipt'"
+                                    <i :class="typeIcons[invoice.type] || 'fa-solid fa-receipt'"
                                         class="text-sm text-gray-500"></i>
                                     <span class="text-sm font-medium text-gray-900 dark:text-white">{{
                                         typeLabels[invoice.type as keyof typeof typeLabels] || invoice.type }}</span>
@@ -438,7 +438,7 @@ onMounted(async () => {
                                     <div class="w-9 h-9 rounded-full flex items-center justify-center"
                                         :class="pay.status === 'completed' ? 'bg-emerald-100 dark:bg-emerald-900/30' : pay.status === 'failed' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-amber-100 dark:bg-amber-900/30'">
                                         <i class="text-sm"
-                                            :class="pay.status === 'completed' ? 'ti-check text-emerald-600 dark:text-emerald-400' : pay.status === 'failed' ? 'ti-close text-red-600 dark:text-red-400' : 'ti-clock text-amber-600 dark:text-amber-400'"></i>
+                                            :class="pay.status === 'completed' ? 'fa-solid fa-check text-emerald-600 dark:text-emerald-400' : pay.status === 'failed' ? 'fa-solid fa-xmark text-red-600 dark:text-red-400' : 'fa-solid fa-clock text-amber-600 dark:text-amber-400'"></i>
                                     </div>
                                     <div>
                                         <p class="text-sm font-medium text-gray-900 dark:text-white">{{ pay.refNo }}</p>
@@ -463,7 +463,7 @@ onMounted(async () => {
                                     @click="viewSlip(pay)" />
                                 <button @click="viewSlip(pay)"
                                     class="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
-                                    <i class="ti-eye text-sm"></i>
+                                    <i class="fa-solid fa-eye text-sm"></i>
                                     {{ t.viewSlip || 'View Payment Slip' }}
                                 </button>
                             </div>
@@ -476,7 +476,7 @@ onMounted(async () => {
                                     <div v-if="approvingPaymentId === pay.id"
                                         class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin">
                                     </div>
-                                    <i v-else class="ti-check text-sm"></i>
+                                    <i v-else class="fa-solid fa-check text-sm"></i>
                                     {{ t.approvePayment || 'Approve' }}
                                 </button>
                                 <button @click="rejectPayment(pay)" :disabled="rejectingPaymentId === pay.id"
@@ -484,7 +484,7 @@ onMounted(async () => {
                                     <div v-if="rejectingPaymentId === pay.id"
                                         class="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin">
                                     </div>
-                                    <i v-else class="ti-close text-sm"></i>
+                                    <i v-else class="fa-solid fa-xmark text-sm"></i>
                                     {{ t.rejectPayment || 'Reject' }}
                                 </button>
                             </div>
@@ -503,14 +503,14 @@ onMounted(async () => {
                         <div v-if="invoice.resident" class="flex items-center gap-3">
                             <div
                                 class="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                                <i class="ti-user text-primary-600 dark:text-primary-400"></i>
+                                <i class="fa-solid fa-user text-primary-600 dark:text-primary-400"></i>
                             </div>
                             <div>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{
                                     invoice.resident.username }}</p>
                                 <p class="text-xs text-gray-400">{{ invoice.resident.email }}</p>
                                 <p v-if="invoice.resident.roomNumber" class="text-xs text-gray-500 dark:text-gray-400">
-                                    <i class="ti-key text-xs mr-1"></i>{{ invoice.resident.roomNumber }}
+                                    <i class="fa-solid fa-key text-xs mr-1"></i>{{ invoice.resident.roomNumber }}
                                 </p>
                             </div>
                         </div>
@@ -525,13 +525,13 @@ onMounted(async () => {
                         <div v-if="invoice.property" class="flex items-center gap-3">
                             <div
                                 class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                                <i class="ti-home text-emerald-600 dark:text-emerald-400"></i>
+                                <i class="fa-solid fa-house text-emerald-600 dark:text-emerald-400"></i>
                             </div>
                             <div>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ invoice.property.name }}
                                 </p>
                                 <p v-if="invoice.property.city" class="text-xs text-gray-400">{{ invoice.property.city
-                                }}</p>
+                                    }}</p>
                             </div>
                         </div>
                         <p v-else class="text-sm text-gray-400">—</p>
@@ -555,7 +555,7 @@ onMounted(async () => {
                     <div class="flex items-center gap-3">
                         <div
                             class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                            <i class="ti-trash text-red-600 dark:text-red-400 text-lg"></i>
+                            <i class="fa-solid fa-trash text-red-600 dark:text-red-400 text-lg"></i>
                         </div>
                         <div>
                             <h3 class="font-semibold text-gray-900 dark:text-white">{{ t.deleteInvoice }}</h3>
@@ -564,7 +564,7 @@ onMounted(async () => {
                     </div>
                     <p class="text-sm text-gray-600 dark:text-gray-400">
                         {{ t.deleteInvoiceConfirm }} <strong class="text-gray-900 dark:text-white">{{ invoice?.invoiceNo
-                        }}</strong>{{ t.deleteInvoiceConfirm2 }}
+                            }}</strong>{{ t.deleteInvoiceConfirm2 }}
                     </p>
                     <div class="flex gap-3 pt-2">
                         <button @click="showDeleteModal = false"
@@ -589,7 +589,7 @@ onMounted(async () => {
                     <div class="relative max-w-2xl w-full">
                         <button @click="showSlipModal = false"
                             class="absolute -top-10 right-0 p-2 rounded-lg text-white/80 hover:text-white transition-colors">
-                            <i class="ti-close text-xl"></i>
+                            <i class="fa-solid fa-xmark text-xl"></i>
                         </button>
                         <img :src="viewSlipUrl" alt="Payment Slip"
                             class="w-full max-h-[80vh] object-contain rounded-xl bg-white dark:bg-gray-900" />

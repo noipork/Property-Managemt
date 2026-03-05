@@ -493,6 +493,86 @@ export interface ApiAnnouncementAnnouncement
   };
 }
 
+export interface ApiAssetRequestAssetRequest
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'asset_requests';
+  info: {
+    description: 'Resident requests for add-on assets';
+    displayName: 'Asset Request';
+    pluralName: 'asset-requests';
+    singularName: 'asset-request';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    asset: Schema.Attribute.Relation<'manyToOne', 'api::asset.asset'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::asset-request.asset-request'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    publishedAt: Schema.Attribute.DateTime;
+    rejectionReason: Schema.Attribute.String;
+    resident: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    status: Schema.Attribute.Enumeration<['pending', 'approved', 'rejected']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiAssetAsset extends Struct.CollectionTypeSchema {
+  collectionName: 'assets';
+  info: {
+    description: 'Add-on assets that managers create for residents to subscribe to';
+    displayName: 'Asset';
+    pluralName: 'assets';
+    singularName: 'asset';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'THB'>;
+    description: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::asset.asset'> &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    price: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<['active', 'inactive']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'active'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiBillingBilling extends Struct.CollectionTypeSchema {
   collectionName: 'billings';
   info: {
@@ -506,6 +586,7 @@ export interface ApiBillingBilling extends Struct.CollectionTypeSchema {
   };
   attributes: {
     amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    assetAmount: Schema.Attribute.Decimal;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -879,6 +960,7 @@ export interface ApiNotificationNotification
         'conversation',
         'property',
         'system',
+        'asset',
       ]
     > &
       Schema.Attribute.Required;
@@ -1719,6 +1801,8 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
       'api::announcement.announcement': ApiAnnouncementAnnouncement;
+      'api::asset-request.asset-request': ApiAssetRequestAssetRequest;
+      'api::asset.asset': ApiAssetAsset;
       'api::billing.billing': ApiBillingBilling;
       'api::conversation.conversation': ApiConversationConversation;
       'api::lease.lease': ApiLeaseLease;

@@ -23,7 +23,7 @@ export default factories.createCoreService('api::notification.notification', ({ 
     const notificationData = {
       title: data.title,
       message: data.message,
-      type: data.type as 'announcement' | 'billing' | 'payment' | 'lease' | 'maintenance' | 'message' | 'conversation' | 'property' | 'system',
+      type: data.type as 'announcement' | 'billing' | 'payment' | 'lease' | 'maintenance' | 'message' | 'conversation' | 'property' | 'system' | 'asset',
       priority: (data.priority || 'normal') as 'low' | 'normal' | 'high' | 'urgent',
       isRead: false,
       relatedDocumentId: data.relatedDocumentId,
@@ -83,7 +83,7 @@ export default factories.createCoreService('api::notification.notification', ({ 
     const notificationData = {
       title: data.title,
       message: data.message,
-      type: data.type as 'announcement' | 'billing' | 'payment' | 'lease' | 'maintenance' | 'message' | 'conversation' | 'property' | 'system',
+      type: data.type as 'announcement' | 'billing' | 'payment' | 'lease' | 'maintenance' | 'message' | 'conversation' | 'property' | 'system' | 'asset',
       priority: (data.priority || 'normal') as 'low' | 'normal' | 'high' | 'urgent',
       isRead: false,
       relatedDocumentId: data.relatedDocumentId,

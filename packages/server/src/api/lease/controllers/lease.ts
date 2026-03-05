@@ -1,5 +1,58 @@
 import { factories } from '@strapi/strapi';
 
+/**
+ * Recalculate property.occupiedUnits and unitType.status based on active leases.
+ * Called after any lease create / update / delete.
+ */
+async function syncPropertyStats(strapi: any, propertyDocumentId: string) {
+  try {
+    // 1. Get all unit types for this property
+    const unitTypes = await strapi.documents('api::unit-type.unit-type').findMany({
+      filters: { property: { documentId: { $eq: propertyDocumentId } } },
+      fields: ['documentId', 'quantity', 'status'],
+    });
+
+    // 2. Count active leases per unit type
+    let totalOccupied = 0;
+
+    for (const ut of unitTypes) {
+      const activeLeaseCount = await strapi.documents('api::lease.lease').count({
+        filters: {
+          property: { documentId: { $eq: propertyDocumentId } },
+          unitType: { documentId: { $eq: ut.documentId } },
+          status: { $eq: 'active' },
+        },
+      });
+
+      totalOccupied += activeLeaseCount;
+
+      // Update unit type status
+      const newUnitStatus = activeLeaseCount >= ut.quantity
+        ? 'occupied'
+        : activeLeaseCount > 0
+          ? 'occupied'  // any active lease on this unit type → occupied
+          : ut.status === 'occupied' ? 'available' : ut.status; // only reset if it was occupied
+
+      if (newUnitStatus !== ut.status) {
+        await strapi.documents('api::unit-type.unit-type').update({
+          documentId: ut.documentId,
+          data: { status: newUnitStatus },
+        });
+      }
+    }
+
+    // 3. Update property.occupiedUnits with total active leases across all unit types
+    await strapi.documents('api::property.property').update({
+      documentId: propertyDocumentId,
+      data: { occupiedUnits: totalOccupied },
+    });
+
+    strapi.log.debug(`[syncPropertyStats] property ${propertyDocumentId} → occupiedUnits=${totalOccupied}`);
+  } catch (err) {
+    strapi.log.error('[syncPropertyStats] Failed to sync property stats:', err);
+  }
+}
+
 export default factories.createCoreController('api::lease.lease', ({ strapi }) => ({
   async create(ctx) {
     const user = ctx.state.user;
@@ -69,6 +122,11 @@ export default factories.createCoreController('api::lease.lease', ({ strapi }) =
         } catch (err) {
           strapi.log.error('[Notification] Failed to notify resident for lease creation:', err);
         }
+      }
+
+      // Sync property & unit-type stats after creation
+      if (record?.property?.documentId) {
+        await syncPropertyStats(strapi, record.property.documentId);
       }
     }
 
@@ -153,6 +211,34 @@ export default factories.createCoreController('api::lease.lease', ({ strapi }) =
           strapi.log.error('[Notification] Failed to notify resident for lease status update:', err);
         }
       }
+
+      // Sync property & unit-type stats after any update
+      if (oldLease.property?.documentId) {
+        await syncPropertyStats(strapi, oldLease.property.documentId);
+      }
+    }
+
+    return response;
+  },
+
+  async delete(ctx) {
+    const user = ctx.state.user;
+    if (!user) return ctx.unauthorized('You must be logged in');
+
+    const { id: documentId } = ctx.params;
+
+    // Fetch the lease before deleting so we know which property to update
+    const records = await strapi.documents('api::lease.lease').findMany({
+      filters: { documentId: { $eq: documentId } },
+      populate: { property: { fields: ['documentId'] } },
+    });
+    const lease = records?.[0];
+
+    const response = await super.delete(ctx);
+
+    // Sync stats after deletion
+    if (lease?.property?.documentId) {
+      await syncPropertyStats(strapi, lease.property.documentId);
     }
 
     return response;
