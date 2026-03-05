@@ -529,7 +529,7 @@ onMounted(async () => {
             </div>
             <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ errorMessage }}</h3>
             <button @click="fetchLease" class="mt-4 text-sm text-primary-600 hover:underline">{{ t.retry || 'Retry'
-            }}</button>
+                }}</button>
         </div>
 
         <!-- No Lease -->
@@ -606,7 +606,7 @@ onMounted(async () => {
                 <!-- Lease Selector -->
                 <div v-if="hasMultipleLeases" class="relative">
                     <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t.viewLease || 'View Lease'
-                    }}</label>
+                        }}</label>
                     <div class="relative">
                         <i
                             class="fa-solid fa-file-contract absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
@@ -648,7 +648,7 @@ onMounted(async () => {
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.leaseNo }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white font-mono">{{ lease.leaseNo
-                                }}</p>
+                                    }}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.status }}</p>
@@ -729,7 +729,7 @@ onMounted(async () => {
                         </div>
                         <div class="flex items-center justify-between pt-2">
                             <span class="text-base font-bold text-gray-900 dark:text-white">{{ t.leaseMonthlyRent
-                            }}</span>
+                                }}</span>
                             <span class="text-xl font-bold text-primary-600 dark:text-primary-400">{{
                                 formatCurrency(lease.monthlyRent, lease.currency) }}</span>
                         </div>
@@ -927,7 +927,7 @@ onMounted(async () => {
                                         <div
                                             class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5 flex items-end justify-between gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <span class="text-[10px] text-white truncate leading-tight">{{ doc.name
-                                                }}</span>
+                                            }}</span>
                                             <button type="button" @click.stop="removeExistingDocument(doc.id)"
                                                 class="shrink-0 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors">
                                                 <i class="fa-solid fa-xmark text-white text-[9px]"></i>
@@ -961,7 +961,7 @@ onMounted(async () => {
                                         <div
                                             class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5 flex items-end justify-between gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <span class="text-[10px] text-white truncate leading-tight">{{ file.name
-                                                }}</span>
+                                            }}</span>
                                             <button type="button" @click.stop="removeNewFile(idx)"
                                                 class="shrink-0 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors">
                                                 <i class="fa-solid fa-xmark text-white text-[9px]"></i>
@@ -1031,7 +1031,7 @@ onMounted(async () => {
                             <div v-if="lease.residentFullName">
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.fullName }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ lease.residentFullName
-                                }}</p>
+                                    }}</p>
                             </div>
                             <div v-if="lease.residentPhone">
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.leasePhone }}</p>
@@ -1170,7 +1170,7 @@ onMounted(async () => {
                                 <p v-if="lease.property.city" class="text-xs text-gray-400">{{ lease.property.city }}
                                 </p>
                                 <p v-if="lease.property.address" class="text-xs text-gray-400">{{ lease.property.address
-                                }}</p>
+                                    }}</p>
                             </div>
                         </div>
                         <p v-else class="text-sm text-gray-400">—</p>
@@ -1274,7 +1274,7 @@ onMounted(async () => {
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{
                                     item.leaseNo
-                                    }}</span>
+                                }}</span>
                                 <span :class="statusColors[item.status] || ''"
                                     class="px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap">
                                     {{ statusLabels[item.status] || item.status }}

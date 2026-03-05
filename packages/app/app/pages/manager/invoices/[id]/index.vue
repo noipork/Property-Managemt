@@ -240,6 +240,13 @@ const sidebarVisible = ref(false)
 
 onMounted(async () => {
     await fetchInvoice()
+
+    // Mark related notifications as read
+    if (invoice.value?.documentId) {
+        const { markReadByRelated } = useNotificationBadge()
+        markReadByRelated(['billing'], invoice.value.documentId)
+    }
+
     await nextTick()
     requestAnimationFrame(() => requestAnimationFrame(() => {
         headerVisible.value = true

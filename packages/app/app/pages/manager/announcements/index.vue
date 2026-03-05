@@ -42,8 +42,7 @@ const filterStatus = ref('')
 const filterCategory = ref('')
 const filterPriority = ref('')
 const filterPinned = ref(false)
-const sortBy = ref('createdAt')
-const sortDir = ref<'asc' | 'desc'>('desc')
+
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
 const currentPage = ref(1)
@@ -168,7 +167,7 @@ async function fetchAnnouncements() {
         params.set('populate[1]', 'property')
         params.set('populate[2]', 'author')
         params.set('pagination[pageSize]', '500')
-        params.set(`sort[0]`, `${sortBy.value}:${sortDir.value}`)
+        params.set('sort[0]', 'id:desc')
 
         if (filterPropertyId.value) {
             params.set('filters[property][documentId][$eq]', filterPropertyId.value)
@@ -211,7 +210,7 @@ async function fetchAnnouncements() {
     }
 }
 
-watch([filterPropertyId, filterStatus, filterCategory, filterPriority, filterPinned, searchQuery, sortBy, sortDir], () => {
+watch([filterPropertyId, filterStatus, filterCategory, filterPriority, filterPinned, searchQuery], () => {
     currentPage.value = 1
     fetchAnnouncements()
 }, { debounce: 300 } as any)
@@ -260,9 +259,6 @@ function formatDate(dateStr: string | null) {
     })
 }
 
-function toggleSortDir() {
-    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
-}
 
 function getImageUrl(img: { url: string; formats?: any } | null) {
     if (!img) return ''
@@ -406,26 +402,7 @@ onMounted(async () => {
                     <span class="hidden sm:inline">{{ t.pinned }}</span>
                 </button>
 
-                <!-- Sort -->
-                <div class="flex items-center gap-1 col-span-2 sm:col-span-1 sm:ml-auto">
-                    <div class="relative flex-1 sm:flex-none">
-                        <select v-model="sortBy"
-                            class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
-                            <option value="createdAt">{{ t.sortByCreated }}</option>
-                            <option value="publishDate">{{ t.publishDate }}</option>
-                            <option value="priority">{{ t.sortByPriority }}</option>
-                            <option value="viewCount">{{ t.viewCount }}</option>
-                        </select>
-                        <i
-                            class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
-                    <button @click="toggleSortDir"
-                        class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
-                        :title="sortDir === 'asc' ? 'Ascending' : 'Descending'">
-                        <i :class="sortDir === 'asc' ? 'ti-sort-ascending' : 'ti-sort-descending'"
-                            class="text-gray-500 dark:text-gray-400"></i>
-                    </button>
-                </div>
+
             </div>
         </div>
 

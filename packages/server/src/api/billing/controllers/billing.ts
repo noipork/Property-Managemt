@@ -25,6 +25,26 @@ export default factories.createCoreController('api::billing.billing', ({ strapi 
 				const residentId = record?.resident?.documentId
 
 				if (record && residentId) {
+					// ── Update resident's nextBillDate to one month after this invoice's dueDate ──
+					if (record.dueDate) {
+						try {
+							const due = new Date(record.dueDate)
+							const nextBillDate = new Date(due.getFullYear(), due.getMonth() + 1, due.getDate())
+							const residentRecord = await strapi.documents('plugin::users-permissions.user').findMany({
+								filters: { documentId: { $eq: residentId } },
+								fields: ['id'],
+							})
+							if (residentRecord?.[0]?.id) {
+								await strapi.db.query('plugin::users-permissions.user').update({
+									where: { id: residentRecord[0].id },
+									data: { nextBillDate: nextBillDate.toISOString().split('T')[0] },
+								})
+							}
+						} catch (err) {
+							strapi.log.error('[Billing] Failed to update resident nextBillDate:', err)
+						}
+					}
+
 					const dueDate = record.dueDate
 						? new Date(record.dueDate).toLocaleDateString('en-GB', {
 								day: '2-digit',

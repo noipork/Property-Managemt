@@ -1,11 +1,34 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const sidebarOpen = ref(true)
 
 function toggleSidebar() {
     sidebarOpen.value = !sidebarOpen.value
 }
+
+// ─── Global real-time notification tracking ───────────────────────────────────
+const { user } = useAuth()
+const { onNotification } = useSocket()
+const { fetchNotifications, pushNotification } = useNotificationBadge()
+const cleanupFns: Array<() => void> = []
+
+onMounted(async () => {
+    // Initial fetch so the panel has data on first open
+    await fetchNotifications()
+
+    // Push real-time notifications as they arrive
+    cleanupFns.push(
+        onNotification((data) => {
+            pushNotification(data)
+        })
+    )
+})
+
+onUnmounted(() => {
+    cleanupFns.forEach(fn => fn())
+    cleanupFns.length = 0
+})
 </script>
 
 <template>

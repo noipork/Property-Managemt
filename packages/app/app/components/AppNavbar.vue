@@ -13,6 +13,7 @@ const emit = defineEmits<{
 
 const { user, logout } = useAuth()
 const { t, lang, setLanguage: setLang, currentLanguage } = useI18n()
+const { notifications, unreadTotal, isFetching, markAsRead, markAllAsRead, clearRead } = useNotificationBadge()
 
 const showProfileMenu = ref(false)
 const showNotifications = ref(false)
@@ -25,13 +26,6 @@ onMounted(() => {
     const stored = localStorage.getItem('theme')
     isDarkMode.value = stored === 'dark'
 })
-
-const notifications = [
-    { id: 1, text: 'New tenant application received', time: '5 min ago', read: false },
-    { id: 2, text: 'Rent payment received — Unit 4B', time: '1 hour ago', read: false },
-    { id: 3, text: 'Maintenance request completed', time: '3 hours ago', read: true },
-    { id: 4, text: 'Lease expiring in 30 days — Unit 2A', time: '1 day ago', read: true },
-]
 
 const languages = [
     { code: 'EN', name: 'English' },
@@ -86,6 +80,96 @@ function setLanguage(langCode: 'EN' | 'TH') {
 function handleLogout() {
     logout()
     navigateTo('/signin')
+}
+
+const notificationTypeIcons: Record<string, string> = {
+    announcement: 'fa-solid fa-bullhorn',
+    billing: 'fa-solid fa-receipt',
+    payment: 'fa-solid fa-credit-card',
+    lease: 'fa-solid fa-file-contract',
+    maintenance: 'fa-solid fa-wrench',
+    message: 'fa-solid fa-envelope',
+    conversation: 'fa-solid fa-comments',
+    property: 'fa-solid fa-building',
+    system: 'fa-solid fa-gear',
+}
+
+const notificationTypeColors: Record<string, string> = {
+    announcement: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
+    billing: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
+    payment: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
+    lease: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+    maintenance: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
+    message: 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400',
+    conversation: 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400',
+    property: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400',
+    system: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+}
+
+function formatNotifTime(dateStr: string) {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+    if (diffMins < 1) return t.value.justNow ?? 'Just now'
+    if (diffMins < 60) return `${diffMins}${t.value.minutesAgo ?? 'm ago'}`
+    if (diffHours < 24) return `${diffHours}${t.value.hoursAgo ?? 'h ago'}`
+    if (diffDays === 1) return t.value.yesterday ?? 'Yesterday'
+    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+}
+
+async function handleNotifClick(n: { id: string; type: string; actionUrl: string | null; relatedDocumentId: string | null }) {
+    await markAsRead(n.id)
+
+    const role = user.value?.role ?? 'resident'
+    const prefix = role === 'manager' ? '/manager' : '/resident'
+
+    // Build the correct route based on notification type + user role
+    const routeMap: Record<string, Record<string, string>> = {
+        maintenance: {
+            manager: `/manager/maintenance/${n.relatedDocumentId ?? ''}`,
+            resident: `/resident/maintenance/${n.relatedDocumentId ?? ''}`,
+        },
+        message: {
+            manager: '/manager/messages',
+            resident: '/resident/messages',
+        },
+        conversation: {
+            manager: '/manager/messages',
+            resident: '/resident/messages',
+        },
+        billing: {
+            manager: '/manager/invoices',
+            resident: '/resident/my-bills',
+        },
+        payment: {
+            manager: '/manager/payments',
+            resident: '/resident/payment-history',
+        },
+        lease: {
+            manager: '/manager/leases',
+            resident: '/resident/my-lease',
+        },
+        announcement: {
+            manager: '/manager/announcements',
+            resident: `/resident/dashboard`,
+        },
+        property: {
+            manager: '/manager/properties',
+            resident: `/resident/dashboard`,
+        },
+    }
+
+    const route = routeMap[n.type]?.[role]
+    if (route) {
+        showNotifications.value = false
+        navigateTo(route)
+    } else if (n.actionUrl) {
+        showNotifications.value = false
+        navigateTo(n.actionUrl)
+    }
 }
 </script>
 
@@ -147,7 +231,14 @@ function handleLogout() {
                 class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
                 @click="toggleNotifications">
                 <i class="ti-bell text-gray-600 dark:text-gray-300 text-lg"></i>
-                <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+                <transition enter-active-class="transition-all duration-200" enter-from-class="opacity-0 scale-50"
+                    enter-to-class="opacity-100 scale-100" leave-active-class="transition-all duration-200"
+                    leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-50">
+                    <span v-if="unreadTotal > 0"
+                        class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                        {{ unreadTotal > 99 ? '99+' : unreadTotal }}
+                    </span>
+                </transition>
             </button>
 
             <!-- Profile -->
@@ -219,6 +310,10 @@ function handleLogout() {
                         <div class="flex items-center gap-2">
                             <i class="ti-bell text-primary-600 dark:text-primary-400 text-xl"></i>
                             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t.notifications }}</h2>
+                            <span v-if="unreadTotal > 0"
+                                class="min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                {{ unreadTotal > 99 ? '99+' : unreadTotal }}
+                            </span>
                         </div>
                         <button @click="showNotifications = false"
                             class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
@@ -227,41 +322,72 @@ function handleLogout() {
                     </div>
 
                     <!-- Actions -->
-                    <div class="px-6 py-3 border-b border-gray-100 dark:border-gray-800">
-                        <button
-                            class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors">
+                    <div
+                        class="px-6 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                        <button @click="markAllAsRead" :disabled="unreadTotal === 0"
+                            class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                             {{ t.markAllRead }}
+                        </button>
+                        <button @click="clearRead" :disabled="notifications.filter(n => n.isRead).length === 0"
+                            class="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                            {{ t.clearRead ?? 'Clear read' }}
                         </button>
                     </div>
 
                     <!-- Notifications List -->
                     <div class="flex-1 overflow-y-auto">
-                        <div v-for="n in notifications" :key="n.id"
-                            class="notification-item px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-100 dark:border-gray-800 transition-colors"
-                            :class="{ 'bg-primary-50/50 dark:bg-primary-900/20': !n.read }">
-                            <div class="flex items-start gap-3">
-                                <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                                    :class="!n.read ? 'bg-primary-100 dark:bg-primary-900/30' : 'bg-gray-100 dark:bg-gray-800'">
-                                    <i class="ti-bell"
-                                        :class="!n.read ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'"></i>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium text-gray-900 dark:text-white leading-snug">{{ n.text
-                                    }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ n.time }}</p>
-                                </div>
-                                <div v-if="!n.read" class="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-2">
-                                </div>
+                        <!-- Loading -->
+                        <div v-if="isFetching" class="flex items-center justify-center py-12">
+                            <div
+                                class="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin">
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Footer -->
-                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-800">
-                        <button
-                            class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors">
-                            {{ t.viewAll || 'View All Notifications' }}
-                        </button>
+                        <!-- Empty -->
+                        <div v-else-if="notifications.length === 0"
+                            class="flex flex-col items-center justify-center py-16 px-6 text-center">
+                            <div
+                                class="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3">
+                                <i class="fa-solid fa-bell text-2xl text-gray-300 dark:text-gray-600"></i>
+                            </div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                {{ t.noNotifications ??
+                                    'No notifications' }}</p>
+                        </div>
+
+                        <!-- Items -->
+                        <div v-else>
+                            <button v-for="n in notifications" :key="n.id" @click="handleNotifClick(n)"
+                                class="notification-item w-full px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-100 dark:border-gray-800 transition-colors text-left"
+                                :class="{ 'bg-primary-50/50 dark:bg-primary-900/10': !n.isRead }">
+                                <div class="flex items-start gap-3">
+                                    <!-- Icon -->
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                                        :class="notificationTypeColors[n.type] ?? notificationTypeColors.system">
+                                        <i :class="notificationTypeIcons[n.type] ?? 'fa-solid fa-bell'"
+                                            class="text-sm"></i>
+                                    </div>
+                                    <!-- Content -->
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-semibold text-gray-900 dark:text-white leading-snug"
+                                            :class="{ 'font-bold': !n.isRead }">
+                                            {{ n.title }}
+                                        </p>
+                                        <p
+                                            class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-snug line-clamp-2">
+                                            {{ n.message }}
+                                        </p>
+                                        <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                                            {{ formatNotifTime(n.createdAt) }}
+                                        </p>
+                                    </div>
+                                    <!-- Unread dot -->
+                                    <div v-if="!n.isRead"
+                                        class="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-2">
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </Transition>

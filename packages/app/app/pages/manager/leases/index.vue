@@ -40,8 +40,7 @@ const filterPropertyId = ref('')
 const filterStatus = ref('')
 const filterDateFrom = ref('')
 const filterDateTo = ref('')
-const sortBy = ref('createdAt')
-const sortDir = ref<'asc' | 'desc'>('desc')
+
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
 const currentPage = ref(1)
@@ -116,12 +115,8 @@ const statusLabels = computed(() => ({
     cancelled: t.value.cancelled,
 }))
 
-const defaultSort = 'createdAt'
-const defaultSortDir = 'desc'
 const activeFilterCount = computed(() =>
-    [filterStatus.value, filterDateFrom.value, filterDateTo.value,
-    sortBy.value !== defaultSort || sortDir.value !== defaultSortDir ? 'sort' : ''
-    ].filter(Boolean).length
+    [filterStatus.value, filterDateFrom.value, filterDateTo.value].filter(Boolean).length
 )
 
 // ─── Fetch Leases ─────────────────────────────────────────────────────────────
@@ -134,7 +129,7 @@ async function fetchLeases() {
             'populate[2]': 'unitType',
             'pagination[pageSize]': '1000',
             'pagination[page]': '1',
-            'sort[0]': `${sortBy.value}:${sortDir.value}`,
+            'sort[0]': 'id:desc',
         })
         if (filterPropertyId.value) {
             const prop = propertiesList.value.find(p => String(p.id) === filterPropertyId.value)
@@ -181,7 +176,7 @@ let initializing = true
 
 watch(searchQuery, resetAndFetch)
 watch(filterPropertyId, () => { if (!initializing) resetAndFetch() })
-watch([filterStatus, filterDateFrom, filterDateTo, sortBy, sortDir], resetAndFetch)
+watch([filterStatus, filterDateFrom, filterDateTo], resetAndFetch)
 watch(pageSize, () => { currentPage.value = 1 })
 
 // ─── Delete ───────────────────────────────────────────────────────────────────
@@ -349,31 +344,8 @@ onMounted(async () => {
                         class="px-2 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
                         @click="($event.target as HTMLInputElement).showPicker?.()" />
                 </div>
-                <!-- Sort By -->
-                <div class="flex items-center gap-1">
-                    <div class="relative">
-                        <select v-model="sortBy"
-                            class="pl-3 pr-7 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
-                            <option value="createdAt">{{ t.sortByCreated }}</option>
-                            <option value="leaseNo">{{ t.sortByLeaseNo }}</option>
-                            <option value="startDate">{{ t.sortByStartDate }}</option>
-                            <option value="endDate">{{ t.sortByEndDate }}</option>
-                            <option value="monthlyRent">{{ t.sortByRent }}</option>
-                            <option value="status">{{ t.sortByStatus }}</option>
-                        </select>
-                        <i
-                            class="fa-solid fa-angle-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
-                    <button @click="sortDir = sortDir === 'asc' ? 'desc' : 'asc'"
-                        class="p-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                        :title="sortDir === 'asc' ? t.sortAsc : t.sortDesc">
-                        <i :class="sortDir === 'asc' ? 'fa-solid fa-arrow-up' : 'fa-solid fa-arrow-down'"
-                            class="text-xs"></i>
-                    </button>
-                </div>
                 <!-- Clear -->
-                <button v-if="activeFilterCount > 0"
-                    @click="filterStatus = ''; filterDateFrom = ''; filterDateTo = ''; sortBy = 'createdAt'; sortDir = 'desc'"
+                <button v-if="activeFilterCount > 0" @click="filterStatus = ''; filterDateFrom = ''; filterDateTo = ''"
                     class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-red-500 hover:text-red-700 dark:hover:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg transition-colors">
                     <i class="fa-solid fa-xmark text-xs"></i>
                     Clear ({{ activeFilterCount }})

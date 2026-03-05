@@ -441,7 +441,7 @@ async function fetchBillingHistory(loadMore = false) {
     try {
         const params = new URLSearchParams({
             'filters[resident][id][$eq]': residentId,
-            'sort[0]': 'dueDate:desc',
+            'sort[0]': 'id:desc',
             'pagination[page]': String(billingPage.value),
             'pagination[pageSize]': '20',
         })
@@ -505,7 +505,7 @@ async function fetchPaymentHistory(loadMore = false) {
         const params = new URLSearchParams({
             'filters[resident][id][$eq]': residentId,
             'populate[0]': 'billing',
-            'sort[0]': 'date:desc',
+            'sort[0]': 'id:desc',
             'pagination[page]': String(paymentPage.value),
             'pagination[pageSize]': '20',
         })
@@ -830,7 +830,7 @@ async function openInvoiceModal() {
     try {
         const params = new URLSearchParams({
             'filters[resident][id][$eq]': residentId,
-            'sort[0]': 'dueDate:desc',
+            'sort[0]': 'id:desc',
             'pagination[page]': '1',
             'pagination[pageSize]': '1',
         })
@@ -930,8 +930,9 @@ async function createInvoice() {
         if (!res.ok) throw new Error('Failed to create invoice')
 
         closeInvoiceModal()
-        // Refresh billing history
+        // Refresh billing history and resident (to update nextBillDate)
         fetchBillingHistory()
+        fetchResident()
     } catch (err) {
         console.error('Error creating invoice:', err)
     } finally {

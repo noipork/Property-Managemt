@@ -36,8 +36,6 @@ const filterUnitTypeId = ref('')
 const filterStatus = ref('')
 const filterDateFrom = ref('')
 const filterDateTo = ref('')
-const sortBy = ref('registrationDate')
-const sortDir = ref<'asc' | 'desc'>('desc')
 
 // ─── Pagination (client-side slice of allResidents) ───────────────────────────
 const currentPage = ref(1)
@@ -136,12 +134,8 @@ const statusLabels = computed(() => ({
 
 const statuses = ['reserved', 'active', 'nearlyExpired', 'expired', 'inactive']
 
-const defaultSort = 'registrationDate'
-const defaultSortDir = 'desc'
 const activeFilterCount = computed(() =>
-    [filterUnitTypeId.value, filterStatus.value, filterDateFrom.value, filterDateTo.value,
-    sortBy.value !== defaultSort || sortDir.value !== defaultSortDir ? 'sort' : ''
-    ].filter(Boolean).length
+    [filterUnitTypeId.value, filterStatus.value, filterDateFrom.value, filterDateTo.value].filter(Boolean).length
 )
 
 // ─── Fetch Residents (single API call, all matching records, paginate client-side) ──
@@ -172,7 +166,7 @@ async function fetchResidents() {
             params.set('filters[$or][0][username][$containsi]', searchQuery.value.trim())
             params.set('filters[$or][1][roomNumber][$containsi]', searchQuery.value.trim())
         }
-        params.set('sort[0]', `${sortBy.value}:${sortDir.value}`)
+        params.set('sort[0]', 'id:desc')
         const res = await fetch(`${STRAPI_URL}/api/users?${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
         })
@@ -197,7 +191,7 @@ let initializing = true
 
 watch(searchQuery, resetAndFetch)
 watch(filterPropertyId, () => { filterUnitTypeId.value = ''; fetchUnitTypes(); if (!initializing) resetAndFetch() })
-watch([filterUnitTypeId, filterStatus, filterDateFrom, filterDateTo, sortBy, sortDir], resetAndFetch)
+watch([filterUnitTypeId, filterStatus, filterDateFrom, filterDateTo], resetAndFetch)
 watch(pageSize, () => { currentPage.value = 1 })
 
 function confirmDelete(resident: Resident) {
@@ -353,7 +347,7 @@ onMounted(async () => {
                 <!-- Date From -->
                 <div class="flex items-center gap-1.5">
                     <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t.filterRegistDate
-                        }}</span>
+                    }}</span>
                     <input v-model="filterDateFrom" type="date"
                         class="px-2 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
                         @click="($event.target as HTMLInputElement).showPicker?.()" />
@@ -362,28 +356,9 @@ onMounted(async () => {
                         class="px-2 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
                         @click="($event.target as HTMLInputElement).showPicker?.()" />
                 </div>
-                <!-- Sort By -->
-                <div class="flex items-center gap-1">
-                    <div class="relative">
-                        <select v-model="sortBy"
-                            class="pl-3 pr-7 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
-                            <option value="registrationDate">{{ t.sortByRegDate }}</option>
-                            <option value="username">{{ t.sortByName }}</option>
-                            <option value="roomNumber">{{ t.sortByRoom }}</option>
-                            <option value="residencyStatus">{{ t.sortByStatus }}</option>
-                        </select>
-                        <i
-                            class="ti-angle-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
-                    <button @click="sortDir = sortDir === 'asc' ? 'desc' : 'asc'"
-                        class="p-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                        :title="sortDir === 'asc' ? t.sortAsc : t.sortDesc">
-                        <i :class="sortDir === 'asc' ? 'ti-arrow-up' : 'ti-arrow-down'" class="text-xs"></i>
-                    </button>
-                </div>
                 <!-- Clear filters -->
                 <button v-if="activeFilterCount > 0"
-                    @click="filterUnitTypeId = ''; filterStatus = ''; filterDateFrom = ''; filterDateTo = ''; sortBy = 'registrationDate'; sortDir = 'desc'"
+                    @click="filterUnitTypeId = ''; filterStatus = ''; filterDateFrom = ''; filterDateTo = ''"
                     class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-red-500 hover:text-red-700 dark:hover:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg transition-colors">
                     <i class="ti-close text-xs"></i>
                     Clear ({{ activeFilterCount }})
@@ -466,7 +441,7 @@ onMounted(async () => {
                     <div class="hidden md:block text-center min-w-[90px]">
                         <p class="text-xs text-gray-400 uppercase tracking-wider">{{ t.registrationDate }}</p>
                         <p class="text-sm text-gray-700 dark:text-gray-300">{{ formatDate(resident.registrationDate)
-                            }}</p>
+                        }}</p>
                     </div>
 
                     <!-- Next Bill Date -->

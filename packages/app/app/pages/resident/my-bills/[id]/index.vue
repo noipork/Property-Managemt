@@ -281,6 +281,13 @@ onMounted(async () => {
     }
 
     await fetchBill()
+
+    // Mark related notifications as read
+    if (bill.value?.documentId) {
+        const { markReadByRelated } = useNotificationBadge()
+        markReadByRelated(['billing'], bill.value.documentId)
+    }
+
     await nextTick()
     requestAnimationFrame(() => requestAnimationFrame(() => {
         headerVisible.value = true

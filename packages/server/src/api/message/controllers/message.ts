@@ -223,6 +223,13 @@ export default factories.createCoreController('api::message.message', ({ strapi 
             // Only create a notification if the participant is NOT viewing the conversation
             if (!isInConversationRoom) {
               try {
+                // Determine the participant's role to build the correct URL
+                const participantUser = await strapi.documents('plugin::users-permissions.user').findFirst({
+                  filters: { documentId: { $eq: participant.documentId } },
+                  populate: { role: { fields: ['name'] } },
+                })
+                const rolePrefix = (participantUser as any)?.role?.name === 'Manager' ? '/manager' : '/resident'
+
                 await strapi.service('api::notification.notification').createAndNotify({
                   title: `New message from ${user.username}`,
                   message: message.content.length > 100
@@ -231,7 +238,7 @@ export default factories.createCoreController('api::message.message', ({ strapi 
                   type: 'message',
                   priority: 'normal',
                   relatedDocumentId: conversationDocumentId,
-                  actionUrl: `/messages`,
+                  actionUrl: `${rolePrefix}/messages`,
                   metadata: {
                     conversationDocumentId,
                     senderUsername: user.username,

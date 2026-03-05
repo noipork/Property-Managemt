@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 
 const { t } = useI18n()
 const { token, user } = useAuth()
@@ -96,18 +96,6 @@ const ui = computed(() => ({
     of: t.value.of || 'of',
     paymentsFound: t.value.paymentsFound || 'payment',
     paymentsFoundPlural: t.value.paymentsFoundPlural || 'payments',
-    paymentDetails: t.value.paymentDetails || 'Payment Details',
-    paymentRefNo: t.value.paymentRefNo || 'Reference No.',
-    paymentMethod: t.value.paymentMethod || 'Method',
-    paymentAmount: t.value.paymentAmount || 'Amount',
-    paymentStatus: t.value.paymentStatus || 'Status',
-    paymentDate: t.value.paymentDate || 'Payment Date',
-    paymentTransactionId: t.value.paymentTransactionId || 'Transaction ID',
-    paymentBilling: t.value.paymentBilling || 'Related Invoice',
-    paymentProperty: t.value.paymentProperty || 'Property',
-    paymentNotes: t.value.paymentNotes || 'Notes',
-    paymentSlip: t.value.paymentSlip || 'Payment Slip',
-    close: t.value.close || 'Close',
 }))
 
 // ─── Payment Types/Status ─────────────────────────────────────────────────────
@@ -166,31 +154,7 @@ const activeFilterCount = computed(() =>
     [filterMethod.value, filterStatus.value, searchQuery.value.trim()].filter(Boolean).length
 )
 
-// ─── Detail Modal ─────────────────────────────────────────────────────────────
-const selectedPayment = ref<Payment | null>(null)
-const showDetailModal = ref(false)
-const showImageModal = ref(false)
-const imageModalUrl = ref('')
 
-function openDetail(payment: Payment) {
-    selectedPayment.value = payment
-    showDetailModal.value = true
-}
-
-function closeDetail() {
-    showDetailModal.value = false
-    selectedPayment.value = null
-}
-
-function viewSlipImage(url: string) {
-    imageModalUrl.value = url
-    showImageModal.value = true
-}
-
-function closeImageModal() {
-    showImageModal.value = false
-    imageModalUrl.value = ''
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatDate(dateStr: string | null) {
@@ -215,7 +179,7 @@ async function fetchPayments() {
             'populate[1]': 'property',
             'populate[2]': 'paymentSlip',
             'pagination[pageSize]': '1000',
-            'sort[0]': 'date:desc',
+            'sort[0]': 'id:desc',
         })
         const res = await fetch(`${STRAPI_URL}/api/payments?${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
@@ -251,7 +215,6 @@ onMounted(async () => {
         headerVisible.value = true
     }))
     await fetchPayments()
-    await nextTick()
     requestAnimationFrame(() => requestAnimationFrame(() => {
         statsVisible.value = true
         filtersVisible.value = true
@@ -394,10 +357,11 @@ onMounted(async () => {
 
             <!-- Payment Card List -->
             <div v-if="!isLoading && payments.length > 0" class="space-y-3">
-                <div v-for="(payment, index) in payments" :key="payment.id"
-                    class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-all duration-500 cursor-pointer"
+                <NuxtLink v-for="(payment, index) in payments" :key="payment.id"
+                    :to="`/resident/payment-history/${payment.id}`"
+                    class="block bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-all duration-500 cursor-pointer"
                     :class="listVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'"
-                    :style="{ transitionDelay: listVisible ? `${index * 40}ms` : '0ms' }" @click="openDetail(payment)">
+                    :style="{ transitionDelay: listVisible ? `${index * 40}ms` : '0ms' }">
                     <div class="flex items-center gap-4">
                         <!-- Method Icon -->
                         <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
@@ -460,7 +424,7 @@ onMounted(async () => {
                         </span>
                         <span class="text-xs text-gray-400 ml-auto">{{ formatDate(payment.date) }}</span>
                     </div>
-                </div>
+                </NuxtLink>
 
                 <!-- Pagination -->
                 <div v-if="totalPages > 1"
@@ -504,201 +468,6 @@ onMounted(async () => {
             </div>
         </template>
 
-        <!-- Detail Modal -->
-        <Teleport to="body">
-            <Transition enter-active-class="transition-all duration-200" enter-from-class="opacity-0"
-                enter-to-class="opacity-100" leave-active-class="transition-all duration-150"
-                leave-from-class="opacity-100" leave-to-class="opacity-0">
-                <div v-if="showDetailModal && selectedPayment"
-                    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-                    @click.self="closeDetail()">
-                    <Transition enter-active-class="transition-all duration-200" enter-from-class="opacity-0 scale-95"
-                        enter-to-class="opacity-100 scale-100" leave-active-class="transition-all duration-150"
-                        leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
-                        <div v-if="showDetailModal"
-                            class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
-                            <!-- Modal Header -->
-                            <div
-                                class="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between z-10">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full flex items-center justify-center"
-                                        :class="methodIconColors[selectedPayment.method] || methodIconColors.other">
-                                        <i :class="methodIcons[selectedPayment.method] || methodIcons.other"
-                                            class="text-lg"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="font-semibold text-gray-900 dark:text-white">{{
-                                            selectedPayment.refNo }}</h3>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ ui.paymentDetails }}</p>
-                                    </div>
-                                </div>
-                                <button @click="closeDetail()"
-                                    class="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                                    <i class="fa-solid fa-xmark text-base"></i>
-                                </button>
-                            </div>
 
-                            <!-- Modal Body -->
-                            <div class="px-6 py-5 space-y-5">
-                                <!-- Status + Amount -->
-                                <div class="flex items-center justify-between">
-                                    <span
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold"
-                                        :class="statusColors[selectedPayment.status] || statusColors.pending">
-                                        <span class="w-2 h-2 rounded-full"
-                                            :class="statusDotColors[selectedPayment.status] || 'bg-gray-400'"></span>
-                                        {{ statusLabels[selectedPayment.status as keyof typeof statusLabels] ||
-                                            selectedPayment.status }}
-                                    </span>
-                                    <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                                        {{ formatCurrency(selectedPayment.amount, selectedPayment.currency) }}
-                                    </p>
-                                </div>
-
-                                <!-- Info Grid -->
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{
-                                            ui.paymentRefNo }}</p>
-                                        <p class="text-sm font-medium text-gray-900 dark:text-white font-mono">{{
-                                            selectedPayment.refNo }}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{
-                                            ui.paymentMethod }}
-                                        </p>
-                                        <span
-                                            class="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-xs font-semibold">
-                                            <i :class="methodIcons[selectedPayment.method] || methodIcons.other"
-                                                class="text-xs"></i>
-                                            {{ methodLabels[selectedPayment.method as keyof typeof methodLabels] ||
-                                                selectedPayment.method }}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ ui.paymentDate
-                                        }}</p>
-                                        <p class="text-sm font-medium text-gray-900 dark:text-white">
-                                            {{ formatDate(selectedPayment.date) }}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{
-                                            ui.paymentAmount }}
-                                        </p>
-                                        <p class="text-sm font-medium text-gray-900 dark:text-white">
-                                            {{ formatCurrency(selectedPayment.amount, selectedPayment.currency) }}
-                                        </p>
-                                    </div>
-                                    <div v-if="selectedPayment.transactionId" class="col-span-2">
-                                        <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{
-                                            ui.paymentTransactionId }}</p>
-                                        <p class="text-sm font-medium text-gray-900 dark:text-white font-mono">{{
-                                            selectedPayment.transactionId }}</p>
-                                    </div>
-                                </div>
-
-                                <!-- Related Invoice -->
-                                <div v-if="selectedPayment.billing"
-                                    class="border-t border-gray-100 dark:border-gray-800 pt-4">
-                                    <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">{{ ui.paymentBilling
-                                    }}</p>
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                                            <i class="fa-solid fa-receipt text-primary-500 text-sm"></i>
-                                        </div>
-                                        <div>
-                                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{
-                                                selectedPayment.billing.invoiceNo }}</p>
-                                            <p class="text-xs text-gray-400">{{
-                                                formatCurrency(selectedPayment.billing.amount,
-                                                    selectedPayment.currency) }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Property -->
-                                <div v-if="selectedPayment.property"
-                                    class="border-t border-gray-100 dark:border-gray-800 pt-4">
-                                    <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">{{ ui.paymentProperty
-                                    }}</p>
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                                            <i class="fa-solid fa-building text-emerald-500 text-sm"></i>
-                                        </div>
-                                        <div>
-                                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{
-                                                selectedPayment.property.name }}</p>
-                                            <p v-if="selectedPayment.property.city" class="text-xs text-gray-400">{{
-                                                selectedPayment.property.city }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Payment Slip -->
-                                <div v-if="selectedPayment.paymentSlip"
-                                    class="border-t border-gray-100 dark:border-gray-800 pt-4">
-                                    <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">{{ ui.paymentSlip }}
-                                    </p>
-                                    <div class="relative aspect-[4/3] w-full rounded-lg overflow-hidden cursor-pointer group"
-                                        @click="viewSlipImage(`${STRAPI_URL}${selectedPayment.paymentSlip.url}`)">
-                                        <img :src="`${STRAPI_URL}${selectedPayment.paymentSlip.url}`"
-                                            :alt="selectedPayment.paymentSlip.name"
-                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                                        <div
-                                            class="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors">
-                                            <i
-                                                class="fa-solid fa-magnifying-glass-plus text-white text-2xl opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Notes -->
-                                <div v-if="selectedPayment.notes"
-                                    class="border-t border-gray-100 dark:border-gray-800 pt-4">
-                                    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ ui.paymentNotes }}
-                                    </p>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line">{{
-                                        selectedPayment.notes }}</p>
-                                </div>
-                            </div>
-
-                            <!-- Modal Footer -->
-                            <div
-                                class="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-6 py-4">
-                                <button @click="closeDetail()"
-                                    class="w-full px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                                    {{ ui.close }}
-                                </button>
-                            </div>
-                        </div>
-                    </Transition>
-                </div>
-            </Transition>
-        </Teleport>
-
-        <!-- Image Lightbox Modal -->
-        <Teleport to="body">
-            <Transition enter-active-class="transition-all duration-200" enter-from-class="opacity-0"
-                enter-to-class="opacity-100" leave-active-class="transition-all duration-150"
-                leave-from-class="opacity-100" leave-to-class="opacity-0">
-                <div v-if="showImageModal"
-                    class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-                    @click="closeImageModal()">
-                    <button @click="closeImageModal()"
-                        class="absolute top-4 right-4 p-2 rounded-lg text-white hover:bg-white/10 transition-colors">
-                        <i class="fa-solid fa-xmark text-xl"></i>
-                    </button>
-                    <Transition enter-active-class="transition-all duration-200" enter-from-class="opacity-0 scale-90"
-                        enter-to-class="opacity-100 scale-100" leave-active-class="transition-all duration-150"
-                        leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-90">
-                        <img v-if="showImageModal" :src="imageModalUrl" alt="Payment Slip"
-                            class="max-w-full max-h-[90vh] rounded-lg shadow-2xl" @click.stop />
-                    </Transition>
-                </div>
-            </Transition>
-        </Teleport>
     </div>
 </template>

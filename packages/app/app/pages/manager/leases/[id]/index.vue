@@ -349,6 +349,11 @@ const sidebarVisible = ref(false)
 
 onMounted(async () => {
     await fetchLease()
+
+    // Mark related notifications as read
+    const { markReadByRelated } = useNotificationBadge()
+    markReadByRelated(['lease'], leaseDocumentId)
+
     await nextTick()
     requestAnimationFrame(() => requestAnimationFrame(() => {
         headerVisible.value = true

@@ -205,6 +205,11 @@ const sectionsVisible = ref(false)
 
 onMounted(async () => {
     await fetchAnnouncement()
+
+    // Mark related notifications as read
+    const { markReadByRelated } = useNotificationBadge()
+    markReadByRelated(['announcement'], announcementDocumentId)
+
     await nextTick()
     requestAnimationFrame(() => requestAnimationFrame(() => {
         sectionsVisible.value = true
@@ -253,7 +258,7 @@ onMounted(async () => {
             <p class="text-gray-600 dark:text-gray-400">{{ errorMessage }}</p>
             <NuxtLink to="/manager/announcements" class="mt-4 text-sm text-primary-600 hover:underline">{{
                 t.backToAnnouncements
-                }}</NuxtLink>
+            }}</NuxtLink>
         </div>
 
         <template v-else-if="announcement">

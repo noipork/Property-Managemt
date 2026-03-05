@@ -48,8 +48,6 @@ const filterPropertyId = ref('')
 const filterStatus = ref('')
 const filterCategory = ref('')
 const filterPriority = ref('')
-const sortBy = ref('createdAt')
-const sortDir = ref<'asc' | 'desc'>('desc')
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
 const currentPage = ref(1)
@@ -191,7 +189,7 @@ async function fetchRequests() {
             params.set('populate[messages][filters][sender][documentId][$ne]', user.value.documentId)
         }
         params.set('pagination[pageSize]', '500')
-        params.set(`sort[0]`, `${sortBy.value}:${sortDir.value}`)
+        params.set('sort[0]', 'id:desc')
 
         if (filterPropertyId.value) {
             params.set('filters[property][documentId][$eq]', filterPropertyId.value)
@@ -242,7 +240,7 @@ function loadLastSeenMap(): Record<string, number> {
     }
 }
 
-watch([filterPropertyId, filterStatus, filterCategory, filterPriority, searchQuery, sortBy, sortDir], () => {
+watch([filterPropertyId, filterStatus, filterCategory, filterPriority, searchQuery], () => {
     currentPage.value = 1
     fetchRequests()
 }, { debounce: 300 } as any)
@@ -302,9 +300,6 @@ function formatDateTime(dateStr: string | null) {
     })
 }
 
-function toggleSortDir() {
-    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
-}
 
 function markCardAsSeen(documentId: string) {
     const target = allRequests.value.find(r => r.documentId === documentId)
@@ -489,26 +484,6 @@ onUnmounted(() => {
                         class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
 
-                <!-- Sort -->
-                <div class="flex items-center gap-1 col-span-2 sm:col-span-1">
-                    <div class="relative flex-1">
-                        <select v-model="sortBy"
-                            class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
-                            <option value="createdAt">{{ t.sortByCreated }}</option>
-                            <option value="priority">{{ t.sortByPriority }}</option>
-                            <option value="status">{{ t.sortByStatus }}</option>
-                            <option value="category">{{ t.sortByCategory }}</option>
-                        </select>
-                        <i
-                            class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
-                    <button @click="toggleSortDir"
-                        class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
-                        :title="sortDir === 'asc' ? 'Ascending' : 'Descending'">
-                        <i :class="sortDir === 'asc' ? 'fa-solid fa-arrow-up-a-z' : 'fa-solid fa-arrow-down-a-z'"
-                            class="text-gray-500 dark:text-gray-400"></i>
-                    </button>
-                </div>
             </div>
         </div>
 

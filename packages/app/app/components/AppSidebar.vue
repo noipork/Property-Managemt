@@ -9,6 +9,30 @@ const props = defineProps<{
 const { user } = useAuth()
 const { t } = useI18n()
 const route = useRoute()
+const { unreadByType } = useNotificationBadge()
+
+// Map sidebar paths to notification types they should show badges for
+const pathNotifTypes: Record<string, string[]> = {
+    '/manager/maintenance': ['maintenance'],
+    '/manager/messages': ['message', 'conversation'],
+    '/manager/invoices': ['billing'],
+    '/manager/payments': ['payment'],
+    '/manager/leases': ['lease'],
+    '/manager/announcements': ['announcement'],
+    '/manager/properties': ['property'],
+    '/resident/maintenance': ['maintenance'],
+    '/resident/messages': ['message', 'conversation'],
+    '/resident/my-bills': ['billing'],
+    '/resident/payment-history': ['payment'],
+    '/resident/my-lease': ['lease'],
+    '/resident/dashboard': ['announcement'],
+}
+
+function badgeCount(path: string): number {
+    const types = pathNotifTypes[path]
+    if (!types) return 0
+    return types.reduce((sum, t) => sum + (unreadByType.value[t] || 0), 0)
+}
 
 function isActive(path: string) {
     if (path === '/') return route.path === '/'
@@ -133,27 +157,33 @@ watch(
                 <div v-for="item in section.items" :key="item.name" class="sidebar-item mb-0.5"
                     :class="open ? 'mx-3' : 'mx-2'">
                     <NuxtLink :to="item.path"
-                        class="w-full flex items-center rounded-lg transition-all duration-200 group" :class="[
+                        class="w-full flex items-center rounded-lg transition-all duration-200 group relative" :class="[
                             isActive(item.path)
                                 ? 'bg-primary-600 dark:bg-primary-700 text-white shadow-lg shadow-primary-600/20 dark:shadow-primary-700/20'
                                 : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white',
                             open ? 'gap-3 px-3 py-2.5' : 'justify-center py-2 px-0'
                         ]" :title="!open ? item.name : undefined">
-                        <i :class="[
-                            item.icon,
-                            'text-lg flex-shrink-0',
-                            open ? 'w-5 text-center' : 'w-full text-center text-xl',
-                            isActive(item.path) ? 'text-white' : 'text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white',
-                        ]"></i>
+                        <div class="relative flex-shrink-0" :class="open ? 'w-5' : 'w-full'">
+                            <i :class="[
+                                item.icon,
+                                'text-lg',
+                                open ? 'w-5 text-center block' : 'w-full text-center text-xl block',
+                                isActive(item.path) ? 'text-white' : 'text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white',
+                            ]"></i>
+                            <!-- Collapsed badge dot -->
+                            <span v-if="!open && badgeCount(item.path) > 0"
+                                class="absolute -top-1 -right-0.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-gray-900"></span>
+                        </div>
                         <span v-if="open" class="text-sm font-medium whitespace-nowrap">
                             {{ item.name }}
                         </span>
-                        <span v-if="open && item.badge" class="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full"
+                        <!-- Expanded badge count -->
+                        <span v-if="open && badgeCount(item.path) > 0"
+                            class="ml-auto min-w-[20px] h-5 px-1.5 flex items-center justify-center text-[10px] font-bold rounded-full"
                             :class="isActive(item.path)
                                 ? 'bg-white/20 text-white'
-                                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
-                                ">
-                            {{ item.badge }}
+                                : 'bg-red-500 text-white'">
+                            {{ badgeCount(item.path) > 99 ? '99+' : badgeCount(item.path) }}
                         </span>
                     </NuxtLink>
                 </div>

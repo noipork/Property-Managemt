@@ -125,7 +125,7 @@ async function fetchPayments() {
             'populate[2]': 'billing',
             'pagination[pageSize]': '1000',
             'pagination[page]': '1',
-            'sort[0]': 'date:desc',
+            'sort[0]': 'id:desc',
         })
         if (filterPropertyId.value) {
             const prop = propertiesList.value.find(p => String(p.id) === filterPropertyId.value)

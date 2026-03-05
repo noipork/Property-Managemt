@@ -381,6 +381,11 @@ const cleanupFunctions: Array<() => void> = []
 
 onMounted(async () => {
     await fetchRequest()
+
+    // Mark related notifications as read
+    const { markReadByRelated } = useNotificationBadge()
+    markReadByRelated(['maintenance'], maintenanceDocumentId)
+
     await nextTick()
     requestAnimationFrame(() => requestAnimationFrame(() => {
         sectionsVisible.value = true

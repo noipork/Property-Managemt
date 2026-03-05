@@ -23,9 +23,9 @@ export default factories.createCoreController('api::payment.payment', ({ strapi 
 				})
 
 				const record = records?.[0]
-				const residentId = record?.resident?.documentId
+				const propertyDocumentId = record?.property?.documentId
 
-				if (record && residentId) {
+				if (record && propertyDocumentId) {
 					const paidDate = record.date
 						? new Date(record.date).toLocaleDateString('en-GB', {
 								day: '2-digit',
@@ -41,32 +41,49 @@ export default factories.createCoreController('api::payment.payment', ({ strapi 
 						currency,
 					}).format(Number(amount))
 
-					const title = record.refNo ? `Payment received: ${record.refNo}` : 'Payment received'
-					const messageParts = [formattedAmount]
+					const residentName = record.resident?.username || 'Resident'
+					const title = record.refNo ? `Payment submitted: ${record.refNo}` : 'New payment submitted'
+					const messageParts = [`${residentName} submitted ${formattedAmount}`]
 					if (paidDate) messageParts.push(`on ${paidDate}`)
 					if (record.billing?.invoiceNo) messageParts.push(`for invoice ${record.billing.invoiceNo}`)
 					const message = messageParts.join(' ')
 
-					await strapi.service('api::notification.notification').createAndNotify({
-						title,
-						message,
-						type: 'payment',
-						priority: 'high',
-						relatedDocumentId: record.documentId,
-						actionUrl: '/resident/payment-history',
-						metadata: {
-							refNo: record.refNo,
-							amount: record.amount,
-							currency: record.currency,
-							date: record.date,
-							status: record.status,
-							billingInvoiceNo: record.billing?.invoiceNo,
-							propertyName: record.property?.name,
+					// Notify managers of this property (role id 3)
+					const managers = await strapi.documents('plugin::users-permissions.user').findMany({
+						filters: {
+							role: { id: { $eq: 3 } },
+							property: { documentId: { $eq: propertyDocumentId } },
 						},
-						recipientId: residentId,
-						senderId: user.documentId,
-						propertyId: record.property?.documentId,
+						fields: ['documentId'],
 					})
+
+					const recipientIds = managers
+						.map((m) => m.documentId)
+						.filter((id): id is string => Boolean(id))
+
+					if (recipientIds.length > 0) {
+						await strapi.service('api::notification.notification').notifyMany({
+							title,
+							message,
+							type: 'payment',
+							priority: 'high',
+							relatedDocumentId: record.documentId,
+							actionUrl: `/manager/payments/${record.documentId}`,
+							metadata: {
+								refNo: record.refNo,
+								amount: record.amount,
+								currency: record.currency,
+								date: record.date,
+								status: record.status,
+								billingInvoiceNo: record.billing?.invoiceNo,
+								propertyName: record.property?.name,
+								residentUsername: record.resident?.username,
+							},
+							recipientIds,
+							senderId: user.documentId,
+							propertyId: propertyDocumentId,
+						})
+					}
 				}
 			} catch (err) {
 				strapi.log.error('[Notification] Failed to notify resident for payment creation:', err)

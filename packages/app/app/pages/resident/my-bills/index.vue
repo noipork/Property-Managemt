@@ -246,7 +246,7 @@ async function fetchBills() {
             'populate[0]': 'property',
             'populate[1]': 'resident',
             'pagination[pageSize]': '500',
-            'sort[0]': 'dueDate:desc',
+            'sort[0]': 'id:desc',
         })
 
         const res = await fetch(`${STRAPI_URL}/api/billings?${params}`, {

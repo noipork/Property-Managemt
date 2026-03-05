@@ -212,6 +212,10 @@ async function selectConversation(conversation: Conversation) {
 
     await fetchMessages(conversation.documentId)
 
+    // Mark notification badges as read for this conversation
+    const { markReadByRelated } = useNotificationBadge()
+    markReadByRelated(['message', 'conversation'], conversation.documentId)
+
     // Always mark messages as read when opening a conversation
     conversation.unreadCount = 0
     // Check if there are any unread messages from others
@@ -1097,7 +1101,7 @@ onUnmounted(() => {
                                                 ? 'bg-primary-600 text-white rounded-br-md'
                                                 : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md'">
                                             <p class="text-sm whitespace-pre-wrap break-words">{{ (item as any).content
-                                            }}</p>
+                                                }}</p>
                                             <!-- Images -->
                                             <div v-if="(item as any).images && (item as any).images.length > 0"
                                                 class="mt-2 flex flex-wrap gap-2">
@@ -1336,7 +1340,7 @@ onUnmounted(() => {
                                         <span class="text-gray-600 dark:text-gray-400">{{ t.broadcastSending }}</span>
                                         <span class="font-medium text-gray-900 dark:text-white">{{
                                             broadcastProgress.current
-                                        }}/{{ broadcastProgress.total }}</span>
+                                            }}/{{ broadcastProgress.total }}</span>
                                     </div>
                                     <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                         <div class="h-full bg-amber-500 rounded-full transition-all duration-300"

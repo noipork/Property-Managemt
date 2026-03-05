@@ -6,6 +6,26 @@ import { factories } from '@strapi/strapi'
 
 export default factories.createCoreController('api::notification.notification', ({ strapi }) => ({
   /**
+   * Override core find to always scope results to the current user's notifications
+   */
+  async find(ctx) {
+    const user = ctx.state.user
+
+    if (!user) {
+      return ctx.unauthorized('You must be logged in')
+    }
+
+    // Merge the recipient filter into whatever filters the client sent
+    ctx.query.filters = {
+      ...(ctx.query.filters as object ?? {}),
+      recipients: { documentId: { $eq: user.documentId } },
+    }
+
+    // Delegate to the default core find with the patched query
+    return super.find(ctx)
+  },
+
+  /**
    * Mark a single notification as read
    */
   async markAsRead(ctx) {

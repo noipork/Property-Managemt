@@ -52,7 +52,7 @@ export default factories.createCoreController('api::announcement.announcement', 
 							type: 'announcement',
 							priority: priorityMap[announcement.priority] || 'normal',
 							relatedDocumentId: announcement.documentId,
-							actionUrl: `/resident/announcements/${announcement.documentId}`,
+							actionUrl: `/resident/dashboard`,
 							metadata: {
 								category: announcement.category,
 								priority: announcement.priority,

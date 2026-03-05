@@ -105,7 +105,15 @@ const slipUrl = computed(() => {
     return url ? (url.startsWith('http') ? url : `${STRAPI_URL}${url}`) : null
 })
 
-onMounted(fetchPayment)
+onMounted(async () => {
+    await fetchPayment()
+
+    // Mark related notifications as read
+    if (payment.value?.documentId) {
+        const { markReadByRelated } = useNotificationBadge()
+        markReadByRelated(['payment'], payment.value.documentId)
+    }
+})
 </script>
 
 <template>

@@ -188,6 +188,10 @@ async function selectConversation(conversation: Conversation) {
 
     await fetchMessages(conversation.documentId)
 
+    // Mark notification badges as read for this conversation
+    const { markReadByRelated } = useNotificationBadge()
+    markReadByRelated(['message', 'conversation'], conversation.documentId)
+
     // Always mark messages as read when opening a conversation
     conversation.unreadCount = 0
     // Check if there are any unread messages from others
@@ -803,9 +807,9 @@ onUnmounted(() => {
                                     <div class="flex items-center gap-1 mt-1 px-1"
                                         :class="msg.sender?.id === user?.id ? 'justify-end' : 'justify-start'">
                                         <span class="text-[10px] text-gray-400">{{ formatMessageTime(msg.createdAt)
-                                            }}</span>
+                                        }}</span>
                                         <span v-if="msg.isEdited" class="text-[10px] text-gray-400">({{ t.edited
-                                            }})</span>
+                                        }})</span>
                                     </div>
                                 </div>
                             </div>

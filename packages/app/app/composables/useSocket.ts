@@ -192,6 +192,21 @@ export const useSocket = () => {
         return () => socket.value?.off('messages-read', callback)
     }
 
+    function onNotification(callback: (data: {
+        id: string
+        title: string
+        message: string
+        type: string
+        priority: string
+        relatedDocumentId: string | null
+        actionUrl: string | null
+        metadata: Record<string, any> | null
+        createdAt: string
+    }) => void) {
+        socket.value?.on('notification', callback)
+        return () => socket.value?.off('notification', callback)
+    }
+
     /**
      * Remove a specific event listener
      */
@@ -243,6 +258,7 @@ export const useSocket = () => {
         onMaintenanceUpdated,
         onNewMaintenanceMessage,
         onMessagesRead,
+        onNotification,
         off,
     }
 }
