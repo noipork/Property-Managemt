@@ -9,12 +9,7 @@
 
 // Listen for push events from the push service
 self.addEventListener('push', (event) => {
-    console.log('[SW] Push event received:', event)
-
-    if (!event.data) {
-        console.log('[SW] No push data')
-        return
-    }
+    if (!event.data) return
 
     let payload
     try {
@@ -25,8 +20,6 @@ self.addEventListener('push', (event) => {
             body: event.data.text(),
         }
     }
-
-    console.log('[SW] Push payload:', payload)
 
     const title = payload.title || 'Property Management'
     const options = {
@@ -43,8 +36,6 @@ self.addEventListener('push', (event) => {
 
     event.waitUntil(
         self.registration.showNotification(title, options)
-            .then(() => console.log('[SW] showNotification succeeded'))
-            .catch((err) => console.error('[SW] showNotification FAILED:', err))
     )
 })
 
@@ -85,12 +76,10 @@ self.addEventListener('notificationclose', (event) => {
 
 // Service worker install — skip waiting to activate immediately
 self.addEventListener('install', (event) => {
-    console.log('[SW] Installing...')
     event.waitUntil(self.skipWaiting())
 })
 
 // Service worker activation — claim clients immediately
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating...')
     event.waitUntil(self.clients.claim())
 })

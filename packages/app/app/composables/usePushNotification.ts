@@ -68,9 +68,7 @@ export const usePushNotification = () => {
       const existingSub = await registration.pushManager.getSubscription()
       isSubscribed.value = !!existingSub
 
-      console.log('[PushNotification] Initialized. SW state:', registration.active?.state, 'Subscribed:', isSubscribed.value)
     } catch (err: any) {
-      console.warn('[PushNotification] Init failed:', err.message)
       error.value = err.message
     }
   }
@@ -139,10 +137,8 @@ export const usePushNotification = () => {
       }
 
       isSubscribed.value = true
-      console.log('[PushNotification] Subscribed successfully')
       return true
     } catch (err: any) {
-      console.error('[PushNotification] Subscribe failed:', err)
       error.value = err.message
       return false
     } finally {
@@ -177,10 +173,8 @@ export const usePushNotification = () => {
       }
 
       isSubscribed.value = false
-      console.log('[PushNotification] Unsubscribed successfully')
       return true
     } catch (err: any) {
-      console.error('[PushNotification] Unsubscribe failed:', err)
       error.value = err.message
       return false
     } finally {
