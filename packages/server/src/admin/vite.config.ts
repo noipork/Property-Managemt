@@ -7,6 +7,7 @@ export default (config: UserConfig) => {
       alias: {
         '@': '/src',
       },
+      dedupe: ['react', 'react-dom', 'react-router-dom', 'styled-components'],
     },
     server: {
       allowedHosts: [
