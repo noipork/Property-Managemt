@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "conversations",
+  "info": {
+    "singularName": "conversation",
+    "pluralName": "conversations",
+    "displayName": "Conversation",
+    "description": "Chat conversations between managers and residents"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "participants": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "property": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property.property"
+    },
+    "lastMessage": {
+      "type": "text"
+    },
+    "lastMessageAt": {
+      "type": "datetime"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "messages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::message.message",
+      "mappedBy": "conversation"
+    }
+  }
+}

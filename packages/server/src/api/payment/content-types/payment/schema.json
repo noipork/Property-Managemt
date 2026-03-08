@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payments",
+  "info": {
+    "singularName": "payment",
+    "pluralName": "payments",
+    "displayName": "Payment",
+    "description": "Payment records for billing invoices"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "refNo": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "currency": {
+      "type": "string",
+      "default": "THB"
+    },
+    "method": {
+      "type": "enumeration",
+      "enum": ["creditCard", "bankTransfer", "cash", "promptPay", "other"],
+      "required": true,
+      "default": "bankTransfer"
+    },
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "reviewing", "completed", "failed", "refunded"],
+      "required": true,
+      "default": "pending"
+    },
+    "transactionId": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "paymentSlip": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "resident": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "payments"
+    },
+    "billing": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::billing.billing",
+      "inversedBy": "payments"
+    },
+    "property": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property.property"
+    }
+  }
+}

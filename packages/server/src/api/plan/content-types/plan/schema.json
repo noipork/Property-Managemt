@@ -1,0 +1,64 @@
+{
+  "kind": "collectionType",
+  "collectionName": "plans",
+  "info": {
+    "singularName": "plan",
+    "pluralName": "plans",
+    "displayName": "Plan",
+    "description": "Subscription plans for property managers"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "required": true
+    },
+    "price": {
+      "type": "decimal",
+      "required": true,
+      "min": 0
+    },
+    "currency": {
+      "type": "string",
+      "default": "THB",
+      "required": true
+    },
+    "maxProperties": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "maxUnitsPerProperty": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "features": {
+      "type": "json"
+    },
+    "isActive": {
+      "type": "boolean",
+      "required": true,
+      "default": true
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    },
+    "users": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user",
+      "mappedBy": "plan"
+    }
+  }
+}

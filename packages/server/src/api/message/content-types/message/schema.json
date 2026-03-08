@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "messages",
+  "info": {
+    "singularName": "message",
+    "pluralName": "messages",
+    "displayName": "Message",
+    "description": "Individual messages in conversations"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "content": {
+      "type": "text",
+      "required": true
+    },
+    "sender": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "conversation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::conversation.conversation",
+      "inversedBy": "messages"
+    },
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": ["images"]
+    },
+    "attachments": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": ["images", "files", "videos"]
+    },
+    "isRead": {
+      "type": "boolean",
+      "default": false
+    },
+    "readAt": {
+      "type": "datetime"
+    },
+    "isEdited": {
+      "type": "boolean",
+      "default": false
+    },
+    "editedAt": {
+      "type": "datetime"
+    },
+    "replyTo": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::message.message"
+    }
+  }
+}

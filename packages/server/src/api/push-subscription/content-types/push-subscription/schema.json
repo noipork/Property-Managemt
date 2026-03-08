@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "push_subscriptions",
+  "info": {
+    "singularName": "push-subscription",
+    "pluralName": "push-subscriptions",
+    "displayName": "Push Subscription",
+    "description": "Web Push notification subscriptions for users"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "endpoint": {
+      "type": "text",
+      "required": true
+    },
+    "keys": {
+      "type": "json",
+      "required": true
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "userAgent": {
+      "type": "string"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

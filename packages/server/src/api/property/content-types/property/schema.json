@@ -1,0 +1,132 @@
+{
+  "kind": "collectionType",
+  "collectionName": "properties",
+  "info": {
+    "singularName": "property",
+    "pluralName": "properties",
+    "displayName": "Property",
+    "description": "Real estate properties managed by the system"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "address": {
+      "type": "string",
+      "required": true
+    },
+    "city": {
+      "type": "string",
+      "required": true
+    },
+    "state": {
+      "type": "string"
+    },
+    "zipCode": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string",
+      "default": "Thailand"
+    },
+    "propertyType": {
+      "type": "enumeration",
+      "enum": [
+        "apartment",
+        "condo",
+        "house",
+        "townhouse",
+        "commercial",
+        "land",
+        "other"
+      ],
+      "default": "apartment",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "active",
+        "inactive",
+        "maintenance",
+        "sold"
+      ],
+      "default": "active",
+      "required": true
+    },
+    "totalUnits": {
+      "type": "integer",
+      "required": true,
+      "min": 1,
+      "default": 1
+    },
+    "occupiedUnits": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "monthlyRent": {
+      "type": "decimal"
+    },
+    "currency": {
+      "type": "string",
+      "default": "THB"
+    },
+    "area": {
+      "type": "decimal"
+    },
+    "areaUnit": {
+      "type": "string",
+      "default": "sqm"
+    },
+    "yearBuilt": {
+      "type": "integer"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    },
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": ["images"]
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "unitTypes": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::unit-type.unit-type",
+      "mappedBy": "property"
+    },
+    "bankName": {
+      "type": "string"
+    },
+    "bankAccountName": {
+      "type": "string"
+    },
+    "bankAccountNumber": {
+      "type": "string"
+    },
+    "promptPayId": {
+      "type": "string"
+    },
+    "qrCodeImage": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "assets",
+  "info": {
+    "singularName": "asset",
+    "pluralName": "assets",
+    "displayName": "Asset",
+    "description": "Assets available for residents to request"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "price": {
+      "type": "decimal",
+      "required": true,
+      "min": 0
+    },
+    "currency": {
+      "type": "string",
+      "default": "THB"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active"
+    },
+    "property": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property.property"
+    }
+  }
+}
