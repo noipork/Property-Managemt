@@ -904,12 +904,12 @@ onUnmounted(() => {
                         :class="toast.type === 'success'
                             ? 'bg-emerald-50 dark:bg-emerald-900/80 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
                             : 'bg-red-50 dark:bg-red-900/80 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'">
-                        <i :class="toast.type === 'success' ? 'fa-solid fa-square-check text-emerald-500' : 'fa-solid fa-circle-exclamation text-red-500'"
+                        <i :class="toast.type === 'success' ? 'ti-check-box text-emerald-500' : 'ti-alert-circle text-red-500'"
                             class="text-base mt-0.5 shrink-0"></i>
                         <span class="flex-1 leading-snug">{{ toast.message }}</span>
                         <button @click="dismissToast(toast.id)"
                             class="shrink-0 opacity-50 hover:opacity-100 transition-opacity">
-                            <i class="fa-solid fa-xmark text-xs"></i>
+                            <i class="ti-close text-xs"></i>
                         </button>
                     </div>
                 </TransitionGroup>
@@ -934,17 +934,17 @@ onUnmounted(() => {
                 <div class="p-3 border-b border-gray-200 dark:border-gray-800">
                     <button @click="showNewConversationModal = true"
                         class="w-full flex items-center justify-center gap-2 px-4 py-2 mb-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
-                        <i class="fa-solid fa-pen-to-square text-base"></i>
+                        <i class="ti-edit text-base"></i>
                         {{ t.newConversation }}
                     </button>
                     <button @click="openBroadcastModal"
                         class="w-full flex items-center justify-center gap-2 px-4 py-2 mb-3 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors">
-                        <i class="fa-solid fa-tower-broadcast text-base"></i>
+                        <i class="ti-broadcast text-base"></i>
                         {{ t.broadcastMessage }}
                     </button>
                     <!-- Search -->
                     <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                        <i class="ti-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                         <input v-model="searchQuery" type="text" :placeholder="t.searchMessages"
                             class="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
                     </div>
@@ -967,7 +967,7 @@ onUnmounted(() => {
                         class="flex flex-col items-center justify-center py-12 px-4">
                         <div
                             class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                            <i class="fa-solid fa-comment text-2xl text-gray-400"></i>
+                            <i class="ti-comment text-2xl text-gray-400"></i>
                         </div>
                         <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-1">{{ t.noConversations }}</h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400 text-center">{{ t.noConversationsDesc }}</p>
@@ -981,7 +981,7 @@ onUnmounted(() => {
                             <!-- Avatar -->
                             <div
                                 class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i class="fa-solid fa-user text-primary-600 dark:text-primary-400 text-lg"></i>
+                                <i class="ti-user text-primary-600 dark:text-primary-400 text-lg"></i>
                             </div>
                             <!-- Content -->
                             <div class="flex-1 min-w-0 text-left">
@@ -1005,7 +1005,7 @@ onUnmounted(() => {
                                     {{ conv.lastMessage || t.noMessages }}
                                 </p>
                                 <div v-if="conv.property" class="flex items-center gap-1 mt-1">
-                                    <i class="fa-solid fa-house text-[10px] text-gray-400"></i>
+                                    <i class="ti-home text-[10px] text-gray-400"></i>
                                     <span class="text-[10px] text-gray-400 truncate">{{ conv.property.name }}</span>
                                 </div>
                             </div>
@@ -1021,7 +1021,7 @@ onUnmounted(() => {
                     <div class="text-center px-4">
                         <div
                             class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fa-solid fa-comment text-3xl text-gray-400"></i>
+                            <i class="ti-comment text-3xl text-gray-400"></i>
                         </div>
                         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">{{ t.selectConversation }}
                         </h3>
@@ -1037,12 +1037,12 @@ onUnmounted(() => {
                         <!-- Back button (mobile) -->
                         <button @click="showChatOnMobile = false; selectedConversation = null"
                             class="md:hidden p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                            <i class="fa-solid fa-arrow-left text-gray-600 dark:text-gray-400"></i>
+                            <i class="ti-arrow-left text-gray-600 dark:text-gray-400"></i>
                         </button>
                         <!-- Avatar -->
                         <div
                             class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                            <i class="fa-solid fa-user text-primary-600 dark:text-primary-400"></i>
+                            <i class="ti-user text-primary-600 dark:text-primary-400"></i>
                         </div>
                         <!-- Info -->
                         <div class="flex-1 min-w-0">
@@ -1058,7 +1058,7 @@ onUnmounted(() => {
                         <button @click="openDeleteModal(selectedConversation.documentId)" :disabled="isDeleting"
                             class="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg transition-colors disabled:opacity-50"
                             :title="t.deleteConversation">
-                            <i class="fa-solid fa-trash text-base"></i>
+                            <i class="ti-trash text-base"></i>
                         </button>
                     </div>
 
@@ -1152,8 +1152,8 @@ onUnmounted(() => {
                             </div>
                             <button type="submit" :disabled="!newMessage.trim() || isSending"
                                 class="flex-shrink-0 px-4 h-auto bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition-colors">
-                                <i v-if="isSending" class="fa-solid fa-rotate text-lg animate-spin"></i>
-                                <i v-else class="fa-solid fa-paper-plane text-lg"></i>
+                                <i v-if="isSending" class="ti-reload text-lg animate-spin"></i>
+                                <i v-else class="ti-shift-right text-lg"></i>
                             </button>
                         </form>
                     </div>
@@ -1173,7 +1173,7 @@ onUnmounted(() => {
                         <div class="flex items-start gap-4">
                             <div
                                 class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                                <i class="fa-solid fa-trash text-red-500"></i>
+                                <i class="ti-trash text-red-500"></i>
                             </div>
                             <div>
                                 <h3 class="font-semibold text-gray-900 dark:text-white">{{ t.deleteConversation }}</h3>
@@ -1189,7 +1189,7 @@ onUnmounted(() => {
                             </button>
                             <button @click="confirmDeleteConversation" :disabled="isDeleting"
                                 class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2">
-                                <i v-if="isDeleting" class="fa-solid fa-rotate text-xs animate-spin"></i>
+                                <i v-if="isDeleting" class="ti-reload text-xs animate-spin"></i>
                                 {{ t.delete }}
                             </button>
                         </div>
@@ -1216,7 +1216,7 @@ onUnmounted(() => {
                                 <div class="flex items-center gap-3">
                                     <div
                                         class="w-9 h-9 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
-                                        <i class="fa-solid fa-tower-broadcast text-amber-600 dark:text-amber-400"></i>
+                                        <i class="ti-broadcast text-amber-600 dark:text-amber-400"></i>
                                     </div>
                                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{
                                         t.broadcastMessage }}
@@ -1224,7 +1224,7 @@ onUnmounted(() => {
                                 </div>
                                 <button @click="showBroadcastModal = false" :disabled="isSendingBroadcast"
                                     class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                                    <i class="fa-solid fa-xmark text-gray-500"></i>
+                                    <i class="ti-close text-gray-500"></i>
                                 </button>
                             </div>
 
@@ -1237,7 +1237,7 @@ onUnmounted(() => {
                                     </label>
                                     <div class="relative">
                                         <i
-                                            class="fa-solid fa-house absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                                            class="ti-home absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                                         <select v-model="broadcastPropertyId" :disabled="isSendingBroadcast"
                                             class="w-full pl-9 pr-8 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
                                             <option value="">{{ t.selectProperty }}</option>
@@ -1247,7 +1247,7 @@ onUnmounted(() => {
                                             </option>
                                         </select>
                                         <i
-                                            class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                            class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                                     </div>
                                 </div>
 
@@ -1265,7 +1265,7 @@ onUnmounted(() => {
                                     <div class="flex items-center gap-2 mb-2">
                                         <div class="relative flex-1">
                                             <i
-                                                class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                                                class="ti-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                                             <input v-model="broadcastSearchQuery" type="text"
                                                 :placeholder="t.searchResidents"
                                                 class="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
@@ -1301,11 +1301,11 @@ onUnmounted(() => {
                                                     ? 'bg-primary-600 border-primary-600'
                                                     : 'border-gray-300 dark:border-gray-600'">
                                                 <i v-if="broadcastSelectedIds.has(resident.id)"
-                                                    class="fa-solid fa-check text-white text-xs"></i>
+                                                    class="ti-check text-white text-xs"></i>
                                             </div>
                                             <div
                                                 class="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                                                <i class="fa-solid fa-user text-primary-600 dark:text-primary-400 text-xs"></i>
+                                                <i class="ti-user text-primary-600 dark:text-primary-400 text-xs"></i>
                                             </div>
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{
@@ -1360,8 +1360,8 @@ onUnmounted(() => {
                                 <button @click="sendBroadcast"
                                     :disabled="!broadcastPropertyId || broadcastSelectedIds.size === 0 || !broadcastMessage.trim() || isSendingBroadcast"
                                     class="px-4 py-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2">
-                                    <i v-if="isSendingBroadcast" class="fa-solid fa-rotate text-xs animate-spin"></i>
-                                    <i v-else class="fa-solid fa-tower-broadcast text-sm"></i>
+                                    <i v-if="isSendingBroadcast" class="ti-reload text-xs animate-spin"></i>
+                                    <i v-else class="ti-broadcast text-sm"></i>
                                     {{ t.broadcastSendButton }}
                                 </button>
                             </div>
@@ -1390,7 +1390,7 @@ onUnmounted(() => {
                                 </h3>
                                 <button @click="showNewConversationModal = false"
                                     class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                                    <i class="fa-solid fa-xmark text-gray-500"></i>
+                                    <i class="ti-close text-gray-500"></i>
                                 </button>
                             </div>
 
@@ -1403,7 +1403,7 @@ onUnmounted(() => {
                                     </label>
                                     <div class="relative">
                                         <i
-                                            class="fa-solid fa-house absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                                            class="ti-home absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                                         <select v-model="selectedPropertyId"
                                             class="w-full pl-9 pr-8 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
                                             <option value="">{{ t.selectProperty }}</option>
@@ -1413,7 +1413,7 @@ onUnmounted(() => {
                                             </option>
                                         </select>
                                         <i
-                                            class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                            class="ti-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                                     </div>
                                 </div>
 
@@ -1426,7 +1426,7 @@ onUnmounted(() => {
                                     <!-- Search Residents -->
                                     <div class="relative mb-2">
                                         <i
-                                            class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                                            class="ti-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                                         <input v-model="residentSearchQuery" type="text"
                                             :placeholder="t.searchResidents"
                                             class="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
@@ -1448,7 +1448,7 @@ onUnmounted(() => {
                                             :class="{ 'bg-primary-50 dark:bg-primary-900/20': selectedResidentId === String(resident.id) }">
                                             <div
                                                 class="w-9 h-9 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                                                <i class="fa-solid fa-user text-primary-600 dark:text-primary-400 text-sm"></i>
+                                                <i class="ti-user text-primary-600 dark:text-primary-400 text-sm"></i>
                                             </div>
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{
@@ -1459,7 +1459,7 @@ onUnmounted(() => {
                                                 </p>
                                             </div>
                                             <i v-if="selectedResidentId === String(resident.id)"
-                                                class="fa-solid fa-check text-primary-600 dark:text-primary-400"></i>
+                                                class="ti-check text-primary-600 dark:text-primary-400"></i>
                                         </button>
                                     </div>
 

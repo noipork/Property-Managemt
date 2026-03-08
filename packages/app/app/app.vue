@@ -19,4 +19,5 @@ onMounted(() => {
     document.documentElement.classList.remove('dark')
   }
 })
+})
 </script>

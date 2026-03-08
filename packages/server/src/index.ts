@@ -23,7 +23,12 @@ export default {
 
     const io = new SocketIOServer(httpServer, {
       cors: {
-        origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+        origin: [
+          'http://localhost:3000',
+          'http://127.0.0.1:3000',
+          'https://propertyapi.upstify-official.com',
+          'http://propertyapi.upstify-official.com',
+        ],
         methods: ['GET', 'POST'],
         credentials: true,
       },

@@ -13,6 +13,17 @@ const translations = {
         markAllRead: 'Mark all read',
         clearRead: 'Clear read',
         noNotifications: 'No notifications',
+        noNotificationsDesc: 'You\'re all caught up!',
+        noUnreadNotifications: 'No unread notifications',
+        allCaughtUp: 'All caught up!',
+        unread: 'unread',
+        unreadOnly: 'Unread only',
+        allTypes: 'All types',
+        system: 'System',
+        justNow: 'Just now',
+        minutesAgo: 'min ago',
+        hoursAgo: 'hr ago',
+        daysAgo: 'days ago',
         profile: 'Profile',
         settings: 'Settings',
         logout: 'Logout',
@@ -938,6 +949,17 @@ const translations = {
         markAllRead: 'อ่านทั้งหมด',
         clearRead: 'ล้างที่อ่านแล้ว',
         noNotifications: 'ยังไม่มีการแจ้งเตือน',
+        noNotificationsDesc: 'คุณอ่านครบทุกการแจ้งเตือนแล้ว!',
+        noUnreadNotifications: 'ไม่มีการแจ้งเตือนที่ยังไม่ได้อ่าน',
+        allCaughtUp: 'อ่านครบแล้ว!',
+        unread: 'ยังไม่ได้อ่าน',
+        unreadOnly: 'ยังไม่ได้อ่านเท่านั้น',
+        allTypes: 'ทุกประเภท',
+        system: 'ระบบ',
+        justNow: 'เมื่อสักครู่',
+        minutesAgo: 'นาทีที่แล้ว',
+        hoursAgo: 'ชั่วโมงที่แล้ว',
+        daysAgo: 'วันที่แล้ว',
         profile: 'โปรไฟล์',
         settings: 'ตั้งค่า',
         logout: 'ออกจากระบบ',
@@ -1856,14 +1878,14 @@ const translations = {
 }
 
 export function useI18n() {
-    // Use useState for SSR-safe shared reactive state — always starts as 'EN' on server,
+    // Use useState for SSR-safe shared reactive state — always starts as 'TH' on server,
     // then client restores from localStorage in onMounted to avoid hydration mismatch
-    const currentLanguage = useState<Language>('app-language', () => 'EN')
+    const currentLanguage = useState<Language>('app-language', () => 'TH')
 
     // Restore language from localStorage on client (only once)
-    if (process.client && currentLanguage.value === 'EN') {
+    if (process.client && currentLanguage.value === 'TH') {
         const stored = localStorage.getItem('language') as Language | null
-        if (stored && stored !== 'EN') {
+        if (stored && stored !== 'TH') {
             // Use onNuxtReady to defer the mutation until after hydration
             onNuxtReady(() => {
                 currentLanguage.value = stored

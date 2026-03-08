@@ -290,12 +290,12 @@ onMounted(async () => {
                         :class="toast.type === 'success'
                             ? 'bg-emerald-50 dark:bg-emerald-900/80 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
                             : 'bg-red-50 dark:bg-red-900/80 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'">
-                        <i :class="toast.type === 'success' ? 'ti-check' : 'ti-alert-circle'"
+                        <i :class="toast.type === 'success' ? 'fa-solid fa-check' : 'fa-solid fa-circle-exclamation'"
                             class="text-base mt-0.5 shrink-0"></i>
                         <span class="flex-1 leading-snug">{{ toast.message }}</span>
                         <button @click="dismissToast(toast.id)"
                             class="shrink-0 opacity-50 hover:opacity-100 transition-opacity"><i
-                                class="ti-close text-xs"></i></button>
+                                class="fa-solid fa-xmark text-xs"></i></button>
                     </div>
                 </TransitionGroup>
             </div>
@@ -341,7 +341,7 @@ onMounted(async () => {
             <div v-else-if="assets.length === 0"
                 class="flex flex-col items-center justify-center py-20 text-center bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
                 <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                    <i class="ti-puzzle text-2xl text-gray-400"></i>
+                    <i class="fa-solid fa-puzzle-piece text-2xl text-gray-400"></i>
                 </div>
                 <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ t.noAssetsAvailable }}</h3>
             </div>
@@ -354,7 +354,7 @@ onMounted(async () => {
                         <div class="flex items-center gap-4 flex-1 min-w-0">
                             <div
                                 class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i class="ti-puzzle text-lg text-primary-600 dark:text-primary-400"></i>
+                                <i class="fa-solid fa-puzzle-piece text-lg text-primary-600 dark:text-primary-400"></i>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h3 class="font-semibold text-gray-900 dark:text-white text-sm">{{ asset.name }}</h3>
@@ -369,7 +369,7 @@ onMounted(async () => {
                         <div class="flex-shrink-0">
                             <span v-if="requestedAssetDocIds.has(asset.documentId)"
                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                                <i class="ti-check text-xs"></i>
+                                <i class="fa-solid fa-check text-xs"></i>
                                 {{ t.requested }}
                             </span>
                             <button v-else @click="openRequestModal(asset)"
@@ -394,13 +394,13 @@ onMounted(async () => {
             <div v-else-if="myRequests.length === 0"
                 class="flex flex-col items-center justify-center py-20 text-center bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
                 <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                    <i class="ti-inbox text-2xl text-gray-400"></i>
+                    <i class="fa-solid fa-inbox text-2xl text-gray-400"></i>
                 </div>
                 <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ t.noRequestsYet }}</h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">{{ t.browseAssets }}</p>
                 <button @click="activeTab = 'browse'"
                     class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
-                    <i class="ti-puzzle text-xs"></i>
+                    <i class="fa-solid fa-puzzle-piece text-xs"></i>
                     {{ t.browseAssets }}
                 </button>
             </div>
@@ -415,7 +415,7 @@ onMounted(async () => {
                         <div class="relative flex-shrink-0">
                             <div
                                 class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                                <i class="ti-puzzle text-lg text-primary-600 dark:text-primary-400"></i>
+                                <i class="fa-solid fa-puzzle-piece text-lg text-primary-600 dark:text-primary-400"></i>
                             </div>
                             <!-- Unread dot -->
                             <span v-if="unreadRequestIds.has(req.documentId)"
@@ -440,14 +440,14 @@ onMounted(async () => {
                                 {{ t.reasonLabel }}: {{ req.rejectionReason }}
                             </p>
                             <div class="flex items-center gap-1 mt-1.5">
-                                <i class="ti-calendar text-[10px] text-gray-400"></i>
+                                <i class="fa-solid fa-calendar text-[10px] text-gray-400"></i>
                                 <p class="text-xs text-gray-400">{{ t.requestedOn }} {{ formatDate(req.createdAt) }}</p>
                             </div>
                         </div>
                     </div>
                     <div v-if="req.status === 'approved'"
                         class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
-                        <i class="ti-check-box text-base"></i>
+                        <i class="fa-solid fa-square-check text-base"></i>
                         <span>{{ t.assetApprovedMsg }}</span>
                     </div>
                 </div>
@@ -468,7 +468,7 @@ onMounted(async () => {
                             <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t.requestAsset }}</h2>
                             <button @click="showRequestModal = false"
                                 class="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                                <i class="ti-close text-sm"></i>
+                                <i class="fa-solid fa-xmark text-sm"></i>
                             </button>
                         </div>
                         <div class="p-5 space-y-4">
@@ -498,7 +498,7 @@ onMounted(async () => {
                             </button>
                             <button @click="submitRequest" :disabled="isRequesting"
                                 class="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2">
-                                <i v-if="isRequesting" class="ti-reload text-xs animate-spin"></i>
+                                <i v-if="isRequesting" class="fa-solid fa-rotate text-xs animate-spin"></i>
                                 {{ t.submitRequest }}
                             </button>
                         </div>
@@ -526,7 +526,7 @@ onMounted(async () => {
                                 }}</h2>
                                 <button @click="closeDetailModal"
                                     class="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                                    <i class="ti-close text-sm"></i>
+                                    <i class="fa-solid fa-xmark text-sm"></i>
                                 </button>
                             </div>
 
@@ -536,7 +536,7 @@ onMounted(async () => {
                                 <div class="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                                     <div
                                         class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                                        <i class="ti-puzzle text-lg text-primary-600 dark:text-primary-400"></i>
+                                        <i class="fa-solid fa-puzzle-piece text-lg text-primary-600 dark:text-primary-400"></i>
                                     </div>
                                     <div>
                                         <p class="font-semibold text-gray-900 dark:text-white text-sm">{{
@@ -556,9 +556,9 @@ onMounted(async () => {
                                         class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
                                         :class="statusColors[selectedRequest.status]">
                                         <i :class="{
-                                            'ti-time': selectedRequest.status === 'pending',
-                                            'ti-check': selectedRequest.status === 'approved',
-                                            'ti-close': selectedRequest.status === 'rejected',
+                                            'fa-solid fa-clock': selectedRequest.status === 'pending',
+                                            'fa-solid fa-check': selectedRequest.status === 'approved',
+                                            'fa-solid fa-xmark': selectedRequest.status === 'rejected',
                                         }" class="text-[10px]"></i>
                                         {{ getStatusLabel(selectedRequest.status) }}
                                     </span>
@@ -592,7 +592,7 @@ onMounted(async () => {
                                 <!-- Approved message -->
                                 <div v-if="selectedRequest.status === 'approved'"
                                     class="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm text-emerald-700 dark:text-emerald-400">
-                                    <i class="ti-check-box text-base flex-shrink-0"></i>
+                                    <i class="fa-solid fa-square-check text-base flex-shrink-0"></i>
                                     <span>{{ t.assetApprovedMsg }}</span>
                                 </div>
                             </div>
@@ -609,7 +609,7 @@ onMounted(async () => {
                                     class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-lg transition-colors">
                                     <span v-if="isCancellingRequest"
                                         class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                    <i v-else class="ti-trash text-xs"></i>
+                                    <i v-else class="fa-solid fa-trash text-xs"></i>
                                     {{ t.cancelRequest }}
                                 </button>
                             </div>

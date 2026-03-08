@@ -2,22 +2,24 @@
 const { t } = useI18n()
 const { user } = useAuth()
 const route = useRoute()
+const { unreadTotal, unreadByType } = useNotificationBadge()
 
 // Manager nav items
 const managerNavItems = computed(() => [
-    { name: t.value.dashboard, icon: 'ti-dashboard', path: '/' },
-    { name: t.value.properties, icon: 'ti-home', path: '/manager/properties' },
-    { name: t.value.payments, icon: 'ti-wallet', path: '/manager/payments' },
-    { name: t.value.messages, icon: 'ti-comment', path: '/manager/messages', badge: 8 },
-    { name: t.value.settings, icon: 'ti-settings', path: '/settings' },
+    { name: t.value.dashboard, icon: 'fa-solid fa-gauge', path: '/manager/dashboard' },
+    { name: t.value.properties, icon: 'fa-solid fa-house', path: '/manager/properties' },
+    { name: t.value.payments, icon: 'fa-solid fa-wallet', path: '/manager/payments' },
+    { name: t.value.messages, icon: 'fa-solid fa-comment', path: '/manager/messages', badge: (unreadByType.value.message ?? 0) + (unreadByType.value.conversation ?? 0) },
+    { name: t.value.notifications, icon: 'fa-solid fa-bell', path: '/notifications', badge: unreadTotal.value },
 ])
 
 // Resident nav items
 const residentNavItems = computed(() => [
-    { name: t.value.dashboard, icon: 'ti-dashboard', path: '/' },
-    { name: t.value.maintenance, icon: 'ti-headphone-alt', path: '/resident/maintenance' },
-    { name: t.value.messages, icon: 'ti-comment', path: '/resident/messages' },
-    { name: t.value.settings, icon: 'ti-settings', path: '/settings' },
+    { name: t.value.dashboard, icon: 'fa-solid fa-gauge', path: '/resident/dashboard' },
+    { name: t.value.maintenance, icon: 'fa-solid fa-screwdriver-wrench', path: '/resident/maintenance', badge: unreadByType.value.maintenance ?? 0 },
+    { name: t.value.assets, icon: 'fa-solid fa-puzzle-piece', path: '/resident/assets', badge: unreadByType.value.asset ?? 0 },
+    { name: t.value.messages, icon: 'fa-solid fa-comment', path: '/resident/messages', badge: (unreadByType.value.message ?? 0) + (unreadByType.value.conversation ?? 0) },
+    { name: t.value.notifications, icon: 'fa-solid fa-bell', path: '/notifications', badge: unreadTotal.value },
 ])
 
 // Use appropriate nav based on user role
@@ -26,8 +28,7 @@ const navItems = computed(() => {
 })
 
 function isActive(path: string) {
-    if (path === '/') return route.path === '/'
-    return route.path.startsWith(path)
+    return route.path === path || route.path.startsWith(path + '/')
 }
 </script>
 
@@ -41,10 +42,14 @@ function isActive(path: string) {
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'">
                 <div class="relative">
                     <i :class="item.icon" class="text-xl"></i>
-                    <span v-if="item.badge"
-                        class="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
-                        {{ item.badge > 99 ? '99+' : item.badge }}
-                    </span>
+                    <transition enter-active-class="transition-all duration-200" enter-from-class="opacity-0 scale-50"
+                        enter-to-class="opacity-100 scale-100" leave-active-class="transition-all duration-200"
+                        leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-50">
+                        <span v-if="item.badge && item.badge > 0"
+                            class="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                            {{ item.badge > 99 ? '99+' : item.badge }}
+                        </span>
+                    </transition>
                 </div>
                 <span class="text-[10px] mt-1 font-medium truncate max-w-[60px]">{{ item.name }}</span>
                 <!-- Active indicator -->

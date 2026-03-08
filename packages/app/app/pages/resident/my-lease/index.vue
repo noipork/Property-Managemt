@@ -453,11 +453,11 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="space-y-6 max-w-5xl mx-auto">
+    <div class="space-y-4 sm:space-y-6 max-w-5xl mx-auto pb-20 md:pb-0">
         <!-- Toast -->
         <Teleport to="body">
-            <div class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"
-                style="min-width:300px;max-width:400px">
+            <div
+                class="fixed top-4 left-4 right-4 sm:left-auto sm:top-5 sm:right-5 z-50 flex flex-col gap-2 pointer-events-none sm:w-96">
                 <TransitionGroup enter-active-class="transition-all duration-300"
                     enter-from-class="opacity-0 translate-x-8" enter-to-class="opacity-100 translate-x-0"
                     leave-active-class="transition-all duration-300" leave-from-class="opacity-100 translate-x-0"
@@ -613,7 +613,7 @@ onMounted(async () => {
                         <select
                             @change="selectLease(allLeases.find(l => l.documentId === ($event.target as HTMLSelectElement).value)!)"
                             :value="lease.documentId"
-                            class="pl-9 pr-8 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none min-w-[200px]">
+                            class="pl-9 pr-8 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none w-full sm:min-w-[200px]">
                             <optgroup :label="t.currentLease || 'Current'">
                                 <option
                                     v-for="l in allLeases.filter(l => l.status === 'active' || l.status === 'pending')"
@@ -634,14 +634,14 @@ onMounted(async () => {
             </div>
 
             <!-- Main Content -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 <!-- Left: Main info -->
-                <div class="lg:col-span-2 space-y-6 transition-all duration-500 delay-100"
+                <div class="lg:col-span-2 space-y-4 sm:space-y-6 order-2 lg:order-1 transition-all duration-500 delay-100"
                     :class="mainVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
 
                     <!-- Lease Overview -->
                     <div
-                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 space-y-4">
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">{{
                             t.leaseOverview }}</h3>
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -712,32 +712,25 @@ onMounted(async () => {
 
                     <!-- Financial -->
                     <div
-                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-3">
+                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 space-y-3">
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">{{
                             t.leaseFinancial }}</h3>
                         <div
                             class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
                             <span class="text-sm text-gray-600 dark:text-gray-400">{{ t.leaseMonthlyRent }}</span>
-                            <span class="text-sm font-semibold text-gray-900 dark:text-white">{{
+                            <span class="text-sm font-semibold text-primary-600 dark:text-primary-400">{{
                                 formatCurrency(lease.monthlyRent, lease.currency) }}</span>
                         </div>
-                        <div
-                            class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
+                        <div class="flex items-center justify-between py-2">
                             <span class="text-sm text-gray-600 dark:text-gray-400">{{ t.leaseDepositAmount }}</span>
                             <span class="text-sm font-semibold text-gray-900 dark:text-white">{{
                                 formatCurrency(lease.depositAmount, lease.currency) }}</span>
-                        </div>
-                        <div class="flex items-center justify-between pt-2">
-                            <span class="text-base font-bold text-gray-900 dark:text-white">{{ t.leaseMonthlyRent
-                                }}</span>
-                            <span class="text-xl font-bold text-primary-600 dark:text-primary-400">{{
-                                formatCurrency(lease.monthlyRent, lease.currency) }}</span>
                         </div>
                     </div>
 
                     <!-- Resident Info Form (pending) -->
                     <div v-if="lease.status === 'pending'"
-                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-5">
+                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 space-y-5">
                         <!-- Section header -->
                         <div class="flex items-start justify-between gap-3">
                             <div class="flex-1">
@@ -1018,7 +1011,7 @@ onMounted(async () => {
 
                     <!-- Identity Info -->
                     <div v-else-if="lease.identityVerified || lease.residentFullName"
-                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 space-y-4">
                         <div class="flex items-center justify-between">
                             <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">{{
                                 t.leaseIdentityInfo }}</h3>
@@ -1112,7 +1105,7 @@ onMounted(async () => {
 
                     <!-- Terms -->
                     <div v-if="lease.terms"
-                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-3">
+                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 space-y-3">
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">{{
                             t.leaseTerms }}</h3>
                         <div class="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300
@@ -1125,7 +1118,7 @@ onMounted(async () => {
 
                     <!-- Notes -->
                     <div v-if="lease.notes"
-                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-3">
+                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 space-y-3">
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">{{
                             t.leaseNotes }}</h3>
                         <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ lease.notes }}</p>
@@ -1133,13 +1126,14 @@ onMounted(async () => {
                 </div>
 
                 <!-- Right: Sidebar -->
-                <div class="space-y-6 transition-all duration-500 delay-150"
+                <div class="space-y-4 sm:space-y-6 order-1 lg:order-2 transition-all duration-500 delay-150"
                     :class="sidebarVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
 
                     <!-- Rent Summary Card -->
-                    <div class="bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl p-6 text-white">
+                    <div class="bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl p-4 sm:p-6 text-white">
                         <p class="text-sm opacity-80">{{ t.leaseMonthlyRent }}</p>
-                        <p class="text-3xl font-bold mt-1">{{ formatCurrency(lease.monthlyRent, lease.currency) }}</p>
+                        <p class="text-2xl sm:text-3xl font-bold mt-1">{{ formatCurrency(lease.monthlyRent,
+                            lease.currency) }}</p>
                         <p v-if="lease.depositAmount" class="text-sm opacity-80 mt-2">{{ t.leaseDepositAmount }}: {{
                             formatCurrency(lease.depositAmount, lease.currency) }}</p>
                         <div class="mt-3 pt-3 border-t border-white/20">
@@ -1156,7 +1150,7 @@ onMounted(async () => {
 
                     <!-- Property -->
                     <div
-                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-3">
+                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 space-y-3">
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">{{
                             t.yourProperty }}</h3>
                         <div v-if="lease.property" class="flex items-center gap-3">
@@ -1178,7 +1172,7 @@ onMounted(async () => {
 
                     <!-- Unit Type -->
                     <div v-if="lease.unitType"
-                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-3">
+                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 space-y-3">
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">{{
                             t.yourUnitType }}</h3>
                         <div class="flex items-center gap-3">
@@ -1197,7 +1191,7 @@ onMounted(async () => {
 
                     <!-- Timeline -->
                     <div
-                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+                        class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 space-y-4">
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">{{
                             t.leaseTimeline }}</h3>
                         <div class="space-y-3">
