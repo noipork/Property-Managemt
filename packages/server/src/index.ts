@@ -20,6 +20,8 @@ export default {
         origin: [
           'http://localhost:3000',
           'http://127.0.0.1:3000',
+          'https://property.upstify-official.com',
+          'http://property.upstify-official.com',
           'https://propertyapi.upstify-official.com',
         ],
         methods: ['GET', 'POST'],
