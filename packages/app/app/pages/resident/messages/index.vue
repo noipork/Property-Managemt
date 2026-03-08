@@ -49,6 +49,13 @@ const isSending = ref(false)
 const newMessage = ref('')
 const searchQuery = ref('')
 
+// ─── Pagination ───────────────────────────────────────────────────────────────
+const PAGE_SIZE = 30
+const currentPage = ref(1)
+const totalPages = ref(1)
+const hasMoreMessages = ref(false)
+const isLoadingMore = ref(false)
+
 // ─── New Conversation Modal ───────────────────────────────────────────────────
 const showNewConversationModal = ref(false)
 const managers = ref<User[]>([])
@@ -118,36 +125,105 @@ async function fetchConversations() {
 }
 
 // ─── Fetch Messages for a Conversation ────────────────────────────────────────
+function mapMessage(m: any): Message {
+    return {
+        id: m.id,
+        documentId: m.documentId,
+        content: m.content,
+        createdAt: m.createdAt,
+        isRead: m.isRead,
+        isEdited: m.isEdited,
+        sender: m.sender,
+        images: m.images?.map((img: any) => ({ id: img.id, url: img.url })) ?? null,
+    }
+}
+
 async function fetchMessages(conversationId: string) {
     isLoadingMessages.value = true
+    currentPage.value = 1
+    hasMoreMessages.value = false
     try {
         const params = new URLSearchParams({
             'filters[conversation][documentId][$eq]': conversationId,
             'populate[0]': 'sender',
             'populate[1]': 'images',
-            'sort[0]': 'createdAt:asc',
-            'pagination[pageSize]': '200',
+            'sort[0]': 'createdAt:desc',
+            'pagination[pageSize]': String(PAGE_SIZE),
+            'pagination[page]': '1',
         })
         const res = await fetch(`${STRAPI_URL}/api/messages?${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
         })
         if (!res.ok) throw new Error('Failed to fetch messages')
         const data = await res.json()
-        messages.value = (data.data ?? []).map((m: any) => ({
-            id: m.id,
-            documentId: m.documentId,
-            content: m.content,
-            createdAt: m.createdAt,
-            isRead: m.isRead,
-            isEdited: m.isEdited,
-            sender: m.sender,
-            images: m.images?.map((img: any) => ({ id: img.id, url: img.url })) ?? null,
-        }))
+        const fetched = (data.data ?? []).map(mapMessage)
+        // Reverse so oldest is first (chronological order for display)
+        messages.value = fetched.reverse()
+        // Track pagination
+        const pagination = data.meta?.pagination
+        if (pagination) {
+            totalPages.value = pagination.pageCount ?? 1
+            currentPage.value = 1
+            hasMoreMessages.value = pagination.pageCount > 1
+        }
         await ensureScrollToBottom()
     } catch {
         showToast('error', 'Failed to load messages')
     } finally {
         isLoadingMessages.value = false
+    }
+}
+
+// ─── Load Older Messages (scroll up) ─────────────────────────────────────────
+async function loadOlderMessages() {
+    if (!selectedConversation.value || isLoadingMore.value || !hasMoreMessages.value) return
+    isLoadingMore.value = true
+    const nextPage = currentPage.value + 1
+    try {
+        const params = new URLSearchParams({
+            'filters[conversation][documentId][$eq]': selectedConversation.value.documentId,
+            'populate[0]': 'sender',
+            'populate[1]': 'images',
+            'sort[0]': 'createdAt:desc',
+            'pagination[pageSize]': String(PAGE_SIZE),
+            'pagination[page]': String(nextPage),
+        })
+        const res = await fetch(`${STRAPI_URL}/api/messages?${params}`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        if (!res.ok) throw new Error('Failed to load older messages')
+        const data = await res.json()
+        const fetched = (data.data ?? []).map(mapMessage)
+        // Reverse so oldest first, then prepend
+        const olderMessages = fetched.reverse()
+        // Preserve scroll position
+        const container = messagesContainer.value
+        const prevScrollHeight = container?.scrollHeight ?? 0
+        messages.value = [...olderMessages, ...messages.value]
+        currentPage.value = nextPage
+        const pagination = data.meta?.pagination
+        hasMoreMessages.value = nextPage < (pagination?.pageCount ?? totalPages.value)
+        // Restore scroll position so view doesn't jump
+        await nextTick()
+        requestAnimationFrame(() => {
+            if (container) {
+                container.scrollTop = container.scrollHeight - prevScrollHeight
+            }
+        })
+    } catch {
+        showToast('error', 'Failed to load older messages')
+    } finally {
+        isLoadingMore.value = false
+    }
+}
+
+// ─── Scroll handler for loading older messages ───────────────────────────────
+function onMessagesScroll() {
+    const container = messagesContainer.value
+    if (!container) return
+    // When scrolled near top (within 50px), load older messages
+    if (container.scrollTop < 50 && hasMoreMessages.value && !isLoadingMore.value) {
+        loadOlderMessages()
     }
 }
 
@@ -770,7 +846,8 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Messages Area -->
-                    <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
+                    <div ref="messagesContainer" @scroll="onMessagesScroll"
+                        class="flex-1 overflow-y-auto p-4 space-y-4">
                         <!-- Loading Messages -->
                         <div v-if="isLoadingMessages" class="flex items-center justify-center py-8">
                             <div
@@ -785,6 +862,19 @@ onUnmounted(() => {
 
                         <!-- Messages -->
                         <template v-else>
+                            <!-- Load More Indicator -->
+                            <div v-if="isLoadingMore" class="flex items-center justify-center py-3">
+                                <div
+                                    class="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin">
+                                </div>
+                                <span class="ml-2 text-xs text-gray-400">{{ t.loadingOlder }}</span>
+                            </div>
+                            <div v-else-if="hasMoreMessages" class="flex items-center justify-center py-2">
+                                <button @click="loadOlderMessages"
+                                    class="text-xs text-primary-500 hover:text-primary-600 transition-colors">
+                                    ↑ {{ t.loadOlder }}
+                                </button>
+                            </div>
                             <div v-for="msg in messages" :key="msg.id" class="flex"
                                 :class="msg.sender?.id === user?.id ? 'justify-end' : 'justify-start'">
                                 <div class="max-w-[75%] sm:max-w-[65%]"
@@ -807,9 +897,9 @@ onUnmounted(() => {
                                     <div class="flex items-center gap-1 mt-1 px-1"
                                         :class="msg.sender?.id === user?.id ? 'justify-end' : 'justify-start'">
                                         <span class="text-[10px] text-gray-400">{{ formatMessageTime(msg.createdAt)
-                                        }}</span>
+                                            }}</span>
                                         <span v-if="msg.isEdited" class="text-[10px] text-gray-400">({{ t.edited
-                                        }})</span>
+                                            }})</span>
                                     </div>
                                 </div>
                             </div>
