@@ -6,13 +6,13 @@ export default (plugin: any) => {
     const originalRegister = plugin.controllers.auth.register
 
     plugin.controllers.auth.register = async (ctx: any) => {
-        const s: Core.Strapi = strapi
+        const s: Core.Strapi = (globalThis as any).strapi
 
         // Get plan from custom header (avoids Strapi body validation issues)
         const planDocumentId: string | undefined = ctx.request.headers['x-selected-plan']
 
         // Call the original register — handles validation, user creation, JWT
-        await originalRegister(ctx)
+        await originalRegister.call(plugin.controllers.auth, ctx)
 
         // If registration succeeded, assign manager role + plan
         if (ctx.response.status !== 400) {
