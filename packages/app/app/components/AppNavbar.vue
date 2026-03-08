@@ -14,6 +14,7 @@ const emit = defineEmits<{
 const { user, logout } = useAuth()
 const { t, lang, setLanguage: setLang, currentLanguage } = useI18n()
 const { notifications, unreadTotal, isFetching, markAsRead, markAllAsRead, clearRead } = useNotificationBadge()
+const { isSubscribed: pushSubscribed, isSupported: pushSupported, isPermissionDenied: pushDenied, isLoading: pushLoading, toggle: togglePush } = usePushNotification()
 
 const showProfileMenu = ref(false)
 const showNotifications = ref(false)
@@ -279,6 +280,21 @@ async function handleNotifClick(n: { id: string; type: string; actionUrl: string
                         <a
                             class="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
                             <i class="ti-settings"></i> {{ t.settings }}
+                        </a>
+                        <!-- Push Notification Toggle -->
+                        <a v-if="pushSupported" @click.stop="togglePush()"
+                            class="flex items-center justify-between px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                            <span class="flex items-center gap-2">
+                                <i class="ti-bell"></i> {{ t.pushNotifications }}
+                            </span>
+                            <span v-if="pushLoading"
+                                class="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></span>
+                            <span v-else-if="pushDenied" class="text-[10px] text-red-400">●</span>
+                            <span v-else class="w-8 h-4 rounded-full relative transition-colors"
+                                :class="pushSubscribed ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600'">
+                                <span class="absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform"
+                                    :class="pushSubscribed ? 'translate-x-4' : 'translate-x-0.5'"></span>
+                            </span>
                         </a>
                         <hr class="my-1 border-gray-100 dark:border-gray-700" />
                         <a @click="handleLogout"

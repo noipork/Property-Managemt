@@ -3,10 +3,11 @@
  */
 
 import { factories } from '@strapi/strapi'
+import { webPush } from '../../../utils/webpush'
 
 export default factories.createCoreService('api::notification.notification', ({ strapi }) => ({
   /**
-   * Create a notification and emit it via WebSocket
+   * Create a notification and emit it via WebSocket + Push Notification
    */
   async createAndNotify(data: {
     title: string
@@ -59,12 +60,29 @@ export default factories.createCoreService('api::notification.notification', ({ 
       })
     }
 
+    // Send Web Push notification
+    webPush.sendToUser(strapi, data.recipientId, {
+      title: data.title,
+      body: data.message,
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      url: data.actionUrl || '/',
+      tag: `${data.type}-${notification.documentId}`,
+      data: {
+        type: data.type,
+        documentId: notification.documentId,
+        relatedDocumentId: data.relatedDocumentId,
+        actionUrl: data.actionUrl,
+      },
+    }).catch((err) => {
+      strapi.log.warn(`[WebPush] Error sending push to ${data.recipientId}: ${err.message}`)
+    })
+
     return notification
   },
 
   /**
-   * Create a single notification for multiple recipients and emit via WebSocket
-   * More efficient than creating separate notifications for each recipient
+   * Create a single notification for multiple recipients and emit via WebSocket + Push
    */
   async createAndNotifyMany(data: {
     title: string
@@ -122,6 +140,24 @@ export default factories.createCoreService('api::notification.notification', ({ 
         io.to(`user:${recipientId}`).emit('notification', payload)
       })
     }
+
+    // Send Web Push notification to all recipients
+    webPush.sendToUsers(strapi, data.recipientIds, {
+      title: data.title,
+      body: data.message,
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      url: data.actionUrl || '/',
+      tag: `${data.type}-${notification.documentId}`,
+      data: {
+        type: data.type,
+        documentId: notification.documentId,
+        relatedDocumentId: data.relatedDocumentId,
+        actionUrl: data.actionUrl,
+      },
+    }).catch((err) => {
+      strapi.log.warn(`[WebPush] Error sending push to multiple users: ${err.message}`)
+    })
 
     return notification
   },
