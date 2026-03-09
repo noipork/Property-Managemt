@@ -361,18 +361,27 @@ function handleTyping() {
 async function fetchManagers() {
     isLoadingManagers.value = true
     try {
+        if (!user.value?.id) {
+            managers.value = []
+            return
+        }
+
+        const getPrimaryProperty = (rawProperty: any) => {
+            if (Array.isArray(rawProperty)) return rawProperty[0] || null
+            return rawProperty || null
+        }
+
         // First, get the current user's property from their profile
         const userRes = await fetch(`${STRAPI_URL}/api/users/${user.value?.id}?populate[property][fields][0]=documentId&populate[property][fields][1]=name`, {
             headers: { Authorization: `Bearer ${token.value}` },
         })
-        const userData = await userRes.json()
-        const userProperty = userData?.property
+        if (!userRes.ok) throw new Error('Failed to fetch current user profile')
 
-        if (!userProperty?.documentId) {
-            managers.value = []
-            isLoadingManagers.value = false
-            return
-        }
+        const userData = await userRes.json()
+        const userProperty = getPrimaryProperty(userData?.property)
+        const authUserProperty = getPrimaryProperty((user.value as any)?.property)
+        const currentPropertyDocumentId = userProperty?.documentId || authUserProperty?.documentId || null
+        const currentPropertyId = userProperty?.id || authUserProperty?.id || null
 
         // Fetch all managers (role 3) and filter client-side by property
         // The users endpoint doesn't support nested relation filters like content-types do
@@ -380,19 +389,43 @@ async function fetchManagers() {
             'filters[role][id][$eq]': '3', // Manager role
             'pagination[pageSize]': '200',
             'populate[property][fields][0]': 'documentId',
+            'populate[property][fields][1]': 'id',
             'fields[0]': 'username',
             'fields[1]': 'email',
             'fields[2]': 'roomNumber',
+            'fields[3]': 'documentId',
         })
+
+        if (currentPropertyDocumentId) {
+            params.set('filters[property][documentId]', currentPropertyDocumentId)
+        } else if (currentPropertyId) {
+            params.set('filters[property][id]', String(currentPropertyId))
+        }
+
         const res = await fetch(`${STRAPI_URL}/api/users?${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
         })
+        if (!res.ok) throw new Error('Failed to fetch managers')
+
         const data = await res.json()
         const allManagers = Array.isArray(data) ? data : (data.data ?? [])
 
-        // Filter managers by property on the client side
+        // Filter managers by property on the client side.
+        // Prefer documentId matching, fallback to numeric id matching.
         managers.value = allManagers
-            .filter((u: any) => u.property?.documentId === userProperty.documentId)
+            .filter((u: any) => {
+                const managerProperties = Array.isArray(u.property)
+                    ? u.property
+                    : (u.property ? [u.property] : [])
+
+                if (currentPropertyDocumentId) {
+                    return managerProperties.some((property: any) => property?.documentId === currentPropertyDocumentId)
+                }
+                if (currentPropertyId) {
+                    return managerProperties.some((property: any) => property?.id === currentPropertyId)
+                }
+                return true
+            })
             .map((u: any) => ({
                 id: u.id,
                 documentId: u.documentId,
@@ -448,12 +481,41 @@ async function startNewConversation() {
         showNewConversationModal.value = false
         selectedManagerId.value = ''
 
-        await fetchConversations()
-
-        // Select the new conversation
-        const newConv = conversations.value.find(c => c.documentId === data.data.documentId)
-        if (newConv) {
-            await selectConversation(newConv)
+        // Fetch the newly created conversation with populated participants
+        const params = new URLSearchParams({
+            'filters[documentId][$eq]': data.data.documentId,
+            'populate[participants][fields][0]': 'documentId',
+            'populate[participants][fields][1]': 'username',
+            'populate[participants][fields][2]': 'email',
+            'populate[participants][fields][3]': 'roomNumber',
+            'populate[property][fields][0]': 'name',
+        })
+        const detailRes = await fetch(`${STRAPI_URL}/api/conversations?${params}`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        if (detailRes.ok) {
+            const detailData = await detailRes.json()
+            if (detailData.data && detailData.data.length > 0) {
+                const newConv = {
+                    id: detailData.data[0].id,
+                    documentId: detailData.data[0].documentId,
+                    participants: detailData.data[0].participants ?? [],
+                    property: detailData.data[0].property,
+                    lastMessage: detailData.data[0].lastMessage,
+                    lastMessageAt: detailData.data[0].lastMessageAt,
+                    isActive: detailData.data[0].isActive,
+                    unreadCount: 0,
+                }
+                conversations.value.unshift(newConv)
+                await selectConversation(newConv)
+            }
+        } else {
+            // Fallback: refetch all conversations
+            await fetchConversations()
+            const newConv = conversations.value.find(c => c.documentId === data.data.documentId)
+            if (newConv) {
+                await selectConversation(newConv)
+            }
         }
 
         showToast('success', t.value.conversationStarted || 'Conversation started')
@@ -897,9 +959,9 @@ onUnmounted(() => {
                                     <div class="flex items-center gap-1 mt-1 px-1"
                                         :class="msg.sender?.id === user?.id ? 'justify-end' : 'justify-start'">
                                         <span class="text-[10px] text-gray-400">{{ formatMessageTime(msg.createdAt)
-                                            }}</span>
+                                        }}</span>
                                         <span v-if="msg.isEdited" class="text-[10px] text-gray-400">({{ t.edited
-                                            }})</span>
+                                        }})</span>
                                     </div>
                                 </div>
                             </div>

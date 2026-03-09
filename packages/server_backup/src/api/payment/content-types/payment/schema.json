@@ -27,7 +27,13 @@
     },
     "method": {
       "type": "enumeration",
-      "enum": ["creditCard", "bankTransfer", "cash", "promptPay", "other"],
+      "enum": [
+        "creditCard",
+        "bankTransfer",
+        "cash",
+        "promptPay",
+        "other"
+      ],
       "required": true,
       "default": "bankTransfer"
     },
@@ -37,7 +43,13 @@
     },
     "status": {
       "type": "enumeration",
-      "enum": ["pending", "reviewing", "completed", "failed", "refunded"],
+      "enum": [
+        "pending",
+        "reviewing",
+        "completed",
+        "failed",
+        "refunded"
+      ],
       "required": true,
       "default": "pending"
     },
@@ -51,7 +63,9 @@
       "type": "media",
       "multiple": false,
       "required": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "resident": {
       "type": "relation",

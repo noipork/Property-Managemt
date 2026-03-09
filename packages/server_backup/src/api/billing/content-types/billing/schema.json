@@ -19,7 +19,14 @@
     },
     "type": {
       "type": "enumeration",
-      "enum": ["monthlyRent", "utilities", "maintenance", "deposit", "lateFee", "other"],
+      "enum": [
+        "monthlyRent",
+        "utilities",
+        "maintenance",
+        "deposit",
+        "lateFee",
+        "other"
+      ],
       "required": true,
       "default": "monthlyRent"
     },
@@ -41,7 +48,13 @@
     },
     "status": {
       "type": "enumeration",
-      "enum": ["pending", "paid", "overdue", "partiallyPaid", "cancelled"],
+      "enum": [
+        "pending",
+        "paid",
+        "overdue",
+        "partiallyPaid",
+        "cancelled"
+      ],
       "required": true,
       "default": "pending"
     },

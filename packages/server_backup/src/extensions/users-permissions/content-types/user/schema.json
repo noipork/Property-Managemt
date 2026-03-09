@@ -72,11 +72,6 @@
       "target": "api::plan.plan",
       "inversedBy": "users"
     },
-    "property": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::property.property"
-    },
     "unitType": {
       "type": "relation",
       "relation": "manyToOne",
@@ -90,14 +85,14 @@
     },
     "residencyStatus": {
       "type": "enumeration",
+      "default": "reserved",
       "enum": [
         "reserved",
         "active",
         "nearlyExpired",
         "expired",
         "inactive"
-      ],
-      "default": "reserved"
+      ]
     },
     "nextBillDate": {
       "type": "date"
@@ -131,6 +126,12 @@
       "relation": "oneToMany",
       "target": "api::notification.notification",
       "mappedBy": "recipient"
+    },
+    "property": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::property.property",
+      "inversedBy": "owner"
     }
   }
 }

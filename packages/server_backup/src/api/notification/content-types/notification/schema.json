@@ -78,6 +78,12 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::property.property"
+    },
+    "recipient": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "notifications"
     }
   }
 }

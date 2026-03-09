@@ -240,6 +240,18 @@ function onFileChange(e: Event) {
     const input = e.target as HTMLInputElement
     if (!input.files) return
     const newFiles = Array.from(input.files)
+
+    // Check file sizes (10MB limit per file)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+    const oversizedFiles = newFiles.filter(f => f.size > MAX_FILE_SIZE)
+
+    if (oversizedFiles.length > 0) {
+        const fileNames = oversizedFiles.map(f => f.name).join(', ')
+        showToast('error', `File(s) too large: ${fileNames}. Maximum size is 10MB per file.`)
+        input.value = ''
+        return
+    }
+
     uploadedFiles.value = [...uploadedFiles.value, ...newFiles]
     input.value = ''
 }
@@ -270,7 +282,12 @@ async function uploadFilesToStrapi(): Promise<number[]> {
         headers: { Authorization: `Bearer ${token.value}` },
         body: formData,
     })
-    if (!res.ok) throw new Error('Upload failed')
+    if (!res.ok) {
+        if (res.status === 413) {
+            throw new Error('File size too large. Please upload files smaller than 10MB each.')
+        }
+        throw new Error('Upload failed')
+    }
     const uploaded = await res.json()
     return (uploaded as { id: number }[]).map(f => f.id)
 }
@@ -398,13 +415,13 @@ async function acceptLease() {
         if (!res.ok) throw new Error('Accept failed')
         showToast('success', t.value.leaseSubmittedForReview || 'Lease submitted for manager review')
         await fetchLease()
-    } catch {
-        showToast('error', t.value.leaseAcceptError)
+    } catch (err: any) {
+        const errorMessage = err.message || t.value.leaseAcceptError
+        showToast('error', errorMessage)
     } finally {
         isAccepting.value = false
     }
 }
-
 // ─── Save Resident Info ─────────────────────────────────────────────────────
 async function saveLeaseInfo() {
     if (!lease.value) return
@@ -429,8 +446,9 @@ async function saveLeaseInfo() {
         if (!res.ok) throw new Error('Save failed')
         showToast('success', t.value.leaseInfoSaved || 'Information saved')
         await fetchLease()
-    } catch {
-        showToast('error', t.value.leaseInfoSaveError || 'Could not save information')
+    } catch (err: any) {
+        const errorMessage = err.message || t.value.leaseInfoSaveError || 'Could not save information'
+        showToast('error', errorMessage)
     } finally {
         isSavingInfo.value = false
     }
@@ -967,7 +985,6 @@ onMounted(async () => {
                                         </span>
                                     </div>
                                 </div>
-
                                 <!-- Drop zone / file picker -->
                                 <div class="mt-1 flex items-center justify-center gap-3 px-4 py-5 rounded-lg border-2 border-dashed cursor-pointer transition-colors"
                                     :class="hasDocuments ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-900/10' : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 hover:border-primary-400 hover:bg-primary-50/50 dark:hover:bg-primary-900/10'"
@@ -979,32 +996,33 @@ onMounted(async () => {
                                             :class="hasDocuments ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-400'">
                                             {{ ui.uploadDocumentsBtn }}
                                         </p>
-                                        <p class="text-xs text-gray-400 mt-0.5">JPG, PNG, PDF</p>
+                                        <p class="text-xs text-gray-400 mt-0.5">JPG, PNG, PDF · Max 10MB per file</p>
                                     </div>
                                 </div>
                                 <input ref="fileInput" type="file" class="hidden" multiple
                                     accept="image/jpeg,image/png,image/webp,application/pdf" @change="onFileChange" />
-                            </div>
 
-                            <!-- Footer: status + save button -->
-                            <div
-                                class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
-                                <p class="text-xs">
-                                    <span v-if="missingFieldLabels.length" class="text-amber-600 dark:text-amber-400">
-                                        <i class="fa-solid fa-circle-info mr-1"></i>
-                                        {{ ui.fieldsMissingLabel }} {{ missingFieldLabels.join(', ') }}
-                                    </span>
-                                    <span v-else class="text-emerald-600 dark:text-emerald-400">
-                                        <i class="fa-solid fa-circle-check mr-1"></i>
-                                        {{ ui.allInfoCompleted }}
-                                    </span>
-                                </p>
-                                <button type="submit" :disabled="isSavingInfo"
-                                    class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 transition-colors shrink-0">
-                                    <i :class="isSavingInfo ? 'fa-solid fa-spinner animate-spin' : 'fa-solid fa-floppy-disk'"
-                                        class="text-sm"></i>
-                                    {{ isSavingInfo ? ui.saving : ui.saveInfo }}
-                                </button>
+                                <!-- Footer: status + save button -->
+                                <div
+                                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                                    <p class="text-xs">
+                                        <span v-if="missingFieldLabels.length"
+                                            class="text-amber-600 dark:text-amber-400">
+                                            <i class="fa-solid fa-circle-info mr-1"></i>
+                                            {{ ui.fieldsMissingLabel }} {{ missingFieldLabels.join(', ') }}
+                                        </span>
+                                        <span v-else class="text-emerald-600 dark:text-emerald-400">
+                                            <i class="fa-solid fa-circle-check mr-1"></i>
+                                            {{ ui.allInfoCompleted }}
+                                        </span>
+                                    </p>
+                                    <button type="submit" :disabled="isSavingInfo"
+                                        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 transition-colors shrink-0">
+                                        <i :class="isSavingInfo ? 'fa-solid fa-spinner animate-spin' : 'fa-solid fa-floppy-disk'"
+                                            class="text-sm"></i>
+                                        {{ isSavingInfo ? ui.saving : ui.saveInfo }}
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>

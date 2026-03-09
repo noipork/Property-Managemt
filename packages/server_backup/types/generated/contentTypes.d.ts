@@ -939,6 +939,10 @@ export interface ApiNotificationNotification
     property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
     publishedAt: Schema.Attribute.DateTime;
     readAt: Schema.Attribute.DateTime;
+    recipient: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     recipients: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
@@ -1144,7 +1148,7 @@ export interface ApiPropertyProperty extends Struct.CollectionTypeSchema {
       > &
       Schema.Attribute.DefaultTo<0>;
     owner: Schema.Attribute.Relation<
-      'manyToOne',
+      'manyToMany',
       'plugin::users-permissions.user'
     >;
     promptPayId: Schema.Attribute.String;
@@ -1796,7 +1800,7 @@ export interface PluginUsersPermissionsUser
       }>;
     payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     plan: Schema.Attribute.Relation<'manyToOne', 'api::plan.plan'>;
-    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    property: Schema.Attribute.Relation<'manyToMany', 'api::property.property'>;
     provider: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     registrationDate: Schema.Attribute.Date;
