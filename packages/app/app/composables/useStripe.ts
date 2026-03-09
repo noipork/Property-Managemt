@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_51T8vDVGgm8V7nGJH6KHLYZvnE9oj1Si6ZrCoyYs3PYlySq7ANolmSXc3iHJZk7mo64gntQiZdPRlqljkf98egS1s00x7aL7kgF'
+const config = useRuntimeConfig()
+const STRIPE_PUBLISHABLE_KEY = config.public.stripePublishableKey
 
 let stripePromise: Promise<any> | null = null
 

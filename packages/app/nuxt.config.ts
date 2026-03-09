@@ -14,6 +14,7 @@ export default defineNuxtConfig({
     public: {
       strapiUrl: process.env.NUXT_PUBLIC_STRAPI_URL || 'http://localhost:1337',
       vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY || '',
+      stripePublishableKey: process.env.NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
     },
   },
 

@@ -6,7 +6,11 @@ import { factories } from '@strapi/strapi'
 import Stripe from 'stripe'
 
 // Initialize Stripe with test secret key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_51T8vDVGgm8V7nGJH2ge6Ohh0ALTd0APSV4vNpGDDE6EyXP3gqDjCn1TY3e4ApNE4nyrGoDn2xXdfgFmHAjtx1r4e00rAov9mFT')
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('STRIPE_SECRET_KEY is not defined in environment variables')
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 export default factories.createCoreController('api::subscription.subscription', ({ strapi }) => ({
   // Create Stripe Checkout Session

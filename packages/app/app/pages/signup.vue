@@ -211,8 +211,7 @@ async function fetchPlans() {
 }
 
 // Stripe checkout for paid plans
-const STRIPE_PUBLISHABLE_KEY =
-    "pk_test_51T8vDVGgm8V7nGJH6KHLYZvnE9oj1Si6ZrCoyYs3PYlySq7ANolmSXc3iHJZk7mo64gntQiZdPRlqljkf98egS1s00x7aL7kgF";
+const STRIPE_PUBLISHABLE_KEY = config.public.stripePublishableKey;
 
 let stripePromise: Promise<any> | null = null;
 
@@ -560,7 +559,7 @@ onMounted(() => {
                     <p class="text-sm text-gray-300 dark:text-gray-400 leading-relaxed">
                         <span class="font-medium text-white">{{
                             lang === "TH" ? "ฟีเจอร์ครบครัน:" : "Full Features:"
-                            }}</span>
+                        }}</span>
                         {{
                             lang === 'TH'
                                 ? `แดชบอร์ด, จัดการทรัพย์สิน, สัญญาเช่า, บิล/ชำระเงิน, งานซ่อมบำรุง, แชทเรียลไทม์,
