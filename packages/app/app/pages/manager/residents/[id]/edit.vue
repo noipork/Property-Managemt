@@ -32,6 +32,13 @@ const form = ref({
 const errors = ref<Record<string, string>>({})
 const isSubmitting = ref(false)
 const isLoading = ref(true)
+const propertyRelationMode = ref<'single' | 'array'>('single')
+const unitTypeRelationMode = ref<'single' | 'array'>('single')
+
+function getPrimaryRelation<T>(relation: T | T[] | null | undefined): T | null {
+    if (!relation) return null
+    return Array.isArray(relation) ? (relation[0] ?? null) : relation
+}
 
 // ─── Lease ────────────────────────────────────────────────────────────────────
 const leaseDocumentId = ref<string | null>(null)
@@ -172,7 +179,7 @@ function unitTypeOptionLabel(ut: { name: string; quantity: number; occupiedCount
 async function isRoomTaken(propertyId: string, roomNumber: string, excludeUserId: string): Promise<boolean> {
     const params = new URLSearchParams({
         'filters[role][id][$eq]': '4',
-        'filters[property][id][$eq]': propertyId,
+        'filters[property][id]': propertyId,
         'filters[roomNumber][$eqi]': roomNumber.trim(),
         'filters[id][$ne]': excludeUserId,
         'pagination[pageSize]': '1',
@@ -203,12 +210,18 @@ async function fetchResident() {
         form.value.registrationDate = data.registrationDate ?? ''
         form.value.residencyStatus = data.residencyStatus ?? 'reserved'
         form.value.nextBillDate = data.nextBillDate ?? ''
-        if (data.property) {
-            form.value.propertyId = String(data.property.id)
+        propertyRelationMode.value = Array.isArray(data.property) ? 'array' : 'single'
+        unitTypeRelationMode.value = Array.isArray(data.unitType) ? 'array' : 'single'
+
+        const propertyData = getPrimaryRelation(data.property)
+        if (propertyData) {
+            form.value.propertyId = String((propertyData as any).id)
         }
-        if (data.unitType) {
-            initialUnitTypeId.value = String(data.unitType.id)
-            form.value.unitTypeId = String(data.unitType.id)
+
+        const unitTypeData = getPrimaryRelation(data.unitType)
+        if (unitTypeData) {
+            initialUnitTypeId.value = String((unitTypeData as any).id)
+            form.value.unitTypeId = String((unitTypeData as any).id)
         }
     } catch {
         modalErrorMessage.value = 'Failed to load resident'
@@ -279,7 +292,7 @@ async function fetchUnitTypes(propertyDocumentId: string, keepUnitTypeId = false
             uts.map(async (ut) => {
                 const countParams = new URLSearchParams({
                     'filters[role][id][$eq]': '4',
-                    'filters[unitType][id][$eq]': String(ut.id),
+                    'filters[unitType][id]': String(ut.id),
                     'pagination[pageSize]': '1',
                     'pagination[page]': '1',
                 })
@@ -352,8 +365,12 @@ async function submit() {
             body: JSON.stringify({
                 username: form.value.username,
                 email: form.value.email,
-                property: Number(form.value.propertyId),
-                unitType: Number(form.value.unitTypeId),
+                property: propertyRelationMode.value === 'array'
+                    ? [Number(form.value.propertyId)]
+                    : Number(form.value.propertyId),
+                unitType: unitTypeRelationMode.value === 'array'
+                    ? [Number(form.value.unitTypeId)]
+                    : Number(form.value.unitTypeId),
                 roomNumber: form.value.roomNumber,
                 registrationDate: form.value.registrationDate,
                 residencyStatus: form.value.residencyStatus,
@@ -562,7 +579,7 @@ onMounted(async () => {
                                 @click="($event.target as HTMLInputElement).showPicker?.()" />
                             <p v-if="errors.registrationDate" class="mt-1 text-xs text-red-500">{{
                                 errors.registrationDate
-                                }}</p>
+                            }}</p>
                         </div>
 
                         <!-- Residency Status -->
@@ -664,7 +681,7 @@ onMounted(async () => {
                                     :class="errors.leaseEndDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                                     @click="($event.target as HTMLInputElement).showPicker?.()" />
                                 <p v-if="errors.leaseEndDate" class="mt-1 text-xs text-red-500">{{ errors.leaseEndDate
-                                    }}</p>
+                                }}</p>
                             </div>
                         </div>
 
@@ -914,7 +931,8 @@ onMounted(async () => {
                                 <div class="flex flex-col items-center text-center gap-3">
                                     <div
                                         class="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
-                                        <i class="fa-solid fa-circle-exclamation text-2xl text-red-600 dark:text-red-400"></i>
+                                        <i
+                                            class="fa-solid fa-circle-exclamation text-2xl text-red-600 dark:text-red-400"></i>
                                     </div>
                                     <div>
                                         <h3 class="text-base font-semibold text-gray-900 dark:text-white">Update Failed

@@ -1,7 +1,7 @@
 export default defineNuxtRouteMiddleware((to) => {
     const { isAuthenticated, user } = useAuth()
 
-    const publicPages = ['/signin', '/signup']
+    const publicPages = ['/signin', '/signup', '/terms', '/privacy']
     const isPublicPage = publicPages.includes(to.path)
 
     if (!isAuthenticated.value && !isPublicPage) {

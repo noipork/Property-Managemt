@@ -132,6 +132,17 @@
       "relation": "manyToMany",
       "target": "api::property.property",
       "inversedBy": "owner"
+    },
+    "subscriptions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::subscription.subscription",
+      "mappedBy": "user"
+    },
+    "activeSubscription": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::subscription.subscription"
     }
   }
 }

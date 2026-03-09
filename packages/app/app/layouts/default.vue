@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 
 const { t } = useI18n()
 const sidebarOpen = ref(true)
+const router = useRouter()
+const route = useRoute()
 
 function toggleSidebar() {
     sidebarOpen.value = !sidebarOpen.value
@@ -14,11 +16,59 @@ const { onNotification } = useSocket()
 const { fetchNotifications, pushNotification } = useNotificationBadge()
 const cleanupFns: Array<() => void> = []
 
+// ─── Subscription Check for Managers ──────────────────────────────────────────
+const { fetchSubscription, requiresSubscription, isLoading: subscriptionLoading } = useSubscription()
+const showSubscriptionModal = ref(false)
+const subscriptionChecked = ref(false)
+
+// Pages that are allowed even without subscription
+const allowedPagesWithoutSubscription = ['/manager/packages', '/signin', '/signup']
+
+async function checkManagerSubscription() {
+    if (!user.value || user.value.role !== 'manager') {
+        subscriptionChecked.value = true
+        return
+    }
+
+    await fetchSubscription(true)
+    subscriptionChecked.value = true
+
+    // Check if current route requires subscription
+    const currentPath = route.path
+    const isAllowedPage = allowedPagesWithoutSubscription.some(p => currentPath.startsWith(p))
+
+    if (requiresSubscription.value && !isAllowedPage) {
+        showSubscriptionModal.value = true
+    }
+}
+
+// Watch for route changes to check subscription on each navigation
+watch(() => route.path, (newPath) => {
+    if (!subscriptionChecked.value) return
+    if (!user.value || user.value.role !== 'manager') return
+
+    const isAllowedPage = allowedPagesWithoutSubscription.some(p => newPath.startsWith(p))
+
+    if (requiresSubscription.value && !isAllowedPage) {
+        showSubscriptionModal.value = true
+    } else {
+        showSubscriptionModal.value = false
+    }
+})
+
+function goToPackages() {
+    showSubscriptionModal.value = false
+    router.push('/manager/packages')
+}
+
 // ─── Push Notification ────────────────────────────────────────────────────────
 const { init: initPush, subscribe: subscribePush, isSupported: pushSupported, isSubscribed: pushSubscribed, isPermissionDenied: pushDenied, isLoading: pushLoading } = usePushNotification()
 const showPushBanner = ref(false)
 
 onMounted(async () => {
+    // Check manager subscription
+    await checkManagerSubscription()
+
     // Initial fetch so the panel has data on first open
     await fetchNotifications()
 
@@ -111,5 +161,73 @@ function dismissPushBanner() {
         <div class="hidden md:block">
             <AppFooter :sidebar-open="sidebarOpen" />
         </div>
+
+        <!-- Subscription Required Modal for Managers -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition-all duration-300 ease-out" enter-from-class="opacity-0"
+                enter-to-class="opacity-100" leave-active-class="transition-all duration-200 ease-in"
+                leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <div v-if="showSubscriptionModal"
+                    class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <Transition enter-active-class="transition-all duration-300 ease-out delay-100"
+                        enter-from-class="opacity-0 scale-95 translate-y-4"
+                        enter-to-class="opacity-100 scale-100 translate-y-0"
+                        leave-active-class="transition-all duration-200 ease-in"
+                        leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+                        <div v-if="showSubscriptionModal"
+                            class="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
+                            <!-- Modal Header with Icon -->
+                            <div class="relative bg-gradient-to-br from-amber-500 to-orange-500 px-6 py-8 text-center">
+                                <div class="absolute inset-0 bg-black/10"></div>
+                                <div class="relative">
+                                    <div
+                                        class="w-20 h-20 mx-auto mb-4 bg-white/20 backdrop-blur rounded-full flex items-center justify-center">
+                                        <i class="fa-solid fa-crown text-4xl text-white"></i>
+                                    </div>
+                                    <h2 class="text-2xl font-bold text-white">{{ t.subscriptionRequiredTitle }}</h2>
+                                </div>
+                            </div>
+
+                            <!-- Modal Body -->
+                            <div class="px-6 py-6">
+                                <div
+                                    class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl mb-6">
+                                    <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xl mt-0.5"></i>
+                                    <div>
+                                        <p class="font-medium text-amber-700 dark:text-amber-400 mb-1">{{
+                                            t.noSubscriptionFound }}</p>
+                                        <p class="text-sm text-amber-600 dark:text-amber-500">{{
+                                            t.subscriptionRequiredDesc }}</p>
+                                    </div>
+                                </div>
+
+                                <!-- Features Preview -->
+                                <div class="space-y-3 mb-6">
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                                        <i class="fa-solid fa-check-circle text-emerald-500"></i>
+                                        <span>{{ t.properties }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                                        <i class="fa-solid fa-check-circle text-emerald-500"></i>
+                                        <span>{{ t.residents }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                                        <i class="fa-solid fa-check-circle text-emerald-500"></i>
+                                        <span>{{ t.invoices }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Action Button -->
+                                <button @click="goToPackages"
+                                    class="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-amber-500/30">
+                                    <i class="fa-solid fa-arrow-right mr-2"></i>
+                                    {{ t.viewPlans }}
+                                </button>
+                            </div>
+                        </div>
+                    </Transition>
+                </div>
+            </Transition>
+        </Teleport>
     </div>
 </template>

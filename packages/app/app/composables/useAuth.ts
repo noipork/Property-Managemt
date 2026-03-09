@@ -107,7 +107,7 @@ export const useAuth = () => {
         name: string,
         email: string,
         password: string,
-        plan?: { id?: number; documentId?: string }
+        plan?: { id?: number; documentId?: string; price?: number; currency?: string }
     ) => {
         try {
             const headers: Record<string, string> = {
@@ -156,6 +156,57 @@ export const useAuth = () => {
 
                 if (!updateResponse.ok) {
                     console.error('Failed to update user role/plan after register', await updateResponse.text())
+                }
+
+                // Create subscription for the user
+                if (plan?.id) {
+                    const now = new Date()
+                    const startDate = now.toISOString().split('T')[0]
+                    // Default subscription period: 1 month (or 30 days for trial/free)
+                    const endDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                    const invoiceNo = `SUB-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+
+                    const subscriptionPayload = {
+                        data: {
+                            user: userId,
+                            plan: plan.id,
+                            status: plan.price === 0 ? 'active' : 'pending', // Free plans auto-activate
+                            startDate,
+                            endDate,
+                            amount: plan.price ?? 0,
+                            currency: plan.currency ?? 'THB',
+                            paymentStatus: plan.price === 0 ? 'paid' : 'pending',
+                            paidAt: plan.price === 0 ? now.toISOString() : null,
+                            invoiceNo,
+                            isAutoRenew: false,
+                        }
+                    }
+
+                    const subscriptionResponse = await fetch(`${STRAPI_URL}/api/subscriptions`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${data.jwt}`,
+                        },
+                        body: JSON.stringify(subscriptionPayload),
+                    })
+
+                    if (subscriptionResponse.ok) {
+                        const subscriptionData = await subscriptionResponse.json()
+                        // Link active subscription to user
+                        await fetch(`${STRAPI_URL}/api/users/${userId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${data.jwt}`,
+                            },
+                            body: JSON.stringify({
+                                activeSubscription: subscriptionData.data?.id || subscriptionData.id,
+                            }),
+                        })
+                    } else {
+                        console.error('Failed to create subscription', await subscriptionResponse.text())
+                    }
                 }
             }
 

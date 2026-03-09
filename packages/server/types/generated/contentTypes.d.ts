@@ -1218,6 +1218,77 @@ export interface ApiPushSubscriptionPushSubscription
   };
 }
 
+export interface ApiSubscriptionSubscription
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'subscriptions';
+  info: {
+    description: 'User subscription records for plan billing and expiration tracking';
+    displayName: 'Subscription';
+    pluralName: 'subscriptions';
+    singularName: 'subscription';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'THB'>;
+    endDate: Schema.Attribute.Date & Schema.Attribute.Required;
+    invoiceNo: Schema.Attribute.String & Schema.Attribute.Unique;
+    isAutoRenew: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::subscription.subscription'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    paidAt: Schema.Attribute.DateTime;
+    paymentMethod: Schema.Attribute.Enumeration<
+      ['creditCard', 'bankTransfer', 'promptPay', 'cash', 'free', 'other']
+    >;
+    paymentSlip: Schema.Attribute.Media<'images' | 'files'>;
+    paymentStatus: Schema.Attribute.Enumeration<
+      ['pending', 'paid', 'failed', 'refunded']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
+    plan: Schema.Attribute.Relation<'manyToOne', 'api::plan.plan'>;
+    publishedAt: Schema.Attribute.DateTime;
+    renewalReminderSent: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    startDate: Schema.Attribute.Date & Schema.Attribute.Required;
+    status: Schema.Attribute.Enumeration<
+      ['pending', 'active', 'expired', 'cancelled', 'trial']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
+    stripeCustomerId: Schema.Attribute.String;
+    stripePaymentIntentId: Schema.Attribute.String;
+    stripeSessionId: Schema.Attribute.String;
+    transactionId: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
 export interface ApiUnitTypeUnitType extends Struct.CollectionTypeSchema {
   collectionName: 'unit_types';
   info: {
@@ -1742,6 +1813,10 @@ export interface PluginUsersPermissionsUser
     draftAndPublish: false;
   };
   attributes: {
+    activeSubscription: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::subscription.subscription'
+    >;
     billings: Schema.Attribute.Relation<'oneToMany', 'api::billing.billing'>;
     blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     confirmationToken: Schema.Attribute.String & Schema.Attribute.Private;
@@ -1791,6 +1866,10 @@ export interface PluginUsersPermissionsUser
       'plugin::users-permissions.role'
     >;
     roomNumber: Schema.Attribute.String;
+    subscriptions: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::subscription.subscription'
+    >;
     unitType: Schema.Attribute.Relation<
       'manyToOne',
       'api::unit-type.unit-type'
@@ -1832,6 +1911,7 @@ declare module '@strapi/strapi' {
       'api::plan.plan': ApiPlanPlan;
       'api::property.property': ApiPropertyProperty;
       'api::push-subscription.push-subscription': ApiPushSubscriptionPushSubscription;
+      'api::subscription.subscription': ApiSubscriptionSubscription;
       'api::unit-type.unit-type': ApiUnitTypeUnitType;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

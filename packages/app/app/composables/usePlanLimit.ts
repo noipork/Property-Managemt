@@ -6,11 +6,24 @@ interface PlanLimits {
 
 export const usePlanLimit = () => {
     const { token, user } = useAuth()
+    const { subscription, fetchSubscription, isExpired } = useSubscription()
     const config = useRuntimeConfig()
     const STRAPI_URL = config.public.strapiUrl
 
     async function fetchPlanLimits(): Promise<PlanLimits | null> {
         if (!token.value) return null
+        
+        // Try to get limits from active subscription first
+        const sub = await fetchSubscription()
+        if (sub?.plan) {
+            return {
+                maxProperties: sub.plan.maxProperties ?? 999,
+                maxUnitsPerProperty: sub.plan.maxUnitsPerProperty ?? 999,
+                planName: sub.plan.name ?? '',
+            }
+        }
+
+        // Fallback to user's plan if no subscription
         try {
             const res = await fetch(`${STRAPI_URL}/api/users/me?populate=*`, {
                 headers: { 'Authorization': `Bearer ${token.value}` },
@@ -52,6 +65,15 @@ export const usePlanLimit = () => {
      * Returns { allowed: true } or { allowed: false, reason, current, limit, planName }
      */
     async function canCreateProperty() {
+        // First check if subscription is expired
+        if (isExpired.value) {
+            return {
+                allowed: false,
+                reason: 'subscriptionExpired' as const,
+                message: 'Your subscription has expired. Please renew to continue.',
+            }
+        }
+
         const [limits, count] = await Promise.all([fetchPlanLimits(), fetchPropertyCount()])
         if (!limits) return { allowed: true }
         if (count >= limits.maxProperties) {
@@ -70,6 +92,15 @@ export const usePlanLimit = () => {
      * Check if a given totalUnits value exceeds the plan's maxUnitsPerProperty.
      */
     async function canSetUnits(totalUnits: number) {
+        // First check if subscription is expired
+        if (isExpired.value) {
+            return {
+                allowed: false,
+                reason: 'subscriptionExpired' as const,
+                message: 'Your subscription has expired. Please renew to continue.',
+            }
+        }
+
         const limits = await fetchPlanLimits()
         if (!limits) return { allowed: true }
         if (totalUnits > limits.maxUnitsPerProperty) {
@@ -83,5 +114,5 @@ export const usePlanLimit = () => {
         return { allowed: true, limits }
     }
 
-    return { fetchPlanLimits, fetchPropertyCount, canCreateProperty, canSetUnits }
+    return { fetchPlanLimits, fetchPropertyCount, canCreateProperty, canSetUnits, isExpired }
 }

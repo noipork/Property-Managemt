@@ -1,0 +1,118 @@
+{
+  "kind": "collectionType",
+  "collectionName": "subscriptions",
+  "info": {
+    "singularName": "subscription",
+    "pluralName": "subscriptions",
+    "displayName": "Subscription",
+    "description": "User subscription records for plan billing and expiration tracking"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "subscriptions"
+    },
+    "plan": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::plan.plan"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "active",
+        "expired",
+        "cancelled",
+        "trial"
+      ],
+      "default": "pending",
+      "required": true
+    },
+    "startDate": {
+      "type": "date",
+      "required": true
+    },
+    "endDate": {
+      "type": "date",
+      "required": true
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true,
+      "min": 0
+    },
+    "currency": {
+      "type": "string",
+      "default": "THB",
+      "required": true
+    },
+    "paymentMethod": {
+      "type": "enumeration",
+      "enum": [
+        "creditCard",
+        "bankTransfer",
+        "promptPay",
+        "cash",
+        "free",
+        "other"
+      ]
+    },
+    "paymentStatus": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "paid",
+        "failed",
+        "refunded"
+      ],
+      "default": "pending",
+      "required": true
+    },
+    "paidAt": {
+      "type": "datetime"
+    },
+    "transactionId": {
+      "type": "string"
+    },
+    "stripeSessionId": {
+      "type": "string"
+    },
+    "stripePaymentIntentId": {
+      "type": "string"
+    },
+    "stripeCustomerId": {
+      "type": "string"
+    },
+    "paymentSlip": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "invoiceNo": {
+      "type": "string",
+      "unique": true
+    },
+    "isAutoRenew": {
+      "type": "boolean",
+      "default": false
+    },
+    "renewalReminderSent": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+}

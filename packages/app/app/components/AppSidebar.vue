@@ -74,13 +74,12 @@ const managerMenuSections = computed(() => [
             { name: t.value.assetRequests, icon: 'ti-envelope', badge: '', path: '/manager/asset-requests' },
         ],
     },
-    // {
-    //     title: t.value.system,
-    //     items: [
-    //         { name: t.value.settings, icon: 'ti-settings', badge: '', path: '/settings' },
-    //         { name: t.value.help, icon: 'ti-help-alt', badge: '', path: '/help' },
-    //     ],
-    // },
+    {
+        title: t.value.account,
+        items: [
+            { name: t.value.packages, icon: 'ti-crown', badge: '', path: '/manager/packages' },
+        ],
+    },
 ])
 
 // Resident menu - limited to tenant-specific features

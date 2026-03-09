@@ -114,10 +114,13 @@ onMounted(() => {
 
                 <div class="auth-hero">
                     <h1 class="text-4xl font-bold text-white leading-tight mb-6">
-                        Manage your properties<br />with confidence
+                        {{ lang === 'TH' ? 'จัดการอสังหาฯ' : 'Manage properties' }}<br />{{ lang === 'TH' ?
+                            'อย่างมั่นใจ' : 'with confidence' }}
                     </h1>
                     <p class="text-gray-400 dark:text-gray-500 text-lg leading-relaxed max-w-md">
-                        Track tenants, collect rent, handle maintenance — all from a single powerful dashboard.
+                        {{ lang === 'TH'
+                            ? 'ระบบครบวงจรสำหรับจัดการทรัพย์สิน สัญญาเช่า บิล งานซ่อม และการสื่อสารแบบเรียลไทม์'
+                            : 'Complete system for properties, leases, billing, maintenance, and real-time communication' }}
                     </p>
                 </div>
             </div>
@@ -126,31 +129,39 @@ onMounted(() => {
                 <div class="flex items-center gap-4 auth-feature">
                     <div
                         class="w-10 h-10 bg-primary-600/20 dark:bg-primary-700/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <i class="ti-shield text-primary-400 dark:text-primary-500"></i>
+                        <i class="ti-home text-primary-400 dark:text-primary-500"></i>
                     </div>
                     <div>
-                        <p class="text-white text-sm font-medium">Bank-level Security</p>
-                        <p class="text-gray-500 dark:text-gray-600 text-xs">256-bit encryption for all your data</p>
+                        <p class="text-white text-sm font-medium">
+                            {{ lang === 'TH' ? 'จัดการทรัพย์สิน' : 'Property Management' }}</p>
+                        <p class="text-gray-500 dark:text-gray-600 text-xs">
+                            {{ lang === 'TH' ? 'ข้อมูลโครงการ ห้อง ราคา สถานะ' : 'Projects, units, pricing, status' }}
+                        </p>
                     </div>
                 </div>
                 <div class="flex items-center gap-4 auth-feature">
                     <div
                         class="w-10 h-10 bg-emerald-600/20 dark:bg-emerald-700/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <i class="ti-bar-chart text-emerald-400 dark:text-emerald-500"></i>
+                        <i class="ti-receipt text-emerald-400 dark:text-emerald-500"></i>
                     </div>
                     <div>
-                        <p class="text-white text-sm font-medium">Real-time Analytics</p>
-                        <p class="text-gray-500 dark:text-gray-600 text-xs">Insights across all your properties</p>
+                        <p class="text-white text-sm font-medium">
+                            {{ lang === 'TH' ? 'บิลและการชำระเงิน' : 'Billing & Payments' }}</p>
+                        <p class="text-gray-500 dark:text-gray-600 text-xs">
+                            {{ lang === 'TH' ? 'ค่าเช่า ค่าน้ำ-ไฟ ตรวจสอบหลักฐาน'
+                                : 'Rent, utilities, payment verification' }}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-4 auth-feature">
                     <div
                         class="w-10 h-10 bg-amber-600/20 dark:bg-amber-700/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <i class="ti-headphone-alt text-amber-400 dark:text-amber-500"></i>
+                        <i class="ti-comment-alt text-amber-400 dark:text-amber-500"></i>
                     </div>
                     <div>
-                        <p class="text-white text-sm font-medium">24/7 Support</p>
-                        <p class="text-gray-500 dark:text-gray-600 text-xs">We're here whenever you need us</p>
+                        <p class="text-white text-sm font-medium">{{ lang === 'TH' ? 'แชทเรียลไทม์' : 'Real-time Chat'
+                            }}</p>
+                        <p class="text-gray-500 dark:text-gray-600 text-xs">{{ lang === 'TH' ?
+                            'สื่อสารระหว่างผู้จัดการและผู้เช่า' : 'Manager & resident communication' }}</p>
                     </div>
                 </div>
             </div>
@@ -228,7 +239,7 @@ onMounted(() => {
                         <div>
                             <div class="flex items-center justify-between mb-1.5">
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.password
-                                    }}</label>
+                                }}</label>
                                 <a href="#" class="text-xs text-primary-600 dark:text-primary-400 hover:underline">{{
                                     t.forgotPassword }}</a>
                             </div>
@@ -251,7 +262,7 @@ onMounted(() => {
                             <input id="remember" v-model="rememberMe" type="checkbox"
                                 class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 dark:bg-gray-800" />
                             <label for="remember" class="text-sm text-gray-600 dark:text-gray-400">{{ t.rememberMe
-                                }}</label>
+                            }}</label>
                         </div>
 
                         <!-- Submit -->
@@ -262,27 +273,6 @@ onMounted(() => {
                             {{ isLoading ? t.signingIn : t.signIn }}
                         </button>
                     </form>
-
-                    <!-- Divider -->
-                    <div class="flex items-center gap-3 my-6">
-                        <hr class="flex-1 border-gray-200 dark:border-gray-700" />
-                        <span class="text-xs text-gray-400 dark:text-gray-500">{{ t.orContinueWith }}</span>
-                        <hr class="flex-1 border-gray-200 dark:border-gray-700" />
-                    </div>
-
-                    <!-- Social login -->
-                    <div class="grid grid-cols-2 gap-3">
-                        <button
-                            class="flex items-center justify-center gap-2 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                            <i class="ti-google text-red-500"></i>
-                            Google
-                        </button>
-                        <button
-                            class="flex items-center justify-center gap-2 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                            <i class="ti-microsoft text-blue-500"></i>
-                            Microsoft
-                        </button>
-                    </div>
 
                     <!-- Sign up link -->
                     <p class="text-center text-sm text-gray-500 dark:text-gray-400 mt-8">
