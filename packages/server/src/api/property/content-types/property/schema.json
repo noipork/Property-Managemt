@@ -39,6 +39,8 @@
     },
     "propertyType": {
       "type": "enumeration",
+      "required": true,
+      "default": "apartment",
       "enum": [
         "apartment",
         "condo",
@@ -47,26 +49,24 @@
         "commercial",
         "land",
         "other"
-      ],
-      "default": "apartment",
-      "required": true
+      ]
     },
     "status": {
       "type": "enumeration",
+      "required": true,
+      "default": "active",
       "enum": [
         "active",
         "inactive",
         "maintenance",
         "sold"
-      ],
-      "default": "active",
-      "required": true
+      ]
     },
     "totalUnits": {
       "type": "integer",
       "required": true,
-      "min": 1,
-      "default": 1
+      "default": 1,
+      "min": 1
     },
     "occupiedUnits": {
       "type": "integer",
@@ -93,17 +93,16 @@
     "image": {
       "type": "media",
       "multiple": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "images": {
       "type": "media",
       "multiple": true,
-      "allowedTypes": ["images"]
-    },
-    "owner": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "allowedTypes": [
+        "images"
+      ]
     },
     "unitTypes": {
       "type": "relation",
@@ -126,7 +125,15 @@
     "qrCodeImage": {
       "type": "media",
       "multiple": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user",
+      "mappedBy": "property"
     }
   }
 }
