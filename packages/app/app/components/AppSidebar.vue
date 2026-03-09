@@ -78,6 +78,7 @@ const managerMenuSections = computed(() => [
         title: t.value.account,
         items: [
             { name: t.value.packages, icon: 'ti-crown', badge: '', path: '/manager/packages' },
+            { name: t.value.subscriptions, icon: 'ti-receipt', badge: '', path: '/manager/subscriptions' },
         ],
     },
 ])

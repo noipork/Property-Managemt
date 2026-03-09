@@ -254,6 +254,65 @@ export function useStripe() {
         }
     }
 
+    // Downgrade to a lower plan (scheduled for end of current subscription)
+    async function downgradePlan(planId: string): Promise<{ success: boolean; scheduledDowngradePlan?: any; effectiveDate?: string }> {
+        isLoading.value = true
+        error.value = null
+
+        try {
+            const res = await fetch(`${STRAPI_URL}/api/subscriptions/downgrade`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token.value}`,
+                },
+                body: JSON.stringify({ planId }),
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                throw new Error(data.error?.message || 'Failed to schedule downgrade')
+            }
+
+            return data
+        } catch (err: any) {
+            error.value = err.message
+            return { success: false }
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    // Cancel a scheduled downgrade
+    async function cancelScheduledDowngrade(): Promise<{ success: boolean }> {
+        isLoading.value = true
+        error.value = null
+
+        try {
+            const res = await fetch(`${STRAPI_URL}/api/subscriptions/cancel-scheduled-downgrade`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token.value}`,
+                },
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                throw new Error(data.error?.message || 'Failed to cancel scheduled downgrade')
+            }
+
+            return data
+        } catch (err: any) {
+            error.value = err.message
+            return { success: false }
+        } finally {
+            isLoading.value = false
+        }
+    }
+
     return {
         isLoading,
         error,
@@ -263,5 +322,7 @@ export function useStripe() {
         createSignupCheckout,
         redirectToSignupCheckout,
         completeSignup,
+        downgradePlan,
+        cancelScheduledDowngrade,
     }
 }

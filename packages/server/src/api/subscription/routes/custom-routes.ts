@@ -15,6 +15,24 @@ export default {
     },
     {
       method: 'POST',
+      path: '/subscriptions/downgrade',
+      handler: 'subscription.downgradePlan',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/subscriptions/cancel-scheduled-downgrade',
+      handler: 'subscription.cancelScheduledDowngrade',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
       path: '/subscriptions/signup-checkout',
       handler: 'subscription.createSignupCheckout',
       config: {

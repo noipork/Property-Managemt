@@ -16,6 +16,13 @@ interface Subscription {
         maxProperties: number
         maxUnitsPerProperty: number
     }
+    scheduledDowngradePlan?: {
+        id: number
+        documentId: string
+        name: string
+        maxProperties: number
+        maxUnitsPerProperty: number
+    } | null
 }
 
 const _subscription = ref<Subscription | null>(null)
@@ -70,6 +77,14 @@ export const useSubscription = () => {
         }
     })
 
+    const hasScheduledDowngrade = computed(() => {
+        return !!subscription.value?.scheduledDowngradePlan
+    })
+
+    const scheduledDowngradePlan = computed(() => {
+        return subscription.value?.scheduledDowngradePlan || null
+    })
+
     async function fetchSubscription(force = false): Promise<Subscription | null> {
         if (!token.value || !user.value) return null
 
@@ -88,6 +103,7 @@ export const useSubscription = () => {
                 'filters[status][$in][1]': 'trial',
                 'filters[status][$in][2]': 'pending',
                 'populate[0]': 'plan',
+                'populate[1]': 'scheduledDowngradePlan',
                 'sort[0]': 'createdAt:desc',
                 'pagination[pageSize]': '1',
             })
@@ -121,6 +137,13 @@ export const useSubscription = () => {
                         maxProperties: sub.plan.maxProperties,
                         maxUnitsPerProperty: sub.plan.maxUnitsPerProperty,
                     } : undefined,
+                    scheduledDowngradePlan: sub.scheduledDowngradePlan ? {
+                        id: sub.scheduledDowngradePlan.id,
+                        documentId: sub.scheduledDowngradePlan.documentId,
+                        name: sub.scheduledDowngradePlan.name,
+                        maxProperties: sub.scheduledDowngradePlan.maxProperties,
+                        maxUnitsPerProperty: sub.scheduledDowngradePlan.maxUnitsPerProperty,
+                    } : null,
                 }
                 _lastFetched.value = now
             } else {
@@ -185,6 +208,8 @@ export const useSubscription = () => {
         isPending,
         daysRemaining,
         planLimits,
+        hasScheduledDowngrade,
+        scheduledDowngradePlan,
         requiresSubscription,
         fetchSubscription,
         checkAndUpdateExpired,

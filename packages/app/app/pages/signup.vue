@@ -361,13 +361,27 @@ async function handlePaymentReturn() {
                 throw new Error(data.error?.message || "Failed to complete signup");
             }
 
-            if (data.success) {
-                // Auto login with JWT
-                if (data.jwt) {
-                    localStorage.setItem("strapi_token", data.jwt);
-                    localStorage.setItem("strapi_user", JSON.stringify(data.user));
-                }
-                // Redirect to dashboard
+            if (data.success && data.jwt) {
+                // Map the role from Strapi format to our format
+                const roleType = typeof data.user?.role === 'object'
+                    ? data.user.role.type
+                    : 'manager';
+                const mappedRole = roleType === 'resident' ? 'resident' : 'manager';
+
+                // Store using the same keys that useAuth reads
+                const userData = {
+                    id: data.user.id,
+                    documentId: data.user.documentId,
+                    name: data.user.username || data.user.email?.split('@')[0],
+                    email: data.user.email,
+                    role: mappedRole,
+                    property: null,
+                };
+
+                localStorage.setItem("authToken", data.jwt);
+                localStorage.setItem("authUser", JSON.stringify(userData));
+
+                // Redirect to dashboard after a short delay
                 setTimeout(() => {
                     window.location.href = "/manager/dashboard";
                 }, 2000);
@@ -518,7 +532,7 @@ onMounted(() => {
                 <div class="auth-hero">
                     <h1 class="text-4xl font-bold text-white leading-tight mb-6">
                         {{ lang === "TH" ? "เริ่มต้นจัดการ" : "Start managing" }}<br />
-                        {{ lang === "TH" ? "อสังหาฯ นนี้" : "smarter today" }}
+                        {{ lang === "TH" ? "อสังหาฯ วันนี้" : "smarter today" }}
                     </h1>
                     <p class="text-gray-400 dark:text-gray-500 text-lg leading-relaxed max-w-md">
                         {{

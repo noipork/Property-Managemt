@@ -113,6 +113,11 @@
     },
     "notes": {
       "type": "text"
+    },
+    "scheduledDowngradePlan": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::plan.plan"
     }
   }
 }

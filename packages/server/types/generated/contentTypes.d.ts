@@ -1269,6 +1269,10 @@ export interface ApiSubscriptionSubscription
     publishedAt: Schema.Attribute.DateTime;
     renewalReminderSent: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
+    scheduledDowngradePlan: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::plan.plan'
+    >;
     startDate: Schema.Attribute.Date & Schema.Attribute.Required;
     status: Schema.Attribute.Enumeration<
       ['pending', 'active', 'expired', 'cancelled', 'trial']
