@@ -20,13 +20,15 @@
     "@strapi/plugin-users-permissions": "5.38.0",
     "@strapi/strapi": "5.38.0",
     "better-sqlite3": "12.4.1",
+    "pg": "^8.20.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
     "socket.io": "^4.8.3",
     "stripe": "^20.4.1",
     "styled-components": "^6.0.0",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^20",

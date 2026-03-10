@@ -15,5 +15,13 @@ export default (config: UserConfig) => {
         'propertyapi.upstify-official.com',
       ],
     },
+    build: {
+      rollupOptions: {
+        external: ['zod/v4', 'zod/v3'],
+      },
+    },
+    optimizeDeps: {
+      exclude: ['zod/v4', 'zod/v3'],
+    },
   });
 };
