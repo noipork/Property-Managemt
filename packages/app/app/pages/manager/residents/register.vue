@@ -6,6 +6,7 @@ const { token, user } = useAuth()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
 const router = useRouter()
+const pageEntered = ref(false)
 
 // ─── Form State ───────────────────────────────────────────────────────────────
 const form = ref({
@@ -41,6 +42,10 @@ onMounted(() => {
         String(now.getDate()).padStart(2, '0')
     const rand = Math.floor(1000 + Math.random() * 9000)
     form.value.leaseNo = `LSE-${datePart}-${rand}`
+
+    requestAnimationFrame(() => {
+        pageEntered.value = true
+    })
 })
 
 const errors = ref<Record<string, string>>({})
@@ -453,7 +458,7 @@ onMounted(fetchProperties)
         <!-- Header -->
         <Transition appear enter-active-class="transition-all duration-500" enter-from-class="opacity-0 -translate-y-3"
             enter-to-class="opacity-100 translate-y-0">
-            <div class="flex items-center gap-3">
+            <div v-if="pageEntered" class="flex items-center gap-3">
                 <button @click="$router.back()"
                     class="p-2 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                     <i class="fa-solid fa-arrow-left text-lg"></i>
@@ -494,7 +499,7 @@ onMounted(fetchProperties)
             <!-- ── Resident Information ── -->
             <Transition appear enter-active-class="transition-all duration-500"
                 enter-from-class="opacity-0 translate-y-4" enter-to-class="opacity-100 translate-y-0">
-                <div
+                <div v-if="pageEntered"
                     class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                         <i class="fa-solid fa-user text-primary-600 dark:text-primary-400"></i>
@@ -559,7 +564,8 @@ onMounted(fetchProperties)
                                 <button type="button" @click="showPassword = !showPassword"
                                     class="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                                     :title="showPassword ? 'Hide password' : 'Show password'">
-                                    <i :class="showPassword ? 'fa-solid fa-lock' : 'fa-solid fa-eye'" class="text-sm"></i>
+                                    <i :class="showPassword ? 'fa-solid fa-lock' : 'fa-solid fa-eye'"
+                                        class="text-sm"></i>
                                 </button>
                             </div>
                         </div>
@@ -571,7 +577,7 @@ onMounted(fetchProperties)
             <!-- ── Unit Information ── -->
             <Transition appear enter-active-class="transition-all duration-500 delay-100"
                 enter-from-class="opacity-0 translate-y-4" enter-to-class="opacity-100 translate-y-0">
-                <div
+                <div v-if="pageEntered"
                     class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                         <i class="fa-solid fa-house text-primary-600 dark:text-primary-400"></i>
@@ -664,7 +670,7 @@ onMounted(fetchProperties)
                             :class="errors.registrationDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                             @click="($event.target as HTMLInputElement).showPicker?.()" />
                         <p v-if="errors.registrationDate" class="mt-1 text-xs text-red-500">{{ errors.registrationDate
-                            }}
+                        }}
                         </p>
                     </div>
 
@@ -699,7 +705,7 @@ onMounted(fetchProperties)
             <!-- ── Lease Details ── -->
             <Transition appear enter-active-class="transition-all duration-500 delay-150"
                 enter-from-class="opacity-0 translate-y-4" enter-to-class="opacity-100 translate-y-0">
-                <div
+                <div v-if="pageEntered"
                     class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                         <i class="fa-solid fa-receipt text-primary-600 dark:text-primary-400"></i>
@@ -756,7 +762,7 @@ onMounted(fetchProperties)
                                 :class="errors.leaseStartDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                                 @click="($event.target as HTMLInputElement).showPicker?.()" />
                             <p v-if="errors.leaseStartDate" class="mt-1 text-xs text-red-500">{{ errors.leaseStartDate
-                            }}</p>
+                                }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -868,7 +874,8 @@ onMounted(fetchProperties)
                             </label>
                             <button type="button" @click="termsExpanded = !termsExpanded"
                                 class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors select-none">
-                                <i :class="termsExpanded ? 'fa-solid fa-compress' : 'fa-solid fa-expand'" class="text-xs"></i>
+                                <i :class="termsExpanded ? 'fa-solid fa-compress' : 'fa-solid fa-expand'"
+                                    class="text-xs"></i>
                                 {{ termsExpanded ? t.leaseTermsCollapse : t.leaseTermsExpand }}
                             </button>
                         </div>
@@ -953,7 +960,7 @@ onMounted(fetchProperties)
             <!-- Submit -->
             <Transition appear enter-active-class="transition-all duration-500 delay-200"
                 enter-from-class="opacity-0 translate-y-4" enter-to-class="opacity-100 translate-y-0">
-                <div class="flex items-center justify-end gap-3">
+                <div v-if="pageEntered" class="flex items-center justify-end gap-3">
                     <button type="button" @click="$router.back()"
                         class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors">
                         {{ t.cancel }}
@@ -1021,7 +1028,8 @@ onMounted(fetchProperties)
                             <div class="flex flex-col items-center text-center gap-3">
                                 <div
                                     class="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
-                                    <i class="fa-solid fa-circle-exclamation text-2xl text-red-600 dark:text-red-400"></i>
+                                    <i
+                                        class="fa-solid fa-circle-exclamation text-2xl text-red-600 dark:text-red-400"></i>
                                 </div>
                                 <div>
                                     <h3 class="text-base font-semibold text-gray-900 dark:text-white">Registration

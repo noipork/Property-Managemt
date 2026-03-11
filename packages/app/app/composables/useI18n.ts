@@ -1026,6 +1026,14 @@ const translations = {
         scheduledLabel: 'Scheduled',
         understood: 'Got it',
         downgradeAlways1Month: 'Downgrade is always 1-month subscription',
+        // Plan Renewal
+        renewPlan: 'Renew Plan',
+        renewSubscription: 'Renew Subscription',
+        renewConfirmTitle: 'Confirm Renewal',
+        renewConfirmDesc: 'You are about to renew your {plan} plan for {duration}.',
+        renewalPrice: 'Renewal Price',
+        renewNote: 'You will be redirected to Stripe to complete the payment.',
+        confirmRenew: 'Proceed to Payment',
     },
     TH: {
         // Common
@@ -2049,6 +2057,14 @@ const translations = {
         scheduledLabel: 'ตั้งเวลาแล้ว',
         understood: 'เข้าใจแล้ว',
         downgradeAlways1Month: 'การดาวน์เกรดจะเป็นแพ็กเกจ 1 เดือนเสมอ',
+        // Plan Renewal
+        renewPlan: 'ต่ออายุแพ็กเกจ',
+        renewSubscription: 'ต่ออายุการสมัครสมาชิก',
+        renewConfirmTitle: 'ยืนยันการต่ออายุ',
+        renewConfirmDesc: 'คุณกำลังต่ออายุแพ็กเกจ {plan} สำหรับ {duration}',
+        renewalPrice: 'ราคาต่ออายุ',
+        renewNote: 'คุณจะถูกนำไปยัง Stripe เพื่อชำระเงิน',
+        confirmRenew: 'ไปชำระเงิน',
     },
 }
 

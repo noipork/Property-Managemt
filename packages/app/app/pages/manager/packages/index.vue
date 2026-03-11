@@ -251,6 +251,31 @@ const processingPlanId = ref<string | null>(null)
 const showSuccessModal = ref(false)
 const showErrorModal = ref(false)
 
+// ─── Renew Confirmation Modal ─────────────────────────────────────────────────
+const showRenewModal = ref(false)
+const isRenewing = ref(false)
+const renewDuration = ref<number>(1)
+
+function handleRenewPlan() {
+    renewDuration.value = 1
+    showRenewModal.value = true
+}
+
+function cancelRenew() {
+    showRenewModal.value = false
+}
+
+async function confirmRenew() {
+    if (!activePlan.value) return
+    isRenewing.value = true
+    showRenewModal.value = false
+
+    processingPlanId.value = activePlan.value.documentId
+    await redirectToCheckout(activePlan.value.documentId, renewDuration.value)
+    processingPlanId.value = null
+    isRenewing.value = false
+}
+
 // ─── Downgrade Confirmation Modal ─────────────────────────────────────────────
 const showDowngradeModal = ref(false)
 const downgradePlanTarget = ref<Plan | null>(null)
@@ -535,6 +560,23 @@ onMounted(() => {
                                     scheduledDowngradePlan.name).replace('{date}', formatDate(subscription?.endDate)) }}
                             </p>
                         </div>
+                    </div>
+
+                    <!-- Renew Button -->
+                    <div v-if="activePlan && (subscription.status === 'active' || subscription.status === 'expired')"
+                        class="pt-3 border-t border-gray-100 dark:border-gray-800">
+                        <button @click="handleRenewPlan" :disabled="processingPlanId === activePlan.documentId"
+                            class="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-all transform hover:scale-[1.02] disabled:hover:scale-100 shadow-sm">
+                            <span v-if="processingPlanId === activePlan.documentId" class="flex items-center gap-2">
+                                <span
+                                    class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                {{ t.processing }}
+                            </span>
+                            <span v-else class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-rotate-right"></i>
+                                {{ t.renewPlan }}
+                            </span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -824,6 +866,120 @@ onMounted(() => {
                                 class="w-full py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl transition-colors">
                                 {{ t.tryAgain }}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+
+        <!-- Renew Confirmation Modal -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition-all duration-300 ease-out" enter-from-class="opacity-0"
+                enter-to-class="opacity-100" leave-active-class="transition-all duration-200 ease-in"
+                leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <div v-if="showRenewModal"
+                    class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                    @click.self="cancelRenew">
+                    <div class="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
+                        <!-- Header -->
+                        <div class="relative bg-gradient-to-br from-emerald-500 to-green-600 px-6 py-8 text-center">
+                            <button @click="cancelRenew"
+                                class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
+                                <i class="fa-solid fa-xmark text-white text-sm"></i>
+                            </button>
+                            <div class="relative">
+                                <div
+                                    class="w-20 h-20 mx-auto mb-4 bg-white/20 backdrop-blur rounded-full flex items-center justify-center">
+                                    <i class="fa-solid fa-rotate-right text-4xl text-white"></i>
+                                </div>
+                                <h2 class="text-2xl font-bold text-white">{{ t.renewConfirmTitle }}</h2>
+                            </div>
+                        </div>
+
+                        <!-- Body -->
+                        <div class="px-6 py-6">
+                            <!-- Duration selector -->
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t.selectDuration }}
+                            </p>
+                            <div class="grid grid-cols-2 gap-2 mb-4">
+                                <button v-for="option in durationOptions" :key="option.months"
+                                    @click="renewDuration = option.months"
+                                    class="relative px-3 py-2.5 rounded-lg border-2 transition-all text-sm font-medium"
+                                    :class="renewDuration === option.months
+                                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-700 dark:text-gray-300'">
+                                    <span>{{ getDurationLabel(option.months) }}</span>
+                                    <span v-if="option.discount > 0"
+                                        class="absolute -top-2 -right-2 px-1.5 py-0.5 bg-emerald-500 text-white text-xs font-bold rounded-full">
+                                        -{{ option.discount }}%
+                                    </span>
+                                </button>
+                            </div>
+
+                            <!-- Renewal summary -->
+                            <div
+                                class="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 mb-4">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="w-10 h-10 rounded-lg flex items-center justify-center"
+                                        :class="activePlanTierStyle.icon">
+                                        <i :class="activePlanTierStyle.iconClass" class="text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-gray-900 dark:text-white">{{ activePlan?.name }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{
+                                            getDurationLabel(renewDuration)
+                                            }}</p>
+                                    </div>
+                                </div>
+                                <div class="border-t border-emerald-200 dark:border-emerald-800 pt-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">{{ t.renewalPrice
+                                            }}</span>
+                                        <span class="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+                                            {{ activePlan ? formatPrice(getDiscountedPrice(activePlan.price,
+                                            renewDuration),
+                                            activePlan.currency) : '' }}
+                                        </span>
+                                    </div>
+                                    <div v-if="getDiscount(renewDuration) > 0"
+                                        class="flex items-center justify-between mt-1">
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ t.savePct }} {{
+                                            getDiscount(renewDuration) }}%</span>
+                                        <span class="text-xs text-gray-400 line-through">
+                                            {{ activePlan ? formatPrice(activePlan.price * renewDuration,
+                                            activePlan.currency) :
+                                            '' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Info note -->
+                            <div
+                                class="flex items-start gap-2.5 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-6">
+                                <i class="fa-solid fa-circle-info text-blue-500 mt-0.5 flex-shrink-0"></i>
+                                <p class="text-xs text-blue-700 dark:text-blue-400">{{ t.renewNote }}</p>
+                            </div>
+
+                            <!-- Buttons -->
+                            <div class="flex gap-3">
+                                <button @click="cancelRenew"
+                                    class="flex-1 py-2.5 px-4 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                    {{ t.cancel }}
+                                </button>
+                                <button @click="confirmRenew" :disabled="isRenewing"
+                                    class="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <span v-if="isRenewing" class="flex items-center justify-center gap-2">
+                                        <span
+                                            class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                        {{ t.processing }}
+                                    </span>
+                                    <span v-else class="flex items-center justify-center gap-1.5">
+                                        <i class="fa-solid fa-arrow-right"></i>
+                                        {{ t.confirmRenew }}
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
