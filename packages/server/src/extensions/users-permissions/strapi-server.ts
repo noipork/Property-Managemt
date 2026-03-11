@@ -60,7 +60,7 @@ export default (plugin: any) => {
               filters: { id: { $eq: output.user.id } },
               populate: {
                 role: { fields: ['id', 'name', 'type'] },
-                plan: { fields: ['documentId', 'name', 'slug', 'maxProperties', 'maxUnitsPerProperty'] },
+                plan: { fields: ['documentId', 'name', 'slug', 'maxProperties', 'maxUnitsPerProperty', 'maxUnitTypesPerProperty', 'maxBuildingsPerProperty'] },
                 property: { fields: ['documentId', 'name'] },
               },
             })

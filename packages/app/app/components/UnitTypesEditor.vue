@@ -26,6 +26,7 @@ const props = defineProps<{
     currency?: string
     areaUnit?: string
     planUnitLimit?: number
+    planUnitTypeLimit?: number
 }>()
 
 const emit = defineEmits<{
@@ -155,7 +156,13 @@ const statusColors: Record<string, string> = {
         <!-- Summary bar -->
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                <span>{{ modelValue.length }} {{ t.unitTypes }}</span>
+                <span
+                    :class="planUnitTypeLimit && planUnitTypeLimit < 999 && modelValue.length >= planUnitTypeLimit ? 'text-red-500 font-medium' : ''">
+                    {{ modelValue.length }}<template v-if="planUnitTypeLimit && planUnitTypeLimit < 999"> / {{
+                        planUnitTypeLimit }}</template>
+                    {{
+                        t.unitTypes }}
+                </span>
                 <span class="text-gray-300 dark:text-gray-600">·</span>
                 <span>{{ totalQuantity }} {{ t.totalUnitsLabel }}</span>
                 <span v-if="planUnitLimit" class="text-xs"
@@ -164,9 +171,18 @@ const statusColors: Record<string, string> = {
                 </span>
             </div>
             <button type="button" @click="addUnit"
-                class="inline-flex items-center gap-1.5 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors">
+                :disabled="!!(planUnitTypeLimit && planUnitTypeLimit < 999 && modelValue.length >= planUnitTypeLimit)"
+                class="inline-flex items-center gap-1.5 text-sm font-medium transition-colors" :class="planUnitTypeLimit && planUnitTypeLimit < 999 && modelValue.length >= planUnitTypeLimit
+                    ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                    : 'text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300'">
                 <i class="ti-plus text-xs"></i>
                 {{ t.addUnitType }}
+                <span v-if="planUnitTypeLimit && planUnitTypeLimit < 999 && modelValue.length >= planUnitTypeLimit"
+                    class="text-xs text-amber-500 flex items-center gap-1">
+                    <i class="fa-solid fa-crown text-[9px]"></i>
+                    {{ t.planLimitUnitTypeReached?.replace('{current}', String(modelValue.length)).replace('{limit}',
+                        String(planUnitTypeLimit)) }}
+                </span>
             </button>
         </div>
 

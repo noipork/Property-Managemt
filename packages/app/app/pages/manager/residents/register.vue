@@ -6,7 +6,9 @@ const { token, user } = useAuth()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
 const router = useRouter()
+const route = useRoute()
 const pageEntered = ref(false)
+const prefilled = ref(false)
 
 // ─── Form State ───────────────────────────────────────────────────────────────
 const form = ref({
@@ -31,7 +33,7 @@ const form = ref({
 })
 
 // Set date client-side only to avoid hydration mismatch
-onMounted(() => {
+onMounted(async () => {
     if (!form.value.registrationDate) {
         form.value.registrationDate = new Date().toISOString().split('T')[0]
     }
@@ -46,6 +48,29 @@ onMounted(() => {
     requestAnimationFrame(() => {
         pageEntered.value = true
     })
+
+    // Pre-fill from query params (e.g. coming from room click on property page)
+    const qPropertyId = route.query.propertyId as string | undefined
+    const qRoomNumber = route.query.roomNumber as string | undefined
+    if (qRoomNumber) {
+        form.value.roomNumber = qRoomNumber
+    }
+
+    await fetchProperties()
+
+    if (qPropertyId) {
+        form.value.propertyId = qPropertyId
+        prefilled.value = true
+        // Trigger unit types + buildings fetch using the documentId from loaded properties
+        const prop = properties.value.find(p => String(p.id) === qPropertyId)
+        if (prop) {
+            await Promise.all([
+                fetchUnitTypes(prop.documentId),
+                fetchBuildings(prop.documentId),
+                applyPropertyTerms(prop.documentId),
+            ])
+        }
+    }
 })
 
 const errors = ref<Record<string, string>>({})
@@ -113,10 +138,38 @@ interface UnitType {
     occupiedCount?: number
 }
 
+interface RoomData {
+    id: number
+    documentId: string
+    roomNumber: string
+    status: 'active' | 'inactive' | 'maintenance'
+    resident: { id: number; username: string } | null
+}
+interface FloorData {
+    id: number
+    documentId: string
+    floorNumber: number
+    floorType: string
+    rooms: RoomData[]
+}
+interface BuildingData {
+    id: number
+    documentId: string
+    name: string
+    totalFloors: number
+    roomsPerFloor: number
+    floors: FloorData[]
+}
+
 const properties = ref<Property[]>([])
 const unitTypes = ref<UnitType[]>([])
+const buildings = ref<BuildingData[]>([])
 const isLoadingProperties = ref(false)
 const isLoadingUnitTypes = ref(false)
+const isLoadingBuildings = ref(false)
+const selectedBuildingId = ref<string>('')
+const selectedFloorId = ref<string>('')
+const selectedRoomDocId = ref<string>('')
 
 const statuses = ['reserved', 'active', 'nearlyExpired', 'expired', 'inactive']
 const statusLabels = computed(() => ({
@@ -216,8 +269,6 @@ async function fetchProperties() {
     try {
         const params = new URLSearchParams({
             'pagination[pageSize]': '200',
-            'fields[0]': 'name',
-            'fields[1]': 'city',
         })
         if (user.value?.documentId) {
             params.set('filters[owner][documentId][$eq]', user.value.documentId)
@@ -237,6 +288,46 @@ async function fetchProperties() {
         // silently ignore
     } finally {
         isLoadingProperties.value = false
+    }
+}
+
+async function applyPropertyTerms(propertyDocumentId: string) {
+    if (!propertyDocumentId) {
+        form.value.terms = ''
+        await nextTick()
+        if (termsEditor.value) termsEditor.value.innerHTML = ''
+        return
+    }
+    try {
+        const params = new URLSearchParams({
+            'filters[documentId][$eq]': propertyDocumentId,
+            'pagination[pageSize]': '1',
+        })
+        const res = await fetch(`${STRAPI_URL}/api/properties?${params}`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        const propertyTerms = data?.data?.[0]?.terms || ''
+        form.value.terms = propertyTerms
+        await nextTick()
+        const applyToEditor = () => {
+            if (termsEditor.value) {
+                termsEditor.value.innerHTML = propertyTerms
+                return true
+            }
+            return false
+        }
+        if (!applyToEditor()) {
+            let retries = 0
+            const tryApply = () => {
+                if (applyToEditor() || retries++ > 10) return
+                requestAnimationFrame(tryApply)
+            }
+            requestAnimationFrame(tryApply)
+        }
+    } catch {
+        // silently ignore
     }
 }
 
@@ -291,19 +382,123 @@ async function fetchUnitTypes(propertyDocumentId: string) {
     }
 }
 
+// ─── Fetch Buildings when property changes ───────────────────────────────────
+async function fetchBuildings(propertyDocumentId: string) {
+    isLoadingBuildings.value = true
+    buildings.value = []
+    selectedBuildingId.value = ''
+    selectedFloorId.value = ''
+    selectedRoomDocId.value = ''
+    form.value.roomNumber = ''
+    try {
+        const res = await fetch(
+            `${STRAPI_URL}/api/buildings?filters[property][documentId][$eq]=${propertyDocumentId}&populate[floors][populate][rooms][populate]=resident&sort=createdAt:asc`,
+            { headers: { Authorization: `Bearer ${token.value}` } }
+        )
+        const data = await res.json()
+        buildings.value = (data.data ?? []).map((b: any) => ({
+            id: b.id,
+            documentId: b.documentId,
+            name: b.name,
+            totalFloors: b.totalFloors,
+            roomsPerFloor: b.roomsPerFloor,
+            floors: (b.floors ?? []).map((f: any) => ({
+                id: f.id,
+                documentId: f.documentId,
+                floorNumber: f.floorNumber,
+                floorType: f.floorType ?? 'residential',
+                rooms: (f.rooms ?? []).map((r: any) => ({
+                    id: r.id,
+                    documentId: r.documentId,
+                    roomNumber: r.roomNumber,
+                    status: r.status ?? 'inactive',
+                    resident: r.resident ? { id: r.resident.id, username: r.resident.username } : null,
+                })),
+            })).sort((a: FloorData, b: FloorData) => a.floorNumber - b.floorNumber),
+        }))
+    } catch {
+        // silently ignore
+    } finally {
+        isLoadingBuildings.value = false
+    }
+}
+
+// Computed: selected building object
+const selectedBuilding = computed(() =>
+    buildings.value.find(b => String(b.id) === selectedBuildingId.value) ?? null
+)
+// Computed: floors for selected building
+const buildingFloors = computed(() => selectedBuilding.value?.floors ?? [])
+// Computed: selected floor object
+const selectedFloor = computed(() =>
+    buildingFloors.value.find(f => String(f.id) === selectedFloorId.value) ?? null
+)
+// Computed: rooms for selected floor
+const floorRooms = computed(() => selectedFloor.value?.rooms ?? [])
+
+// Room stats per building
+function buildingRoomStats(b: BuildingData) {
+    let total = 0, free = 0, occupied = 0, maint = 0
+    for (const f of b.floors) {
+        for (const r of f.rooms) {
+            total++
+            if (r.status === 'active' || r.resident) occupied++
+            else if (r.status === 'maintenance') maint++
+            else free++
+        }
+    }
+    return { total, free, occupied, maintenance: maint }
+}
+
+function roomStatusColor(room: RoomData) {
+    if (room.status === 'active' || room.resident) return 'occupied'
+    if (room.status === 'maintenance') return 'maintenance'
+    return 'free'
+}
+
+function selectRoom(room: RoomData) {
+    if (room.status === 'active' || room.resident || room.status === 'maintenance') return
+    selectedRoomDocId.value = room.documentId
+    form.value.roomNumber = room.roomNumber
+}
+
 // Watch property selection
 watch(
     () => form.value.propertyId,
-    (newId) => {
+    async (newId) => {
         if (!newId) {
             unitTypes.value = []
+            buildings.value = []
             form.value.unitTypeId = ''
+            selectedBuildingId.value = ''
+            selectedFloorId.value = ''
+            selectedRoomDocId.value = ''
+            form.value.roomNumber = ''
+            await applyPropertyTerms('')
             return
         }
         const prop = properties.value.find(p => String(p.id) === newId)
-        if (prop) fetchUnitTypes(prop.documentId)
+        if (prop) {
+            await Promise.all([
+                fetchUnitTypes(prop.documentId),
+                fetchBuildings(prop.documentId),
+                applyPropertyTerms(prop.documentId),
+            ])
+        }
     }
 )
+
+// Reset floor/room when building changes
+watch(selectedBuildingId, () => {
+    selectedFloorId.value = ''
+    selectedRoomDocId.value = ''
+    form.value.roomNumber = ''
+})
+// Reset room when floor changes
+watch(selectedFloorId, () => {
+    selectedRoomDocId.value = ''
+    form.value.roomNumber = ''
+})
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 function validate() {
@@ -359,6 +554,7 @@ async function submit() {
         }
 
         const newUserId: number = registerData.user?.id
+        const newUserDocumentId: string = registerData.user?.documentId
         if (!newUserId) throw new Error('No user id returned')
 
         // ── Step 3: Update user with role=4 (Resident) and resident fields ──
@@ -376,6 +572,7 @@ async function submit() {
                 registrationDate: form.value.registrationDate,
                 residencyStatus: form.value.residencyStatus,
                 nextBillDate: form.value.nextBillDate || null,
+                plainPassword: form.value.password,
             }),
         })
         if (!updateRes.ok) {
@@ -385,7 +582,27 @@ async function submit() {
             return
         }
 
-        // ── Step 4: Create lease record ──
+        // ── Step 4: Link resident to the matching room in the building ──
+        if (form.value.roomNumber && newUserDocumentId) {
+            try {
+                await fetch(`${STRAPI_URL}/api/rooms/assign-resident`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token.value}`,
+                    },
+                    body: JSON.stringify({
+                        propertyId: Number(form.value.propertyId),
+                        roomNumber: form.value.roomNumber,
+                        residentDocumentId: newUserDocumentId,
+                    }),
+                })
+            } catch {
+                // Non-blocking — room may not exist in building setup yet
+            }
+        }
+
+        // ── Step 5: Create lease record ──
         const leaseRes = await fetch(`${STRAPI_URL}/api/leases`, {
             method: 'POST',
             headers: {
@@ -449,8 +666,6 @@ function handleTermsPaste(e: ClipboardEvent) {
     selection.addRange(range)
     form.value.terms = (termsEditor.value as HTMLElement).innerHTML
 }
-
-onMounted(fetchProperties)
 </script>
 
 <template>
@@ -582,6 +797,11 @@ onMounted(fetchProperties)
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                         <i class="fa-solid fa-house text-primary-600 dark:text-primary-400"></i>
                         {{ t.unitInfo }}
+                        <span v-if="prefilled"
+                            class="ml-auto inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 px-2 py-0.5 rounded-full">
+                            <i class="fa-solid fa-link text-[8px]"></i>
+                            {{ t.prefilledFromRoom || 'Pre-filled from room' }}
+                        </span>
                     </h2>
 
                     <!-- Property Select -->
@@ -649,14 +869,178 @@ onMounted(fetchProperties)
                         </div>
                     </div>
 
-                    <!-- Room Number -->
+                    <!-- Room Selection: Building → Floor → Room -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                             {{ t.roomNumber }} <span class="text-red-500">*</span>
                         </label>
-                        <input v-model="form.roomNumber" type="text" :placeholder="t.roomNumberPlaceholder"
-                            class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
-                            :class="errors.roomNumber ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'" />
+
+                        <!-- No buildings message -->
+                        <div v-if="form.propertyId && !isLoadingBuildings && buildings.length === 0"
+                            class="flex flex-col items-center gap-2 p-4 bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                            <i class="fa-solid fa-building-circle-xmark text-2xl text-gray-300 dark:text-gray-600"></i>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 text-center">
+                                {{ t.noBuildingsSetup ||
+                                    'No buildings set up for this property. Enter room number manually.' }}</p>
+                            <input v-model="form.roomNumber" type="text" :placeholder="t.roomNumberPlaceholder"
+                                class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors" />
+                        </div>
+
+                        <!-- Loading -->
+                        <div v-else-if="isLoadingBuildings" class="flex items-center gap-2 py-3 text-sm text-gray-400">
+                            <div
+                                class="w-4 h-4 border-2 border-primary-400 border-t-transparent rounded-full animate-spin">
+                            </div>
+                            {{ t.loadingBuildings || 'Loading buildings...' }}
+                        </div>
+
+                        <!-- Building picker -->
+                        <div v-else-if="buildings.length > 0" class="space-y-3">
+                            <!-- Step 1: Select Building (cards) -->
+                            <div>
+                                <p
+                                    class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
+                                    <span
+                                        class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 text-[10px] font-bold">1</span>
+                                    {{ t.selectBuilding || 'Select Building' }}
+                                </p>
+                                <div class="grid gap-2"
+                                    :class="buildings.length > 2 ? 'grid-cols-3' : buildings.length === 2 ? 'grid-cols-2' : 'grid-cols-1'">
+                                    <button v-for="b in buildings" :key="b.id" type="button"
+                                        @click="selectedBuildingId = String(b.id)"
+                                        class="relative p-3 rounded-lg border-2 text-left transition-all duration-200 group"
+                                        :class="selectedBuildingId === String(b.id)
+                                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-sm'
+                                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'">
+                                        <div class="flex items-center gap-2 mb-1.5">
+                                            <i class="fa-solid fa-building text-sm"
+                                                :class="selectedBuildingId === String(b.id) ? 'text-primary-500' : 'text-gray-400'"></i>
+                                            <span
+                                                class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{
+                                                    b.name }}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 text-[10px]">
+                                            <span
+                                                class="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400">
+                                                <i class="fa-solid fa-circle text-[5px]"></i>
+                                                {{ buildingRoomStats(b).free }}
+                                            </span>
+                                            <span
+                                                class="inline-flex items-center gap-0.5 text-red-500 dark:text-red-400">
+                                                <i class="fa-solid fa-circle text-[5px]"></i>
+                                                {{ buildingRoomStats(b).occupied }}
+                                            </span>
+                                            <span v-if="buildingRoomStats(b).maintenance"
+                                                class="inline-flex items-center gap-0.5 text-amber-500 dark:text-amber-400">
+                                                <i class="fa-solid fa-circle text-[5px]"></i>
+                                                {{ buildingRoomStats(b).maintenance }}
+                                            </span>
+                                            <span class="text-gray-400 dark:text-gray-500 ml-auto">{{
+                                                buildingRoomStats(b).total }} {{ t.totalRooms || 'rooms' }}</span>
+                                        </div>
+                                        <div v-if="selectedBuildingId === String(b.id)"
+                                            class="absolute top-1.5 right-1.5">
+                                            <i class="fa-solid fa-circle-check text-primary-500 text-xs"></i>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Step 2: Select Floor (horizontal pills) -->
+                            <div v-if="selectedBuilding && buildingFloors.length > 0">
+                                <p
+                                    class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
+                                    <span
+                                        class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 text-[10px] font-bold">2</span>
+                                    {{ t.selectFloor || 'Select Floor' }}
+                                </p>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <button v-for="f in buildingFloors" :key="f.id" type="button"
+                                        @click="selectedFloorId = String(f.id)"
+                                        class="px-3 py-1.5 rounded-lg border text-xs font-medium transition-all duration-200"
+                                        :class="selectedFloorId === String(f.id)
+                                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'">
+                                        <i class="fa-solid fa-layer-group mr-1 text-[10px]"></i>
+                                        {{ t.floorLabel || 'Floor' }} {{ f.floorNumber }}
+                                        <span class="ml-1 text-[10px] opacity-60">({{f.rooms.filter(r => r.status !==
+                                            'active' && r.status !== 'maintenance' && !r.resident).length}} {{
+                                                t.freeLabel || 'free' }})</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Step 3: Select Room (grid of room cells) -->
+                            <div v-if="selectedFloor && floorRooms.length > 0">
+                                <p
+                                    class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
+                                    <span
+                                        class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 text-[10px] font-bold">3</span>
+                                    {{ t.selectRoom || 'Select Room' }}
+                                </p>
+                                <!-- Legend -->
+                                <div class="flex items-center gap-3 mb-2 text-[10px] text-gray-500 dark:text-gray-400">
+                                    <span class="inline-flex items-center gap-1"><span
+                                            class="w-2.5 h-2.5 rounded bg-emerald-100 dark:bg-emerald-900/40 border border-emerald-300 dark:border-emerald-700"></span>{{
+                                                t.roomFree || 'Free' }}</span>
+                                    <span class="inline-flex items-center gap-1"><span
+                                            class="w-2.5 h-2.5 rounded bg-red-100 dark:bg-red-900/40 border border-red-300 dark:border-red-700"></span>{{
+                                                t.roomOccupied || 'Occupied' }}</span>
+                                    <span class="inline-flex items-center gap-1"><span
+                                            class="w-2.5 h-2.5 rounded bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700"></span>{{
+                                                t.roomMaintenance || 'Maintenance' }}</span>
+                                </div>
+                                <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-1.5">
+                                    <button v-for="room in floorRooms" :key="room.id" type="button"
+                                        @click="selectRoom(room)" :disabled="roomStatusColor(room) !== 'free'" :title="roomStatusColor(room) === 'occupied'
+                                            ? (room.resident?.username ?? 'Occupied')
+                                            : roomStatusColor(room) === 'maintenance'
+                                                ? 'Maintenance'
+                                                : room.roomNumber"
+                                        class="relative flex flex-col items-center justify-center py-2 px-1 rounded-lg border-2 text-xs font-semibold transition-all duration-200"
+                                        :class="[
+                                            selectedRoomDocId === room.documentId
+                                                ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 ring-2 ring-primary-300 dark:ring-primary-700 shadow-sm'
+                                                : roomStatusColor(room) === 'free'
+                                                    ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer'
+                                                    : roomStatusColor(room) === 'occupied'
+                                                        ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-400 dark:text-red-500 cursor-not-allowed opacity-70'
+                                                        : 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-amber-500 dark:text-amber-400 cursor-not-allowed opacity-70',
+                                        ]">
+                                        <i class="text-[10px] mb-0.5" :class="[
+                                            roomStatusColor(room) === 'free' ? 'fa-solid fa-door-open' :
+                                                roomStatusColor(room) === 'occupied' ? 'fa-solid fa-door-closed' :
+                                                    'fa-solid fa-wrench'
+                                        ]"></i>
+                                        <span>{{ room.roomNumber }}</span>
+                                        <span v-if="roomStatusColor(room) === 'occupied' && room.resident"
+                                            class="text-[8px] font-normal truncate max-w-full px-0.5 opacity-70">
+                                            {{ room.resident.username }}
+                                        </span>
+                                        <div v-if="selectedRoomDocId === room.documentId"
+                                            class="absolute -top-1 -right-1">
+                                            <i
+                                                class="fa-solid fa-circle-check text-primary-500 text-xs bg-white dark:bg-gray-900 rounded-full"></i>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Selected room summary -->
+                            <div v-if="form.roomNumber && selectedRoomDocId"
+                                class="flex items-center gap-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 rounded-lg text-xs text-primary-700 dark:text-primary-300">
+                                <i class="fa-solid fa-check-circle"></i>
+                                <span>{{ t.selectedRoom || 'Selected' }}: <strong>{{ selectedBuilding?.name }} → {{
+                                    t.floorLabel || 'Floor' }} {{ selectedFloor?.floorNumber }} → {{ form.roomNumber
+                                        }}</strong></span>
+                            </div>
+                        </div>
+
+                        <!-- Fallback: no property selected -->
+                        <div v-else-if="!form.propertyId" class="text-xs text-gray-400 dark:text-gray-500 italic py-1">
+                            {{ t.selectPropertyFirst || 'Select a property first' }}
+                        </div>
+
                         <p v-if="errors.roomNumber" class="mt-1 text-xs text-red-500">{{ errors.roomNumber }}</p>
                     </div>
 
@@ -670,7 +1054,7 @@ onMounted(fetchProperties)
                             :class="errors.registrationDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                             @click="($event.target as HTMLInputElement).showPicker?.()" />
                         <p v-if="errors.registrationDate" class="mt-1 text-xs text-red-500">{{ errors.registrationDate
-                        }}
+                            }}
                         </p>
                     </div>
 
@@ -762,7 +1146,7 @@ onMounted(fetchProperties)
                                 :class="errors.leaseStartDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                                 @click="($event.target as HTMLInputElement).showPicker?.()" />
                             <p v-if="errors.leaseStartDate" class="mt-1 text-xs text-red-500">{{ errors.leaseStartDate
-                                }}</p>
+                            }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">

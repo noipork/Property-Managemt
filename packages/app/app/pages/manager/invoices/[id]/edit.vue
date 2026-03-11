@@ -29,20 +29,32 @@ const form = ref({
     waterMeterStart: 0,
     waterMeterEnd: 0,
     waterUnitPrice: 0,
+    commonAreaFee: 0,
     propertyDocumentId: '',
     residentId: '',
 })
 
 const isSubmitting = ref(false)
 const isLoading = ref(true)
+const isCancelling = ref(false)
 const errors = ref<Record<string, string>>({})
 
 // ─── Properties & Residents ──────────────────────────────────────────────────
 interface Property { id: number; documentId: string; name: string; city: string }
 interface Resident { id: number; username: string; email: string; roomNumber: string | null; unitType: { price: number | null } | null }
+interface PropertyBillingConfig {
+    id: number
+    documentId: string
+    name: string
+    electricPricePerUnit: number | null
+    waterPricePerUnit: number | null
+    commonAreaFee: number | null
+    invoiceDueDays: number | null
+}
 
 const propertiesList = ref<Property[]>([])
 const residentsList = ref<Resident[]>([])
+const propertyConfig = ref<PropertyBillingConfig | null>(null)
 
 async function fetchProperties() {
     try {
@@ -93,7 +105,8 @@ const electricUnitsUsed = computed(() => Math.max(0, form.value.electricMeterEnd
 const electricAmount = computed(() => electricUnitsUsed.value * form.value.electricUnitPrice)
 const waterUnitsUsed = computed(() => Math.max(0, form.value.waterMeterEnd - form.value.waterMeterStart))
 const waterAmount = computed(() => waterUnitsUsed.value * form.value.waterUnitPrice)
-const totalAmount = computed(() => (form.value.unitTypePrice || 0) + electricAmount.value + waterAmount.value)
+const commonAreaFeeAmount = computed(() => form.value.commonAreaFee || 0)
+const totalAmount = computed(() => (form.value.unitTypePrice || 0) + electricAmount.value + waterAmount.value + commonAreaFeeAmount.value)
 watch(totalAmount, (val) => { form.value.amount = val })
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -115,7 +128,7 @@ async function fetchInvoice() {
             'populate[0]': 'resident',
             'populate[1]': 'property',
         })
-        const res = await fetch(`${STRAPI_URL}/api/billings?filters[id][$eq]=${invoiceId}&${params}`, {
+        const res = await fetch(`${STRAPI_URL}/api/billings?filters[documentId][$eq]=${invoiceId}&${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
         })
         if (!res.ok) throw new Error('Not found')
@@ -141,6 +154,7 @@ async function fetchInvoice() {
         form.value.waterMeterStart = inv.waterMeterStart || 0
         form.value.waterMeterEnd = inv.waterMeterEnd || 0
         form.value.waterUnitPrice = inv.waterUnitPrice || 0
+        form.value.commonAreaFee = inv.commonAreaFee || 0
 
         if (inv.property) {
             form.value.propertyDocumentId = inv.property.documentId
@@ -193,6 +207,7 @@ async function submitForm() {
                 waterUnitPrice: form.value.waterUnitPrice,
                 waterUnitsUsed: waterUnitsUsed.value,
                 waterAmount: waterAmount.value,
+                commonAreaFee: form.value.commonAreaFee || null,
                 resident: Number(form.value.residentId),
                 property: form.value.propertyDocumentId,
             }
@@ -204,7 +219,7 @@ async function submitForm() {
         })
         if (!res.ok) throw new Error('Update failed')
         showToast('success', t.value.invoiceUpdated)
-        setTimeout(() => router.push(`/manager/invoices/${invoiceId}`), 800)
+        setTimeout(() => router.back(), 800)
     } catch {
         showToast('error', t.value.invoiceUpdateError)
     } finally {
@@ -213,6 +228,25 @@ async function submitForm() {
 }
 
 const invoiceTypes = ['monthlyRent', 'utilities', 'maintenance', 'deposit', 'lateFee', 'other']
+
+async function cancelInvoice() {
+    if (!form.value.documentId || form.value.status === 'cancelled') return
+    isCancelling.value = true
+    try {
+        const res = await fetch(`${STRAPI_URL}/api/billings/${form.value.documentId}`, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token.value}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: { status: 'cancelled' } }),
+        })
+        if (!res.ok) throw new Error('Cancel failed')
+        form.value.status = 'cancelled'
+        showToast('success', t.value.invoiceUpdated)
+    } catch {
+        showToast('error', t.value.invoiceUpdateError)
+    } finally {
+        isCancelling.value = false
+    }
+}
 const invoiceStatuses = ['pending', 'paid', 'overdue', 'partiallyPaid', 'cancelled']
 const typeLabels = computed(() => ({
     monthlyRent: t.value.monthlyRent, utilities: t.value.utilities, maintenance: t.value.maintenance,
@@ -276,16 +310,25 @@ onMounted(async () => {
 
         <template v-else>
             <!-- Header -->
-            <div class="flex items-center gap-3 transition-all duration-500"
+            <div class="flex items-center justify-between gap-3 transition-all duration-500"
                 :class="headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3'">
-                <NuxtLink :to="`/manager/invoices/${invoiceId}`"
-                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                    <i class="fa-solid fa-arrow-left text-gray-500 dark:text-gray-400"></i>
-                </NuxtLink>
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.editInvoice }}</h1>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ form.invoiceNo }}</p>
+                <div class="flex items-center gap-3">
+                    <button @click="router.back()"
+                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                        <i class="fa-solid fa-arrow-left text-gray-500 dark:text-gray-400"></i>
+                    </button>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.editInvoice }}</h1>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ form.invoiceNo }}</p>
+                    </div>
                 </div>
+                <button type="button" @click="cancelInvoice" :disabled="isCancelling || form.status === 'cancelled'"
+                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors">
+                    <div v-if="isCancelling"
+                        class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <i v-else class="fa-solid fa-ban text-sm"></i>
+                    {{ form.status === 'cancelled' ? t.cancelled : t.cancelInvoice }}
+                </button>
             </div>
 
             <!-- Form -->
@@ -352,7 +395,7 @@ onMounted(async () => {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t.dueDate
-                                }} *</label>
+                            }} *</label>
                             <input v-model="form.dueDate" type="date"
                                 class="w-full px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark]"
                                 :class="errors.dueDate ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'" />
@@ -376,7 +419,7 @@ onMounted(async () => {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t.description
-                            }} *</label>
+                        }} *</label>
                         <input v-model="form.description" type="text" :placeholder="t.invoiceDescriptionPlaceholder"
                             class="w-full px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                             :class="errors.description ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'" />
@@ -384,7 +427,7 @@ onMounted(async () => {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t.notes
-                            }}</label>
+                        }}</label>
                         <textarea v-model="form.notes" rows="2" :placeholder="t.invoiceNotesPlaceholder"
                             class="w-full px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
                     </div>
@@ -458,6 +501,15 @@ onMounted(async () => {
                         </div>
                     </div>
 
+                    <!-- Common Area Fee -->
+                    <div class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">🏛 {{ t.commonAreaFee }}</span>
+                        <div class="w-32">
+                            <input v-model.number="form.commonAreaFee" type="number" step="0.01" min="0"
+                                class="w-full px-3 py-1.5 text-sm text-right text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                        </div>
+                    </div>
+
                     <!-- Grand Total -->
                     <div class="flex items-center justify-between pt-2">
                         <span class="text-base font-bold text-gray-900 dark:text-white">{{ t.totalAmount }}</span>
@@ -469,10 +521,10 @@ onMounted(async () => {
                 <!-- Submit -->
                 <div class="flex gap-3 justify-end transition-all duration-500 delay-200"
                     :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
-                    <NuxtLink :to="`/manager/invoices/${invoiceId}`"
+                    <button type="button" @click="router.back()"
                         class="px-6 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
                         {{ t.cancel }}
-                    </NuxtLink>
+                    </button>
                     <button type="submit" :disabled="isSubmitting"
                         class="px-6 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg transition-colors">
                         {{ isSubmitting ? t.updating : t.update }}

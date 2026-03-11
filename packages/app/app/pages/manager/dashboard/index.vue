@@ -53,6 +53,7 @@ watch(selectedPropertyDocumentId, () => {
     fetchUnpaidBills()
     fetchRecentMaintenance()
     fetchReviewingBills()
+    fetchPendingAutoBills()
     buildCharts()
 })
 
@@ -597,6 +598,151 @@ function switchUsageTab(tab: 'electric' | 'water') {
     perResidentChartInstance.update()
 }
 
+// ─── Auto Bill Generator ──────────────────────────────────────────────────
+interface PendingAutoBill {
+    id: number
+    documentId: string
+    username: string
+    email: string
+    roomNumber: string | null
+    nextBillDate: string
+    propertyId: number
+    propertyDocumentId: string
+    propertyName: string
+    electricPricePerUnit: number
+    waterPricePerUnit: number
+    commonAreaFee: number
+    invoiceDueDays: number
+    propertyCurrency: string
+    unitTypeId: number | null
+    unitTypeName: string | null
+    unitTypePrice: number
+    roomDocumentId: string | null
+    meterStatus: 'ready' | 'missing' | 'outdated' | 'no_room'
+    latestMeterReading: {
+        electricMeterValue: number
+        waterMeterValue: number
+        electricMeterPrev: number
+        waterMeterPrev: number
+        electricUnitsUsed: number
+        waterUnitsUsed: number
+    } | null
+}
+
+const pendingAutoBills = ref<PendingAutoBill[]>([])
+const isLoadingAutoBills = ref(true)
+const selectedForBilling = ref<Set<number>>(new Set())
+const isGeneratingBills = ref(false)
+const showAutoBillConfirm = ref(false)
+const autoBillResult = ref<{ generated: number; failed: number } | null>(null)
+
+async function fetchPendingAutoBills() {
+    if (!token.value) return
+    isLoadingAutoBills.value = true
+    try {
+        const params = new URLSearchParams()
+        if (selectedPropertyDocumentId.value) {
+            params.set('propertyDocumentId', selectedPropertyDocumentId.value)
+        }
+        const res = await fetch(`${STRAPI_URL}/api/billings/pending-auto?${params}`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        pendingAutoBills.value = data.data ?? []
+        // Auto-select all meter-ready residents
+        selectedForBilling.value = new Set(
+            pendingAutoBills.value
+                .filter(r => r.meterStatus === 'ready')
+                .map(r => r.id)
+        )
+    } catch (err) {
+        console.error('Failed to fetch pending auto bills:', err)
+    } finally {
+        isLoadingAutoBills.value = false
+    }
+}
+
+function toggleBillSelection(id: number) {
+    const s = new Set(selectedForBilling.value)
+    if (s.has(id)) {
+        s.delete(id)
+    } else {
+        s.add(id)
+    }
+    selectedForBilling.value = s
+}
+
+function toggleSelectAll() {
+    if (selectedForBilling.value.size === pendingAutoBills.value.length) {
+        selectedForBilling.value = new Set()
+    } else {
+        selectedForBilling.value = new Set(pendingAutoBills.value.map(r => r.id))
+    }
+}
+
+function estimateTotal(r: PendingAutoBill): number {
+    const rent = r.unitTypePrice || 0
+    const elec = r.latestMeterReading
+        ? (r.latestMeterReading.electricUnitsUsed || 0) * (r.electricPricePerUnit || 0)
+        : 0
+    const water = r.latestMeterReading
+        ? (r.latestMeterReading.waterUnitsUsed || 0) * (r.waterPricePerUnit || 0)
+        : 0
+    return rent + elec + water + (r.commonAreaFee || 0)
+}
+
+const selectedBillsTotal = computed(() => {
+    return pendingAutoBills.value
+        .filter(r => selectedForBilling.value.has(r.id))
+        .reduce((sum, r) => sum + estimateTotal(r), 0)
+})
+
+async function generateBills() {
+    isGeneratingBills.value = true
+    autoBillResult.value = null
+    try {
+        const selected = pendingAutoBills.value.filter(r => selectedForBilling.value.has(r.id))
+        const res = await fetch(`${STRAPI_URL}/api/billings/auto-generate`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token.value}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                residents: selected.map(r => ({ id: r.id, documentId: r.documentId })),
+            }),
+        })
+        if (!res.ok) throw new Error('Failed')
+        const data = await res.json()
+        autoBillResult.value = { generated: data.meta?.generated ?? 0, failed: data.meta?.failed ?? 0 }
+        // Refresh all dashboard data
+        fetchPendingAutoBills()
+        fetchStats()
+        fetchUnpaidBills()
+    } catch (err) {
+        console.error('Failed to generate bills:', err)
+        autoBillResult.value = { generated: 0, failed: selectedForBilling.value.size }
+    } finally {
+        isGeneratingBills.value = false
+        showAutoBillConfirm.value = false
+    }
+}
+
+const meterStatusColors: Record<string, string> = {
+    ready: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
+    missing: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+    outdated: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+    no_room: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+}
+
+const meterStatusIcons: Record<string, string> = {
+    ready: 'fa-solid fa-circle-check',
+    missing: 'fa-solid fa-circle-xmark',
+    outdated: 'fa-solid fa-clock',
+    no_room: 'fa-solid fa-circle-question',
+}
+
 onBeforeUnmount(() => {
     overallChartInstance?.destroy()
     perResidentChartInstance?.destroy()
@@ -667,6 +813,7 @@ onMounted(async () => {
     fetchUnpaidBills()
     fetchRecentMaintenance()
     fetchReviewingBills()
+    fetchPendingAutoBills()
     buildCharts()
 })
 
@@ -765,6 +912,224 @@ onMounted(async () => {
                 </p>
             </NuxtLink>
         </div>
+
+        <!-- Auto Bill Generator -->
+        <div v-if="!isLoadingAutoBills && pendingAutoBills.length > 0"
+            class="bg-white dark:bg-gray-900 rounded-xl border border-orange-200 dark:border-orange-800 overflow-hidden animate-fadeUp"
+            style="animation-delay:120ms">
+            <div
+                class="flex items-center justify-between px-6 py-4 border-b border-orange-100 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-900/10">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                        <i class="fa-solid fa-wand-magic-sparkles text-orange-600 dark:text-orange-400 text-sm"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            {{ t.autoBillGenerator }}
+                            <span
+                                class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 rounded-full">
+                                {{ pendingAutoBills.length }}
+                            </span>
+                        </h2>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                            {{ t.autoBillSubtitle }}
+                            <span
+                                class="ml-1 inline-flex items-center gap-1 text-[10px] text-emerald-500 dark:text-emerald-400">
+                                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                                {{ t.autoBillCronActive }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button @click="toggleSelectAll()"
+                        class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                        {{ selectedForBilling.size === pendingAutoBills.length ? t.deselectAll : t.selectAll }}
+                    </button>
+                    <button @click="showAutoBillConfirm = true"
+                        :disabled="selectedForBilling.size === 0 || isGeneratingBills"
+                        class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                        <i :class="isGeneratingBills ? 'fa-solid fa-rotate animate-spin' : 'fa-solid fa-bolt'"
+                            class="text-[10px]"></i>
+                        {{ isGeneratingBills ? t.generatingBills : t.generateSelected }}
+                        <span v-if="selectedForBilling.size > 0"
+                            class="ml-0.5 px-1.5 py-0.5 bg-white/20 rounded text-[10px]">{{ selectedForBilling.size
+                            }}</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Result banner -->
+            <div v-if="autoBillResult" class="px-6 py-3 border-b border-gray-100 dark:border-gray-800"
+                :class="autoBillResult.failed > 0 ? 'bg-amber-50 dark:bg-amber-900/10' : 'bg-emerald-50 dark:bg-emerald-900/10'">
+                <div class="flex items-center gap-2 text-sm">
+                    <i
+                        :class="autoBillResult.failed > 0 ? 'fa-solid fa-triangle-exclamation text-amber-500' : 'fa-solid fa-circle-check text-emerald-500'"></i>
+                    <span class="text-gray-700 dark:text-gray-300">
+                        <strong>{{ autoBillResult.generated }}</strong> {{ t.generatedCount }}
+                        <template v-if="autoBillResult.failed > 0">
+                            · <strong class="text-red-600 dark:text-red-400">{{ autoBillResult.failed }}</strong> {{
+                                t.failedCount }}
+                        </template>
+                    </span>
+                    <button @click="autoBillResult = null"
+                        class="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Residents list -->
+            <div class="divide-y divide-gray-100 dark:divide-gray-800 max-h-[400px] overflow-y-auto">
+                <div v-for="r in pendingAutoBills" :key="r.id"
+                    class="flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                    @click="toggleBillSelection(r.id)">
+                    <!-- Checkbox -->
+                    <div class="flex-shrink-0">
+                        <div class="w-5 h-5 rounded border-2 flex items-center justify-center transition-colors"
+                            :class="selectedForBilling.has(r.id) ? 'bg-orange-600 border-orange-600' : 'border-gray-300 dark:border-gray-600'">
+                            <i v-if="selectedForBilling.has(r.id)" class="fa-solid fa-check text-white text-[9px]"></i>
+                        </div>
+                    </div>
+
+                    <!-- Resident info -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <span class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ r.username
+                            }}</span>
+                            <span v-if="r.roomNumber"
+                                class="text-[10px] font-mono text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                                {{ r.roomNumber }}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-3 text-[10px] text-gray-400 dark:text-gray-500">
+                            <span>{{ r.propertyName }}</span>
+                            <span v-if="r.unitTypeName">· {{ r.unitTypeName }}</span>
+                            <span>· {{ t.dueDate }}: {{ formatDate(r.nextBillDate) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Meter status badge -->
+                    <div class="flex-shrink-0">
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold"
+                            :class="meterStatusColors[r.meterStatus]">
+                            <i :class="meterStatusIcons[r.meterStatus]" class="text-[9px]"></i>
+                            {{ r.meterStatus === 'ready' ? t.meterReady
+                                : r.meterStatus === 'missing' ? t.meterMissing
+                                    : r.meterStatus === 'outdated' ? t.meterOutdated
+                                        : t.noRoom }}
+                        </span>
+                    </div>
+
+                    <!-- Update meter link for missing/outdated -->
+                    <NuxtLink
+                        v-if="(r.meterStatus === 'missing' || r.meterStatus === 'outdated') && r.propertyDocumentId"
+                        :to="`/manager/properties/${r.propertyDocumentId}/meters`"
+                        class="flex-shrink-0 text-[10px] font-medium text-orange-600 dark:text-orange-400 hover:underline"
+                        @click.stop>
+                        <i class="fa-solid fa-gauge text-[9px] mr-0.5"></i>
+                        {{ t.updateMeterFirst }}
+                    </NuxtLink>
+
+                    <!-- Estimated total -->
+                    <div class="flex-shrink-0 text-right min-w-[80px]">
+                        <p class="text-sm font-bold text-gray-900 dark:text-white">
+                            {{ formatCurrency(estimateTotal(r), r.propertyCurrency || 'THB') }}
+                        </p>
+                        <p class="text-[9px] text-gray-400">{{ t.estimatedTotal }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Meter warning banner (if any have missing meters) -->
+            <div v-if="pendingAutoBills.some(r => r.meterStatus === 'missing' || r.meterStatus === 'outdated')"
+                class="px-6 py-3 bg-amber-50 dark:bg-amber-900/10 border-t border-amber-200 dark:border-amber-800">
+                <div class="flex items-start gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500 text-sm mt-0.5 flex-shrink-0"></i>
+                    <p class="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                        {{ t.meterWarning }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Auto Bill Confirm Modal -->
+        <Teleport to="body">
+            <Transition name="fade">
+                <div v-if="showAutoBillConfirm" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showAutoBillConfirm = false">
+                    </div>
+                    <div
+                        class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div
+                                class="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
+                                <i class="fa-solid fa-wand-magic-sparkles text-orange-600 dark:text-orange-400"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t.autoBillConfirm }}</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">{{ t.autoBillConfirmDesc }}</p>
+
+                        <!-- Summary -->
+                        <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 mb-4 space-y-1">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">{{ t.residents }}</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">{{ selectedForBilling.size
+                                }}</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">{{ t.meterReady }}</span>
+                                <span class="font-semibold text-emerald-600 dark:text-emerald-400">
+                                    {{pendingAutoBills.filter(r => selectedForBilling.has(r.id) && r.meterStatus ===
+                                        'ready').length}}
+                                </span>
+                            </div>
+                            <div v-if="pendingAutoBills.filter(r => selectedForBilling.has(r.id) && r.meterStatus !== 'ready').length > 0"
+                                class="flex justify-between text-xs">
+                                <span class="text-gray-500">{{ t.meterMissing }} / {{ t.meterOutdated }}</span>
+                                <span class="font-semibold text-amber-600 dark:text-amber-400">
+                                    {{pendingAutoBills.filter(r => selectedForBilling.has(r.id) && r.meterStatus !==
+                                        'ready').length}}
+                                </span>
+                            </div>
+                            <div
+                                class="flex justify-between text-xs pt-1 border-t border-gray-200 dark:border-gray-700">
+                                <span class="text-gray-500">{{ t.estimatedTotal }}</span>
+                                <span class="font-bold text-gray-900 dark:text-white">
+                                    {{ formatCurrency(selectedBillsTotal) }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Warning for missing meters -->
+                        <div v-if="pendingAutoBills.filter(r => selectedForBilling.has(r.id) && r.meterStatus !== 'ready').length > 0"
+                            class="mb-4 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg">
+                            <div class="flex items-start gap-2">
+                                <i
+                                    class="fa-solid fa-triangle-exclamation text-amber-500 text-sm mt-0.5 flex-shrink-0"></i>
+                                <p class="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                                    {{ t.meterWarning }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 justify-end">
+                            <button @click="showAutoBillConfirm = false"
+                                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                {{ t.cancel }}
+                            </button>
+                            <button @click="generateBills" :disabled="isGeneratingBills"
+                                class="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5">
+                                <i :class="isGeneratingBills ? 'fa-solid fa-rotate animate-spin' : 'fa-solid fa-bolt'"
+                                    class="text-xs"></i>
+                                {{ isGeneratingBills ? t.generatingBills : t.generateSelected }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
 
         <!-- Charts row -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fadeUp" style="animation-delay:160ms">
@@ -1176,5 +1541,15 @@ onMounted(async () => {
 
 .animate-fadeUp {
     animation: fadeUp 0.45s ease both;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 </style>

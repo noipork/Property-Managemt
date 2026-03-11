@@ -33,6 +33,7 @@ interface Invoice {
     waterUnitPrice: number | null
     waterUnitsUsed: number | null
     waterAmount: number | null
+    commonAreaFee: number | null
     createdAt: string
     resident: { id: number; username: string; email: string; roomNumber: string | null } | null
     property: { id: number; documentId: string; name: string; city: string } | null
@@ -320,7 +321,7 @@ onMounted(async () => {
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <NuxtLink :to="`/manager/invoices/${invoice.id}/edit`"
+                    <NuxtLink :to="`/manager/invoices/${invoice.documentId}/edit`"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
                         <i class="fa-solid fa-pen text-sm"></i>
                         {{ t.edit }}
@@ -416,6 +417,13 @@ onMounted(async () => {
                                 {{ invoice.waterMeterStart }} → {{ invoice.waterMeterEnd }} = {{ invoice.waterUnitsUsed
                                 }} units × {{ invoice.waterUnitPrice }}/unit
                             </p>
+                        </div>
+                        <!-- Common Area Fee -->
+                        <div v-if="invoice.commonAreaFee"
+                            class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">🏛 {{ t.commonAreaFee }}</span>
+                            <span class="text-sm font-semibold text-gray-900 dark:text-white">{{
+                                formatCurrency(invoice.commonAreaFee, invoice.currency) }}</span>
                         </div>
                         <!-- Grand Total -->
                         <div class="flex items-center justify-between pt-3">

@@ -80,6 +80,9 @@
     "roomNumber": {
       "type": "string"
     },
+    "plainPassword": {
+      "type": "string"
+    },
     "registrationDate": {
       "type": "date"
     },

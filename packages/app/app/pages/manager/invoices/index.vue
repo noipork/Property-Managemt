@@ -31,6 +31,7 @@ interface Invoice {
     waterUnitPrice: number | null
     waterUnitsUsed: number | null
     waterAmount: number | null
+    commonAreaFee: number | null
     resident: { id: number; username: string; email: string; roomNumber: string | null } | null
     property: { id: number; documentId: string; name: string; city: string } | null
 }
@@ -213,8 +214,8 @@ function confirmDelete(invoice: Invoice) {
     showDeleteModal.value = true
 }
 
-function goToInvoice(id: number) {
-    router.push(`/manager/invoices/${id}`)
+function goToInvoice(documentId: string) {
+    router.push(`/manager/invoices/${documentId}`)
 }
 
 async function deleteInvoice() {
@@ -318,7 +319,8 @@ onMounted(async () => {
         <!-- Property Dropdown -->
         <div class="relative w-full sm:w-72 transition-all duration-500 delay-100"
             :class="headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
-            <i class="fa-solid fa-house absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+            <i
+                class="fa-solid fa-house absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
             <select v-model="filterPropertyId"
                 class="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none transition-colors">
                 <option value="">{{ t.allProperties }}</option>
@@ -334,7 +336,8 @@ onMounted(async () => {
         <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 space-y-3 transition-all duration-500 delay-150"
             :class="filtersVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
             <div class="relative">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <i
+                    class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                 <input v-model="searchQuery" type="text" :placeholder="t.searchInvoices"
                     class="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
@@ -364,7 +367,7 @@ onMounted(async () => {
                 <!-- Date Range -->
                 <div class="flex items-center gap-1.5">
                     <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t.filterDueDate
-                        }}</span>
+                    }}</span>
                     <input v-model="filterDateFrom" type="date"
                         class="px-2 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
                         @click="($event.target as HTMLInputElement).showPicker?.()" />
@@ -410,7 +413,8 @@ onMounted(async () => {
             <div v-for="(inv, index) in invoices" :key="inv.id"
                 class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-all duration-500 cursor-pointer"
                 :class="listVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'"
-                :style="{ transitionDelay: listVisible ? `${index * 40}ms` : '0ms' }" @click="goToInvoice(inv.id)">
+                :style="{ transitionDelay: listVisible ? `${index * 40}ms` : '0ms' }"
+                @click="goToInvoice(inv.documentId)">
                 <div class="flex items-center gap-4">
                     <!-- Icon -->
                     <div
@@ -460,12 +464,12 @@ onMounted(async () => {
 
                     <!-- Actions -->
                     <div class="flex items-center gap-1 shrink-0">
-                        <NuxtLink :to="`/manager/invoices/${inv.id}`" @click.stop
+                        <NuxtLink :to="`/manager/invoices/${inv.documentId}`" @click.stop
                             class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                             :title="t.view">
                             <i class="fa-solid fa-eye text-base"></i>
                         </NuxtLink>
-                        <NuxtLink :to="`/manager/invoices/${inv.id}/edit`" @click.stop
+                        <NuxtLink :to="`/manager/invoices/${inv.documentId}/edit`" @click.stop
                             class="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                             :title="t.edit">
                             <i class="fa-solid fa-pen text-base"></i>

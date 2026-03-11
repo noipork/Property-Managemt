@@ -23,6 +23,7 @@ const form = ref({
     waterMeterStart: 0,
     waterMeterEnd: 0,
     waterUnitPrice: 0,
+    commonAreaFee: 0,
     propertyDocumentId: '',
     residentId: '',
 })
@@ -33,9 +34,19 @@ const errors = ref<Record<string, string>>({})
 // ─── Properties & Residents ──────────────────────────────────────────────────
 interface Property { id: number; documentId: string; name: string; city: string }
 interface Resident { id: number; username: string; email: string; roomNumber: string | null; unitType: { price: number | null } | null }
+interface PropertyBillingConfig {
+    id: number
+    documentId: string
+    name: string
+    electricPricePerUnit: number | null
+    waterPricePerUnit: number | null
+    commonAreaFee: number | null
+    invoiceDueDays: number | null
+}
 
 const propertiesList = ref<Property[]>([])
 const residentsList = ref<Resident[]>([])
+const propertyConfig = ref<PropertyBillingConfig | null>(null)
 
 async function fetchProperties() {
     try {
@@ -52,6 +63,31 @@ async function fetchProperties() {
         })
         const data = await res.json()
         propertiesList.value = (data.data ?? []).map((p: any) => ({ id: p.id, documentId: p.documentId, name: p.name, city: p.city }))
+    } catch { /* ignore */ }
+}
+
+async function fetchPropertyConfig(documentId: string) {
+    try {
+        const res = await fetch(`${STRAPI_URL}/api/properties/${documentId}`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        const data = await res.json()
+        propertyConfig.value = data.data ?? null
+        const cfg = propertyConfig.value
+        if (cfg) {
+            if (cfg.electricPricePerUnit) form.value.electricUnitPrice = cfg.electricPricePerUnit
+            if (cfg.waterPricePerUnit) form.value.waterUnitPrice = cfg.waterPricePerUnit
+            form.value.commonAreaFee = cfg.commonAreaFee ?? 0
+            if (cfg.invoiceDueDays && cfg.invoiceDueDays > 0) {
+                const d = new Date()
+                d.setDate(d.getDate() + cfg.invoiceDueDays)
+                form.value.dueDate = d.toISOString().split('T')[0]
+            } else if (!form.value.dueDate) {
+                const now = new Date()
+                const eom = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+                form.value.dueDate = eom.toISOString().split('T')[0]
+            }
+        }
     } catch { /* ignore */ }
 }
 
@@ -111,9 +147,11 @@ watch(() => form.value.residentId, async (newVal) => {
     } catch { /* ignore */ }
 })
 
-watch(() => form.value.propertyDocumentId, () => {
+watch(() => form.value.propertyDocumentId, (newVal) => {
     form.value.residentId = ''
+    propertyConfig.value = null
     fetchResidents()
+    if (newVal) fetchPropertyConfig(newVal)
 })
 
 // ─── Computed amounts ─────────────────────────────────────────────────────────
@@ -121,7 +159,8 @@ const electricUnitsUsed = computed(() => Math.max(0, form.value.electricMeterEnd
 const electricAmount = computed(() => electricUnitsUsed.value * form.value.electricUnitPrice)
 const waterUnitsUsed = computed(() => Math.max(0, form.value.waterMeterEnd - form.value.waterMeterStart))
 const waterAmount = computed(() => waterUnitsUsed.value * form.value.waterUnitPrice)
-const totalAmount = computed(() => (form.value.unitTypePrice || 0) + electricAmount.value + waterAmount.value)
+const commonAreaFeeAmount = computed(() => form.value.commonAreaFee || 0)
+const totalAmount = computed(() => (form.value.unitTypePrice || 0) + electricAmount.value + waterAmount.value + commonAreaFeeAmount.value)
 
 // Sync total into form.amount
 watch(totalAmount, (val) => { form.value.amount = val })
@@ -183,6 +222,7 @@ async function submitForm() {
                 waterUnitPrice: form.value.waterUnitPrice,
                 waterUnitsUsed: waterUnitsUsed.value,
                 waterAmount: waterAmount.value,
+                commonAreaFee: form.value.commonAreaFee || null,
                 resident: Number(form.value.residentId),
                 property: prop ? prop.documentId : null,
             }
@@ -230,6 +270,7 @@ onMounted(async () => {
     await fetchProperties()
     if (propertiesList.value.length > 0) {
         form.value.propertyDocumentId = propertiesList.value[0].documentId
+        await fetchPropertyConfig(propertiesList.value[0].documentId)
     }
     await nextTick()
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -321,7 +362,7 @@ onMounted(async () => {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t.invoiceType
-                            }} *</label>
+                        }} *</label>
                         <select v-model="form.type"
                             class="w-full px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
                             <option v-for="tp in invoiceTypes" :key="tp" :value="tp">{{ typeLabels[tp as keyof typeof
@@ -361,7 +402,7 @@ onMounted(async () => {
                 <!-- Room Rent -->
                 <div class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
                     <span class="text-sm text-gray-600 dark:text-gray-400">{{ t.roomRent }} ({{ t.unitTypePrice
-                        }})</span>
+                    }})</span>
                     <div class="w-32">
                         <input v-model.number="form.unitTypePrice" type="number" step="0.01" min="0"
                             class="w-full px-3 py-1.5 text-sm text-right text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
@@ -419,6 +460,15 @@ onMounted(async () => {
                             <p class="text-sm font-semibold text-gray-900 dark:text-white py-1.5">{{
                                 formatCurrency(waterAmount) }}</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Common Area Fee -->
+                <div class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">🏛 {{ t.commonAreaFee }}</span>
+                    <div class="w-32">
+                        <input v-model.number="form.commonAreaFee" type="number" step="0.01" min="0"
+                            class="w-full px-3 py-1.5 text-sm text-right text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
                     </div>
                 </div>
 

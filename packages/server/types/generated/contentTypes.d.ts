@@ -586,6 +586,7 @@ export interface ApiBillingBilling extends Struct.CollectionTypeSchema {
   attributes: {
     amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
     assetAmount: Schema.Attribute.Decimal;
+    commonAreaFee: Schema.Attribute.Decimal;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -638,6 +639,53 @@ export interface ApiBillingBilling extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiBuildingBuilding extends Struct.CollectionTypeSchema {
+  collectionName: 'buildings';
+  info: {
+    description: 'A building within a property containing floors and rooms';
+    displayName: 'Building';
+    pluralName: 'buildings';
+    singularName: 'building';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    floors: Schema.Attribute.Relation<'oneToMany', 'api::floor.floor'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::building.building'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    publishedAt: Schema.Attribute.DateTime;
+    roomsPerFloor: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    totalFloors: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiConversationConversation
   extends Struct.CollectionTypeSchema {
   collectionName: 'conversations';
@@ -670,6 +718,54 @@ export interface ApiConversationConversation
     >;
     property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
     publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiFloorFloor extends Struct.CollectionTypeSchema {
+  collectionName: 'floors';
+  info: {
+    description: 'A floor within a building';
+    displayName: 'Floor';
+    pluralName: 'floors';
+    singularName: 'floor';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    building: Schema.Attribute.Relation<'manyToOne', 'api::building.building'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    floorLabel: Schema.Attribute.String;
+    floorNumber: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    floorType: Schema.Attribute.Enumeration<
+      [
+        'residential',
+        'parking',
+        'fitness',
+        'lobby',
+        'commercial',
+        'utility',
+        'other',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'residential'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::floor.floor'> &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    rooms: Schema.Attribute.Relation<'oneToMany', 'api::room.room'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -904,6 +1000,50 @@ export interface ApiMessageMessage extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiMeterReadingMeterReading
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'meter_readings';
+  info: {
+    description: 'Monthly meter readings for rooms';
+    displayName: 'Meter Reading';
+    pluralName: 'meter-readings';
+    singularName: 'meter-reading';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    electricMeterPrev: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    electricMeterValue: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<0>;
+    electricUnitsUsed: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::meter-reading.meter-reading'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    property: Schema.Attribute.Relation<'manyToOne', 'api::property.property'>;
+    publishedAt: Schema.Attribute.DateTime;
+    readingDate: Schema.Attribute.Date & Schema.Attribute.Required;
+    recordedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    room: Schema.Attribute.Relation<'manyToOne', 'api::room.room'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    waterMeterPrev: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    waterMeterValue: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    waterUnitsUsed: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+  };
+}
+
 export interface ApiNotificationNotification
   extends Struct.CollectionTypeSchema {
   collectionName: 'notifications';
@@ -1051,6 +1191,14 @@ export interface ApiPlanPlan extends Struct.CollectionTypeSchema {
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::plan.plan'> &
       Schema.Attribute.Private;
+    maxBuildingsPerProperty: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
     maxProperties: Schema.Attribute.Integer &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMax<
@@ -1060,6 +1208,14 @@ export interface ApiPlanPlan extends Struct.CollectionTypeSchema {
         number
       >;
     maxUnitsPerProperty: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    maxUnitTypesPerProperty: Schema.Attribute.Integer &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMax<
         {
@@ -1109,15 +1265,20 @@ export interface ApiPropertyProperty extends Struct.CollectionTypeSchema {
     bankAccountName: Schema.Attribute.String;
     bankAccountNumber: Schema.Attribute.String;
     bankName: Schema.Attribute.String;
+    buildings: Schema.Attribute.Relation<'oneToMany', 'api::building.building'>;
     city: Schema.Attribute.String & Schema.Attribute.Required;
+    commonAreaFee: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     country: Schema.Attribute.String & Schema.Attribute.DefaultTo<'Thailand'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'THB'>;
     description: Schema.Attribute.Text;
+    electricPricePerUnit: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<0>;
     image: Schema.Attribute.Media<'images'>;
     images: Schema.Attribute.Media<'images', true>;
+    invoiceDueDays: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<7>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1160,6 +1321,13 @@ export interface ApiPropertyProperty extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'active'>;
+    terms: Schema.Attribute.RichText &
+      Schema.Attribute.CustomField<
+        'plugin::ckeditor5.CKEditor',
+        {
+          preset: 'defaultHtml';
+        }
+      >;
     totalUnits: Schema.Attribute.Integer &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMax<
@@ -1176,6 +1344,7 @@ export interface ApiPropertyProperty extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    waterPricePerUnit: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     yearBuilt: Schema.Attribute.Integer;
     zipCode: Schema.Attribute.String;
   };
@@ -1215,6 +1384,43 @@ export interface ApiPushSubscriptionPushSubscription
       'plugin::users-permissions.user'
     >;
     userAgent: Schema.Attribute.String;
+  };
+}
+
+export interface ApiRoomRoom extends Struct.CollectionTypeSchema {
+  collectionName: 'rooms';
+  info: {
+    description: 'A room within a floor';
+    displayName: 'Room';
+    pluralName: 'rooms';
+    singularName: 'room';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    electricMeter: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    floor: Schema.Attribute.Relation<'manyToOne', 'api::floor.floor'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::room.room'> &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    resident: Schema.Attribute.Relation<
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    roomNumber: Schema.Attribute.String & Schema.Attribute.Required;
+    status: Schema.Attribute.Enumeration<
+      ['active', 'inactive', 'maintenance']
+    > &
+      Schema.Attribute.DefaultTo<'inactive'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    waterMeter: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
   };
 }
 
@@ -1855,6 +2061,7 @@ export interface PluginUsersPermissionsUser
         minLength: 6;
       }>;
     payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
+    plainPassword: Schema.Attribute.String;
     plan: Schema.Attribute.Relation<'manyToOne', 'api::plan.plan'>;
     property: Schema.Attribute.Relation<'manyToMany', 'api::property.property'>;
     provider: Schema.Attribute.String;
@@ -1905,16 +2112,20 @@ declare module '@strapi/strapi' {
       'api::asset-request.asset-request': ApiAssetRequestAssetRequest;
       'api::asset.asset': ApiAssetAsset;
       'api::billing.billing': ApiBillingBilling;
+      'api::building.building': ApiBuildingBuilding;
       'api::conversation.conversation': ApiConversationConversation;
+      'api::floor.floor': ApiFloorFloor;
       'api::lease.lease': ApiLeaseLease;
       'api::maintenance-message.maintenance-message': ApiMaintenanceMessageMaintenanceMessage;
       'api::maintenance.maintenance': ApiMaintenanceMaintenance;
       'api::message.message': ApiMessageMessage;
+      'api::meter-reading.meter-reading': ApiMeterReadingMeterReading;
       'api::notification.notification': ApiNotificationNotification;
       'api::payment.payment': ApiPaymentPayment;
       'api::plan.plan': ApiPlanPlan;
       'api::property.property': ApiPropertyProperty;
       'api::push-subscription.push-subscription': ApiPushSubscriptionPushSubscription;
+      'api::room.room': ApiRoomRoom;
       'api::subscription.subscription': ApiSubscriptionSubscription;
       'api::unit-type.unit-type': ApiUnitTypeUnitType;
       'plugin::content-releases.release': PluginContentReleasesRelease;

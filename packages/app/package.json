@@ -7,7 +7,11 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "deploy": "ssh root@76.13.180.139 'cd /srv/apps/Property-Managemt && git pull && cd packages/app && npm run build && pm2 restart 25'",
+    "deploy:pull": "ssh root@76.13.180.139 'cd /srv/apps/Property-Managemt && git pull'",
+    "deploy:build": "ssh root@76.13.180.139 'cd /srv/apps/Property-Managemt/packages/app && npm run build'",
+    "deploy:restart": "ssh root@76.13.180.139 'pm2 restart 25'"
   },
   "dependencies": {
     "@nuxtjs/tailwindcss": "^6.14.0",

@@ -1,6 +1,8 @@
 interface PlanLimits {
     maxProperties: number
     maxUnitsPerProperty: number
+    maxUnitTypesPerProperty: number
+    maxBuildingsPerProperty: number
     planName: string
 }
 
@@ -19,6 +21,8 @@ export const usePlanLimit = () => {
             return {
                 maxProperties: sub.plan.maxProperties ?? 999,
                 maxUnitsPerProperty: sub.plan.maxUnitsPerProperty ?? 999,
+                maxUnitTypesPerProperty: sub.plan.maxUnitTypesPerProperty ?? 999,
+                maxBuildingsPerProperty: sub.plan.maxBuildingsPerProperty ?? 999,
                 planName: sub.plan.name ?? '',
             }
         }
@@ -35,6 +39,8 @@ export const usePlanLimit = () => {
             return {
                 maxProperties: plan.maxProperties ?? 999,
                 maxUnitsPerProperty: plan.maxUnitsPerProperty ?? 999,
+                maxUnitTypesPerProperty: plan.maxUnitTypesPerProperty ?? 999,
+                maxBuildingsPerProperty: plan.maxBuildingsPerProperty ?? 999,
                 planName: plan.name ?? '',
             }
         } catch {
@@ -114,5 +120,53 @@ export const usePlanLimit = () => {
         return { allowed: true, limits }
     }
 
-    return { fetchPlanLimits, fetchPropertyCount, canCreateProperty, canSetUnits, isExpired }
+    /**
+     * Check if a new unit type can be added (count against maxUnitTypesPerProperty).
+     */
+    async function canAddUnitType(currentCount: number) {
+        if (isExpired.value) {
+            return {
+                allowed: false,
+                reason: 'subscriptionExpired' as const,
+                message: 'Your subscription has expired. Please renew to continue.',
+            }
+        }
+        const limits = await fetchPlanLimits()
+        if (!limits) return { allowed: true }
+        if (currentCount >= limits.maxUnitTypesPerProperty) {
+            return {
+                allowed: false,
+                reason: 'unitTypeLimit' as const,
+                limit: limits.maxUnitTypesPerProperty,
+                planName: limits.planName,
+            }
+        }
+        return { allowed: true, limits }
+    }
+
+    /**
+     * Check if a new building can be added (count against maxBuildingsPerProperty).
+     */
+    async function canAddBuilding(currentCount: number) {
+        if (isExpired.value) {
+            return {
+                allowed: false,
+                reason: 'subscriptionExpired' as const,
+                message: 'Your subscription has expired. Please renew to continue.',
+            }
+        }
+        const limits = await fetchPlanLimits()
+        if (!limits) return { allowed: true }
+        if (currentCount >= limits.maxBuildingsPerProperty) {
+            return {
+                allowed: false,
+                reason: 'buildingLimit' as const,
+                limit: limits.maxBuildingsPerProperty,
+                planName: limits.planName,
+            }
+        }
+        return { allowed: true, limits }
+    }
+
+    return { fetchPlanLimits, fetchPropertyCount, canCreateProperty, canSetUnits, canAddUnitType, canAddBuilding, isExpired }
 }

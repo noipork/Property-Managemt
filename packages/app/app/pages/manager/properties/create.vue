@@ -7,11 +7,13 @@ const { token, user } = useAuth()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
 
-const { canSetUnits } = usePlanLimit()
+const { canSetUnits, canAddUnitType, fetchPlanLimits } = usePlanLimit()
 
 const isLoading = ref(false)
 const errorMessage = ref('')
 const unitLimitError = ref('')
+const unitTypeLimitError = ref('')
+const planUnitTypeLimit = ref<number | undefined>(undefined)
 const sectionsVisible = ref(false)
 
 // Unit types
@@ -113,6 +115,16 @@ async function handleSubmit() {
         unitLimitError.value = t.value.planLimitUnitBody
             .replace('{plan}', unitCheck.planName ?? '')
             .replace('{limit}', String(unitCheck.limit ?? 0))
+        return
+    }
+
+    // Check unit type limit
+    unitTypeLimitError.value = ''
+    const unitTypeCheck = await canAddUnitType(unitTypes.value.filter(u => u.name).length)
+    if (!unitTypeCheck.allowed) {
+        unitTypeLimitError.value = t.value.planLimitUnitTypeBody
+            .replace('{plan}', unitTypeCheck.planName ?? '')
+            .replace('{limit}', String(unitTypeCheck.limit ?? 0))
         return
     }
 
@@ -218,12 +230,14 @@ async function handleSubmit() {
     }
 }
 
-onMounted(() => {
+onMounted(async () => {
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             sectionsVisible.value = true
         })
     })
+    const limits = await fetchPlanLimits()
+    if (limits) planUnitTypeLimit.value = limits.maxUnitTypesPerProperty
 })
 </script>
 
@@ -397,12 +411,17 @@ onMounted(() => {
                 </h2>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">{{ t.noUnitTypes }}</p>
 
-                <UnitTypesEditor v-model="unitTypes" :currency="form.currency" :area-unit="form.areaUnit" />
+                <UnitTypesEditor v-model="unitTypes" :currency="form.currency" :area-unit="form.areaUnit"
+                    :plan-unit-type-limit="planUnitTypeLimit" />
 
                 <!-- Plan limit error -->
                 <p v-if="unitLimitError" class="mt-3 text-xs text-red-600 dark:text-red-400 flex items-start gap-1">
                     <i class="fa-solid fa-crown text-amber-500 flex-shrink-0 mt-0.5"></i>
                     {{ unitLimitError }}
+                </p>
+                <p v-if="unitTypeLimitError" class="mt-2 text-xs text-red-600 dark:text-red-400 flex items-start gap-1">
+                    <i class="fa-solid fa-crown text-amber-500 flex-shrink-0 mt-0.5"></i>
+                    {{ unitTypeLimitError }}
                 </p>
             </div>
 

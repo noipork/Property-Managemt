@@ -15,6 +15,8 @@ interface Subscription {
         name: string
         maxProperties: number
         maxUnitsPerProperty: number
+        maxUnitTypesPerProperty: number
+        maxBuildingsPerProperty: number
     }
     scheduledDowngradePlan?: {
         id: number
@@ -22,6 +24,8 @@ interface Subscription {
         name: string
         maxProperties: number
         maxUnitsPerProperty: number
+        maxUnitTypesPerProperty: number
+        maxBuildingsPerProperty: number
     } | null
 }
 
@@ -136,6 +140,8 @@ export const useSubscription = () => {
                         name: sub.plan.name,
                         maxProperties: sub.plan.maxProperties,
                         maxUnitsPerProperty: sub.plan.maxUnitsPerProperty,
+                        maxUnitTypesPerProperty: sub.plan.maxUnitTypesPerProperty,
+                        maxBuildingsPerProperty: sub.plan.maxBuildingsPerProperty,
                     } : undefined,
                     scheduledDowngradePlan: sub.scheduledDowngradePlan ? {
                         id: sub.scheduledDowngradePlan.id,
@@ -143,6 +149,8 @@ export const useSubscription = () => {
                         name: sub.scheduledDowngradePlan.name,
                         maxProperties: sub.scheduledDowngradePlan.maxProperties,
                         maxUnitsPerProperty: sub.scheduledDowngradePlan.maxUnitsPerProperty,
+                        maxUnitTypesPerProperty: sub.scheduledDowngradePlan.maxUnitTypesPerProperty,
+                        maxBuildingsPerProperty: sub.scheduledDowngradePlan.maxBuildingsPerProperty,
                     } : null,
                 }
                 _lastFetched.value = now

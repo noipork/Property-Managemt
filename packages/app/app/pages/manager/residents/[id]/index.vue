@@ -11,10 +11,25 @@ const STRAPI_URL = config.public.strapiUrl
 const route = useRoute()
 const residentId = route.params.id as string
 
+interface PropertyBillingConfig {
+    id: number
+    documentId: string
+    name: string
+    city: string
+    state: string | null
+    country: string
+    propertyType: string
+    electricPricePerUnit: number | null
+    waterPricePerUnit: number | null
+    commonAreaFee: number | null
+    invoiceDueDays: number | null
+}
+
 interface Resident {
     id: number
     username: string
     email: string
+    plainPassword: string | null
     roomNumber: string | null
     registrationDate: string | null
     residencyStatus: string | null
@@ -22,13 +37,23 @@ interface Resident {
     confirmed: boolean
     blocked: boolean
     createdAt: string
-    property: { id: number; documentId: string; name: string; city: string; state: string | null; country: string; propertyType: string } | Array<{ id: number; documentId: string; name: string; city: string; state: string | null; country: string; propertyType: string }> | null
+    property: PropertyBillingConfig | PropertyBillingConfig[] | null
     unitType: { id: number; documentId: string; name: string; unitType: string; quantity: number; price: number | null; currency: string; area: number | null; areaUnit: string } | null
 }
 
 const resident = ref<Resident | null>(null)
 const isLoading = ref(true)
 const errorMessage = ref('')
+const showPassword = ref(false)
+const copiedPassword = ref(false)
+
+async function copyToClipboard(text: string) {
+    try {
+        await navigator.clipboard.writeText(text)
+        copiedPassword.value = true
+        setTimeout(() => { copiedPassword.value = false }, 2000)
+    } catch { /* ignore */ }
+}
 
 const residentProperty = computed(() => {
     const property = resident.value?.property
@@ -234,6 +259,7 @@ interface BillingItem {
     waterUnitPrice?: number
     waterUnitsUsed?: number
     waterAmount?: number
+    commonAreaFee?: number | null
     assetAmount?: number | null
     notes?: string | null
 }
@@ -267,8 +293,9 @@ const isLoadingMorePayment = ref(false)
 const chartData = computed(() => {
     if (!billingHistory.value.length) return { labels: [], datasets: [] }
 
-    // Get last 6 months of data
-    const last6Months = billingHistory.value.slice(0, 6).reverse()
+    // Only include paid bills, then get last 6
+    const last6Months = billingHistory.value.filter(b => b.status === 'paid').slice(0, 6).reverse()
+    if (!last6Months.length) return { labels: [], datasets: [] }
     const isThai = lang.value === 'TH'
     const labels = last6Months.map(bill => {
         const date = new Date(bill.dueDate)
@@ -479,6 +506,7 @@ async function fetchBillingHistory(loadMore = false) {
             waterUnitPrice: b.waterUnitPrice,
             waterUnitsUsed: b.waterUnitsUsed,
             waterAmount: b.waterAmount,
+            commonAreaFee: b.commonAreaFee ?? null,
         }))
         if (loadMore) {
             billingHistory.value = [...billingHistory.value, ...items]
@@ -558,6 +586,7 @@ const billingStatusColors: Record<string, string> = {
     pending: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
     overdue: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
     partiallyPaid: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+    cancelled: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
 }
 
 const paymentStatusColors: Record<string, string> = {
@@ -588,6 +617,7 @@ const selectedInvoice = ref<BillingItem | null>(null)
 const isLoadingInvoice = ref(false)
 const isEditMode = ref(false)
 const isUpdatingInvoice = ref(false)
+const isCancellingInvoice = ref(false)
 const editInvoiceForm = ref<BillingItem | null>(null)
 
 async function viewInvoice(bill: BillingItem) {
@@ -622,6 +652,7 @@ async function viewInvoice(bill: BillingItem) {
             waterUnitPrice: data.data.waterUnitPrice,
             waterUnitsUsed: data.data.waterUnitsUsed,
             waterAmount: data.data.waterAmount,
+            commonAreaFee: data.data.commonAreaFee ?? null,
             assetAmount: data.data.assetAmount ?? null,
             notes: data.data.notes,
         }
@@ -638,6 +669,28 @@ function closeViewInvoiceModal() {
     selectedInvoice.value = null
     isEditMode.value = false
     editInvoiceForm.value = null
+}
+
+async function cancelInvoice() {
+    if (!selectedInvoice.value || selectedInvoice.value.status !== 'pending') return
+    isCancellingInvoice.value = true
+    try {
+        const res = await fetch(`${STRAPI_URL}/api/billings/${selectedInvoice.value.documentId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token.value}`,
+            },
+            body: JSON.stringify({ data: { status: 'cancelled' } }),
+        })
+        if (!res.ok) throw new Error('Cancel failed')
+        selectedInvoice.value = { ...selectedInvoice.value, status: 'cancelled' }
+        fetchBillingHistory()
+    } catch (err) {
+        console.error('Error cancelling invoice:', err)
+    } finally {
+        isCancellingInvoice.value = false
+    }
 }
 
 function enableEditMode() {
@@ -673,9 +726,14 @@ const editWaterAmount = computed(() => {
     return editWaterUnitsUsed.value * (editInvoiceForm.value.waterUnitPrice || 0)
 })
 
+const editCommonAreaFeeAmount = computed(() => {
+    if (!editInvoiceForm.value) return 0
+    return safeNumber(editInvoiceForm.value.commonAreaFee)
+})
+
 const editTotalAmount = computed(() => {
     if (!editInvoiceForm.value) return 0
-    return (editInvoiceForm.value.unitTypePrice || 0) + editElectricAmount.value + editWaterAmount.value
+    return (editInvoiceForm.value.unitTypePrice || 0) + editElectricAmount.value + editWaterAmount.value + editCommonAreaFeeAmount.value
 })
 
 async function updateInvoice() {
@@ -698,6 +756,7 @@ async function updateInvoice() {
                 waterUnitPrice: editInvoiceForm.value.waterUnitPrice,
                 waterUnitsUsed: editWaterUnitsUsed.value,
                 waterAmount: editWaterAmount.value,
+                commonAreaFee: editInvoiceForm.value.commonAreaFee || null,
                 notes: editInvoiceForm.value.notes || null,
             }
         }
@@ -722,6 +781,7 @@ async function updateInvoice() {
             electricAmount: editElectricAmount.value,
             waterUnitsUsed: editWaterUnitsUsed.value,
             waterAmount: editWaterAmount.value,
+            commonAreaFee: editInvoiceForm.value.commonAreaFee || null,
         }
 
         isEditMode.value = false
@@ -802,6 +862,7 @@ interface InvoiceForm {
     waterMeterStart: number
     waterMeterEnd: number
     waterUnitPrice: number
+    commonAreaFee: number
     notes: string
 }
 
@@ -817,8 +878,12 @@ const invoiceForm = ref<InvoiceForm>({
     waterMeterStart: 0,
     waterMeterEnd: 0,
     waterUnitPrice: 18,
+    commonAreaFee: 0,
     notes: '',
 })
+
+// Property billing config (loaded when opening invoice modal)
+const propertyConfig = ref<PropertyBillingConfig | null>(null)
 
 function safeNumber(value: unknown): number {
     const num = Number(value)
@@ -855,11 +920,31 @@ const approvedAssetTotal = computed(() =>
     roundMoney(approvedAssets.value.reduce((sum, a) => sum + safeNumber(a.price), 0))
 )
 
+const commonAreaFeeAmount = computed(() => roundMoney(safeNumber(invoiceForm.value.commonAreaFee)))
+
 const totalAmount = computed(() => {
-    return roundMoney(safeNumber(invoiceForm.value.unitTypePrice) + electricAmount.value + waterAmount.value + approvedAssetTotal.value)
+    return roundMoney(safeNumber(invoiceForm.value.unitTypePrice) + electricAmount.value + waterAmount.value + commonAreaFeeAmount.value + approvedAssetTotal.value)
 })
 
 async function openInvoiceModal() {
+    // Fetch property billing config if we have a property
+    const prop = residentProperty.value
+    if (prop?.documentId) {
+        try {
+            const res = await fetch(`${STRAPI_URL}/api/properties/${prop.documentId}`, {
+                headers: { Authorization: `Bearer ${token.value}` },
+            })
+            if (res.ok) {
+                const data = await res.json()
+                propertyConfig.value = data.data ?? null
+            }
+        } catch { /* ignore */ }
+    } else {
+        propertyConfig.value = null
+    }
+
+    const cfg = propertyConfig.value
+
     // Reset form first
     invoiceForm.value = {
         type: 'monthlyRent',
@@ -869,10 +954,11 @@ async function openInvoiceModal() {
         unitTypePrice: 0,
         electricMeterStart: 0,
         electricMeterEnd: 0,
-        electricUnitPrice: 8,
+        electricUnitPrice: cfg?.electricPricePerUnit ?? 8,
         waterMeterStart: 0,
         waterMeterEnd: 0,
-        waterUnitPrice: 18,
+        waterUnitPrice: cfg?.waterPricePerUnit ?? 18,
+        commonAreaFee: cfg?.commonAreaFee ?? 0,
         notes: '',
     }
 
@@ -880,10 +966,17 @@ async function openInvoiceModal() {
     if (resident.value?.unitType?.price) {
         invoiceForm.value.unitTypePrice = resident.value.unitType.price
     }
-    // Set default due date to end of current month
+    // Set default due date using invoiceDueDays from property config, else end of month
     const now = new Date()
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    invoiceForm.value.dueDate = endOfMonth.toISOString().split('T')[0] ?? ''
+    const dueDays = cfg?.invoiceDueDays
+    let dueDate: Date
+    if (dueDays && dueDays > 0) {
+        dueDate = new Date(now)
+        dueDate.setDate(dueDate.getDate() + dueDays)
+    } else {
+        dueDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    }
+    invoiceForm.value.dueDate = dueDate.toISOString().split('T')[0] ?? ''
     // Set default description
     const isThai = lang.value === 'TH'
     const monthName = now.toLocaleString(isThai ? 'th-TH' : 'en-US', {
@@ -930,6 +1023,7 @@ async function openInvoiceModal() {
 function closeInvoiceModal() {
     showInvoiceModal.value = false
     approvedAssets.value = []
+    propertyConfig.value = null
     // Reset form
     invoiceForm.value = {
         type: 'monthlyRent',
@@ -943,6 +1037,7 @@ function closeInvoiceModal() {
         waterMeterStart: 0,
         waterMeterEnd: 0,
         waterUnitPrice: 18,
+        commonAreaFee: 0,
         notes: '',
     }
 }
@@ -992,6 +1087,7 @@ async function createInvoice() {
                 waterUnitPrice: invoiceForm.value.waterUnitPrice,
                 waterUnitsUsed: waterUnitsUsed.value,
                 waterAmount: waterAmount.value,
+                commonAreaFee: invoiceForm.value.commonAreaFee || null,
                 assetAmount: approvedAssetTotal.value || null,
                 notes: invoiceForm.value.notes || null,
                 resident: resident.value?.id,
@@ -1081,6 +1177,28 @@ async function createInvoice() {
                                 </span>
                             </div>
                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ resident.email }}</p>
+                            <!-- Password -->
+                            <div v-if="resident.plainPassword" class="flex items-center gap-2 mt-1.5">
+                                <div
+                                    class="inline-flex items-center gap-2 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                    <i class="fa-solid fa-key text-xs text-gray-400"></i>
+                                    <span class="text-sm font-mono text-gray-700 dark:text-gray-300 select-all">
+                                        {{ showPassword ? resident.plainPassword : '••••••••••••' }}
+                                    </span>
+                                    <button @click="showPassword = !showPassword"
+                                        class="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                        :title="showPassword ? 'Hide' : 'Show'">
+                                        <i :class="showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"
+                                            class="text-xs"></i>
+                                    </button>
+                                    <button @click="copyToClipboard(resident.plainPassword!)"
+                                        class="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                        title="Copy">
+                                        <i :class="copiedPassword ? 'fa-solid fa-check text-emerald-500' : 'fa-solid fa-copy'"
+                                            class="text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
                             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                 {{ t.residentRegisteredOn }} {{ formatDate(resident.createdAt) }}
                             </p>
@@ -1863,6 +1981,40 @@ async function createInvoice() {
                                     </div>
                                 </div>
 
+                                <!-- Common Area Fee -->
+                                <div v-if="selectedInvoice.commonAreaFee || (isEditMode && editInvoiceForm)"
+                                    class="bg-purple-50 dark:bg-purple-900/10 rounded-lg p-4 border border-purple-200 dark:border-purple-800/30">
+                                    <h4
+                                        class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                                        <i class="fa-solid fa-building-columns text-purple-500"></i>
+                                        {{ t.commonAreaFee }}
+                                    </h4>
+                                    <div v-if="isEditMode && editInvoiceForm" class="flex items-center gap-3">
+                                        <div class="flex-1 space-y-1.5">
+                                            <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.commonAreaFee
+                                            }} ({{
+                                                    editInvoiceForm.currency }}/{{ t.month }})</label>
+                                            <input type="number" v-model.number="editInvoiceForm.commonAreaFee" min="0"
+                                                step="0.01"
+                                                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                                        </div>
+                                        <div class="text-right pt-6">
+                                            <span class="text-lg font-bold text-purple-700 dark:text-purple-400">{{
+                                                editInvoiceForm.currency }} {{
+                                                    editCommonAreaFeeAmount.toLocaleString('en-US')
+                                                }}</span>
+                                        </div>
+                                    </div>
+                                    <div v-else class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">{{ t.commonAreaFee
+                                        }}</span>
+                                        <span class="text-lg font-bold text-purple-700 dark:text-purple-400">
+                                            {{ selectedInvoice.currency }} {{ (selectedInvoice.commonAreaFee ||
+                                                0).toLocaleString('en-US') }}
+                                        </span>
+                                    </div>
+                                </div>
+
                                 <!-- Notes -->
                                 <div v-if="selectedInvoice.notes || (isEditMode && editInvoiceForm)"
                                     class="space-y-1.5">
@@ -1911,6 +2063,14 @@ async function createInvoice() {
                                         </button>
                                     </template>
                                     <template v-else>
+                                        <button v-if="selectedInvoice?.status === 'pending'" @click="cancelInvoice"
+                                            :disabled="isCancellingInvoice"
+                                            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                            <span v-if="isCancellingInvoice"
+                                                class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                            <i v-else class="fa-solid fa-ban text-sm"></i>
+                                            {{ t.cancelInvoice }}
+                                        </button>
                                         <button v-if="selectedInvoice?.status === 'pending'" @click="enableEditMode"
                                             class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
                                             <i class="fa-solid fa-pen text-sm"></i>
@@ -1962,6 +2122,15 @@ async function createInvoice() {
 
                             <!-- Body -->
                             <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                                <!-- Property config notice -->
+                                <div v-if="propertyConfig"
+                                    class="flex items-center gap-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg text-xs text-primary-700 dark:text-primary-300">
+                                    <i class="fa-solid fa-circle-info shrink-0"></i>
+                                    <span>{{ t.ratesFromPropertyConfig }}
+                                        <strong>{{ propertyConfig.name }}</strong>
+                                    </span>
+                                </div>
+
                                 <!-- Invoice Type & Description -->
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div class="space-y-1.5">
@@ -2059,7 +2228,6 @@ async function createInvoice() {
                                                 <span class="font-semibold text-yellow-700 dark:text-yellow-400">
                                                     {{ electricAmount.toLocaleString('en-US') }} {{ invoiceForm.currency
                                                     }}
-
                                                 </span>
                                             </div>
                                             <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
@@ -2106,7 +2274,6 @@ async function createInvoice() {
                                                 class="px-3 py-2 bg-blue-100 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg">
                                                 <span class="font-semibold text-blue-700 dark:text-blue-400">
                                                     {{ waterAmount.toLocaleString('en-US') }} {{ invoiceForm.currency }}
-
                                                 </span>
                                             </div>
                                             <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
@@ -2116,6 +2283,30 @@ async function createInvoice() {
                                     </div>
                                 </div>
 
+                                <!-- Common Area Fee -->
+                                <div
+                                    class="bg-purple-50 dark:bg-purple-900/10 rounded-lg p-4 border border-purple-200 dark:border-purple-800/30">
+                                    <h4
+                                        class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                                        <i class="fa-solid fa-building-columns text-purple-500"></i>
+                                        {{ t.commonAreaFee }}
+                                    </h4>
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex-1 space-y-1.5">
+                                            <label class="text-xs text-gray-500 dark:text-gray-400">{{ t.commonAreaFee
+                                            }} ({{
+                                                    invoiceForm.currency }}/{{ t.month }})</label>
+                                            <input type="number" v-model.number="invoiceForm.commonAreaFee" min="0"
+                                                step="0.01"
+                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                                        </div>
+                                        <div class="text-right pt-6">
+                                            <span class="text-lg font-bold text-purple-700 dark:text-purple-400">{{
+                                                invoiceForm.currency }} {{ commonAreaFeeAmount.toLocaleString('en-US')
+                                                }}</span>
+                                        </div>
+                                    </div>
+                                </div>
                                 <!-- Approved Asset Add-ons -->
                                 <div
                                     class="bg-emerald-50 dark:bg-emerald-900/10 rounded-lg p-4 border border-emerald-200 dark:border-emerald-800/30">

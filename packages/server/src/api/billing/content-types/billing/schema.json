@@ -102,6 +102,9 @@
     "waterAmount": {
       "type": "decimal"
     },
+    "commonAreaFee": {
+      "type": "decimal"
+    },
     "assetAmount": {
       "type": "decimal"
     },

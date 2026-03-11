@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "buildings",
+  "info": {
+    "singularName": "building",
+    "pluralName": "buildings",
+    "displayName": "Building",
+    "description": "A building within a property containing floors and rooms"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "totalFloors": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "roomsPerFloor": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "property": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property.property",
+      "inversedBy": "buildings"
+    },
+    "floors": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::floor.floor",
+      "mappedBy": "building"
+    }
+  }
+}

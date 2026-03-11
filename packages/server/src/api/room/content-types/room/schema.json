@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "rooms",
+  "info": {
+    "singularName": "room",
+    "pluralName": "rooms",
+    "displayName": "Room",
+    "description": "A room within a floor"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "roomNumber": {
+      "type": "string",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["active", "inactive", "maintenance"],
+      "default": "inactive"
+    },
+    "floor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::floor.floor",
+      "inversedBy": "rooms"
+    },
+    "resident": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "electricMeter": {
+      "type": "decimal",
+      "default": 0
+    },
+    "waterMeter": {
+      "type": "decimal",
+      "default": 0
+    }
+  }
+}

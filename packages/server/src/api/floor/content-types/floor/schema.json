@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "floors",
+  "info": {
+    "singularName": "floor",
+    "pluralName": "floors",
+    "displayName": "Floor",
+    "description": "A floor within a building"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "floorNumber": {
+      "type": "integer",
+      "required": true,
+      "min": 0
+    },
+    "floorType": {
+      "type": "enumeration",
+      "enum": ["residential", "parking", "fitness", "lobby", "commercial", "utility", "other"],
+      "default": "residential"
+    },
+    "floorLabel": {
+      "type": "string"
+    },
+    "building": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::building.building",
+      "inversedBy": "floors"
+    },
+    "rooms": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::room.room",
+      "mappedBy": "floor"
+    }
+  }
+}

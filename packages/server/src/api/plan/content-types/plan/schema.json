@@ -42,6 +42,16 @@
       "required": true,
       "min": 1
     },
+    "maxUnitTypesPerProperty": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "maxBuildingsPerProperty": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
     "features": {
       "type": "json"
     },

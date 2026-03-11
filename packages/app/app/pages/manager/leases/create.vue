@@ -70,12 +70,54 @@ const propertiesList = ref<Property[]>([])
 const residentsList = ref<Resident[]>([])
 const unitTypesList = ref<UnitType[]>([])
 
+async function applyPropertyTerms(propertyDocumentId: string) {
+    if (!propertyDocumentId) {
+        form.value.terms = ''
+
+
+        await nextTick()
+        if (termsEditor.value) termsEditor.value.innerHTML = ''
+        return
+    }
+    console.log('Hello');
+    try {
+        const params = new URLSearchParams({
+            'filters[documentId][$eq]': propertyDocumentId,
+            'pagination[pageSize]': '1',
+        })
+        const res = await fetch(`${STRAPI_URL}/api/properties?${params}`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        const propertyTerms = data?.data?.[0]?.terms || ''
+        form.value.terms = propertyTerms
+        await nextTick()
+        const applyToEditor = () => {
+            if (termsEditor.value) {
+                termsEditor.value.innerHTML = propertyTerms
+                return true
+            }
+            return false
+        }
+        if (!applyToEditor()) {
+            // Editor may not be mounted yet — retry a few times
+            let retries = 0
+            const tryApply = () => {
+                if (applyToEditor() || retries++ > 10) return
+                requestAnimationFrame(tryApply)
+            }
+            requestAnimationFrame(tryApply)
+        }
+    } catch {
+        // ignore
+    }
+}
+
 async function fetchProperties() {
     try {
         const params = new URLSearchParams({
             'pagination[pageSize]': '200',
-            'fields[0]': 'name',
-            'fields[1]': 'city',
         })
         if (user.value?.documentId) {
             params.set('filters[owner][documentId][$eq]', user.value.documentId)
@@ -124,13 +166,16 @@ async function fetchUnitTypes() {
     } catch { /* ignore */ }
 }
 
-watch(() => form.value.propertyDocumentId, (_, old) => {
+watch(() => form.value.propertyDocumentId, async (_, old) => {
     if (old) {
         form.value.residentId = ''
         form.value.unitTypeId = ''
     }
-    fetchResidents()
-    fetchUnitTypes()
+    await Promise.all([
+        fetchResidents(),
+        fetchUnitTypes(),
+        applyPropertyTerms(form.value.propertyDocumentId),
+    ])
 })
 
 // ─── Lease Duration ───────────────────────────────────────────────────────────

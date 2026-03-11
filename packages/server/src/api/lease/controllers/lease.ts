@@ -1,5 +1,50 @@
 import { factories } from '@strapi/strapi';
 
+async function resolveDocumentIdFromNumericId(
+  strapi: any,
+  tableName: string,
+  value: unknown,
+) {
+  if (typeof value !== 'number') return value;
+  const row = await strapi.db.connection(tableName)
+    .select('document_id as documentId')
+    .where('id', value)
+    .first();
+  return row?.documentId || null;
+}
+
+async function normalizeLeaseRelations(strapi: any, data: Record<string, any>) {
+  if (!data) return data;
+
+  const normalized = { ...data };
+
+  if (normalized.resident != null) {
+    normalized.resident = await resolveDocumentIdFromNumericId(
+      strapi,
+      'up_users',
+      normalized.resident,
+    );
+  }
+
+  if (normalized.property != null) {
+    normalized.property = await resolveDocumentIdFromNumericId(
+      strapi,
+      'properties',
+      normalized.property,
+    );
+  }
+
+  if (normalized.unitType != null) {
+    normalized.unitType = await resolveDocumentIdFromNumericId(
+      strapi,
+      'unit_types',
+      normalized.unitType,
+    );
+  }
+
+  return normalized;
+}
+
 /**
  * Recalculate property.occupiedUnits and unitType.status based on active leases.
  * Called after any lease create / update / delete.
@@ -57,6 +102,10 @@ export default factories.createCoreController('api::lease.lease', ({ strapi }) =
   async create(ctx) {
     const user = ctx.state.user;
     if (!user) return ctx.unauthorized('You must be logged in');
+
+    if (ctx.request?.body?.data) {
+      ctx.request.body.data = await normalizeLeaseRelations(strapi, ctx.request.body.data);
+    }
 
     // Create the lease
     const response = await super.create(ctx);
@@ -136,6 +185,10 @@ export default factories.createCoreController('api::lease.lease', ({ strapi }) =
   async update(ctx) {
     const user = ctx.state.user;
     if (!user) return ctx.unauthorized('You must be logged in');
+
+    if (ctx.request?.body?.data) {
+      ctx.request.body.data = await normalizeLeaseRelations(strapi, ctx.request.body.data);
+    }
 
     const { id: documentId } = ctx.params;
 

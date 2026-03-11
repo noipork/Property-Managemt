@@ -47,6 +47,8 @@ interface SubscriptionRecord {
         price: number
         maxProperties: number
         maxUnitsPerProperty: number
+        maxUnitTypesPerProperty: number
+        maxBuildingsPerProperty: number
     }
 }
 
@@ -129,6 +131,8 @@ async function fetchHistory() {
                 price: s.plan.price,
                 maxProperties: s.plan.maxProperties,
                 maxUnitsPerProperty: s.plan.maxUnitsPerProperty,
+                maxUnitTypesPerProperty: s.plan.maxUnitTypesPerProperty,
+                maxBuildingsPerProperty: s.plan.maxBuildingsPerProperty,
             } : undefined,
         }))
     } catch (err) {
@@ -372,7 +376,7 @@ onMounted(async () => {
                             </div>
 
                             <!-- Limits -->
-                            <div v-if="subscription.plan" class="grid grid-cols-2 gap-3">
+                            <div v-if="subscription.plan" class="grid grid-cols-4 gap-3">
                                 <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
                                     <div
                                         class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -395,6 +399,31 @@ onMounted(async () => {
                                         </p>
                                         <p class="text-lg font-bold text-gray-900 dark:text-white">{{
                                             subscription.plan.maxUnitsPerProperty }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                                    <div
+                                        class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                                        <i class="fa-solid fa-grip text-emerald-600 dark:text-emerald-400 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.maxUnitTypesPerProperty
+                                        }}
+                                        </p>
+                                        <p class="text-lg font-bold text-gray-900 dark:text-white">{{
+                                            subscription.plan.maxUnitTypesPerProperty }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                                    <div
+                                        class="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                                        <i class="fa-solid fa-building text-amber-600 dark:text-amber-400 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.maxBuildingsPerProperty
+                                            }}</p>
+                                        <p class="text-lg font-bold text-gray-900 dark:text-white">{{
+                                            subscription.plan.maxBuildingsPerProperty }}</p>
                                     </div>
                                 </div>
                             </div>

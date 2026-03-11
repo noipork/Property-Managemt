@@ -129,11 +129,40 @@
         "images"
       ]
     },
+    "electricPricePerUnit": {
+      "type": "decimal",
+      "default": 0
+    },
+    "waterPricePerUnit": {
+      "type": "decimal",
+      "default": 0
+    },
+    "commonAreaFee": {
+      "type": "decimal",
+      "default": 0
+    },
+    "invoiceDueDays": {
+      "type": "integer",
+      "default": 7
+    },
     "owner": {
       "type": "relation",
       "relation": "manyToMany",
       "target": "plugin::users-permissions.user",
       "mappedBy": "property"
+    },
+    "buildings": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::building.building",
+      "mappedBy": "property"
+    },
+    "terms": {
+      "type": "customField",
+      "customField": "plugin::ckeditor5.CKEditor",
+      "options": {
+        "preset": "defaultHtml"
+      }
     }
   }
 }

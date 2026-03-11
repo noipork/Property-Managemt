@@ -12,7 +12,11 @@
     "start": "strapi start",
     "strapi": "strapi",
     "upgrade": "npx @strapi/upgrade latest",
-    "upgrade:dry": "npx @strapi/upgrade latest --dry"
+    "upgrade:dry": "npx @strapi/upgrade latest --dry",
+    "deploy:vps": "ssh root@76.13.180.139 'cd /srv/apps/Property-Managemt && git pull && cd packages/server && npm run build && pm2 restart 27'",
+    "deploy:vps:pull": "ssh root@76.13.180.139 'cd /srv/apps/Property-Managemt && git pull'",
+    "deploy:vps:build": "ssh root@76.13.180.139 'cd /srv/apps/Property-Managemt/packages/server && npm run build'",
+    "deploy:vps:restart": "ssh root@76.13.180.139 'pm2 restart 27'"
   },
   "dependencies": {
     "@_sh/strapi-plugin-ckeditor": "^7.1.0",
