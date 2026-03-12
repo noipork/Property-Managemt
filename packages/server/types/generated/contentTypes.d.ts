@@ -2061,7 +2061,7 @@ export interface PluginUsersPermissionsUser
         minLength: 6;
       }>;
     payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
-    plainPassword: Schema.Attribute.String;
+    plainPassword: Schema.Attribute.String & Schema.Attribute.Private;
     plan: Schema.Attribute.Relation<'manyToOne', 'api::plan.plan'>;
     property: Schema.Attribute.Relation<'manyToMany', 'api::property.property'>;
     provider: Schema.Attribute.String;

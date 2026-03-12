@@ -81,7 +81,8 @@
       "type": "string"
     },
     "plainPassword": {
-      "type": "string"
+      "type": "string",
+      "private": true
     },
     "registrationDate": {
       "type": "date"
