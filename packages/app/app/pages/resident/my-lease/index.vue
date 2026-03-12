@@ -561,7 +561,7 @@ onMounted(async () => {
             </div>
             <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ errorMessage }}</h3>
             <button @click="fetchLease" class="mt-4 text-sm text-primary-600 hover:underline">{{ t.retry || 'Retry'
-                }}</button>
+            }}</button>
         </div>
 
         <!-- No Lease -->
@@ -638,34 +638,6 @@ onMounted(async () => {
                     </div>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ lease.leaseNo }}</p>
                 </div>
-                <!-- Lease Selector -->
-                <div v-if="hasMultipleLeases" class="relative">
-                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t.viewLease || 'View Lease'
-                        }}</label>
-                    <div class="relative">
-                        <i
-                            class="fa-solid fa-file-contract absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
-                        <select
-                            @change="selectLease(allLeases.find(l => l.documentId === ($event.target as HTMLSelectElement).value)!)"
-                            :value="lease.documentId"
-                            class="pl-9 pr-8 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none w-full sm:min-w-[200px]">
-                            <optgroup :label="t.currentLease || 'Current'">
-                                <option
-                                    v-for="l in allLeases.filter(l => l.status === 'active' || l.status === 'pending')"
-                                    :key="l.documentId" :value="l.documentId">
-                                    {{ l.leaseNo }} - {{ statusLabels[l.status as keyof typeof statusLabels] }}
-                                </option>
-                            </optgroup>
-                            <optgroup v-if="historicalLeases.length" :label="t.leaseHistory || 'History'">
-                                <option v-for="l in historicalLeases" :key="l.documentId" :value="l.documentId">
-                                    {{ l.leaseNo }} ({{ formatDate(l.startDate) }} - {{ formatDate(l.endDate) }})
-                                </option>
-                            </optgroup>
-                        </select>
-                        <i
-                            class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
-                </div>
             </div>
 
             <!-- Main Content -->
@@ -683,7 +655,7 @@ onMounted(async () => {
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.leaseNo }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white font-mono">{{ lease.leaseNo
-                                    }}</p>
+                                }}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.status }}</p>
@@ -1084,7 +1056,7 @@ onMounted(async () => {
                             <div v-if="lease.residentFullName">
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.fullName }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ lease.residentFullName
-                                    }}</p>
+                                }}</p>
                             </div>
                             <div v-if="lease.residentPhone">
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.leasePhone }}</p>
@@ -1224,7 +1196,7 @@ onMounted(async () => {
                                 <p v-if="lease.property.city" class="text-xs text-gray-400">{{ lease.property.city }}
                                 </p>
                                 <p v-if="lease.property.address" class="text-xs text-gray-400">{{ lease.property.address
-                                    }}</p>
+                                }}</p>
                             </div>
                         </div>
                         <p v-else class="text-sm text-gray-400">—</p>
@@ -1328,7 +1300,7 @@ onMounted(async () => {
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{
                                     item.leaseNo
-                                }}</span>
+                                    }}</span>
                                 <span :class="statusColors[item.status] || ''"
                                     class="px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap">
                                     {{ statusLabels[item.status] || item.status }}

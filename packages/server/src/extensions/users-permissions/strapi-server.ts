@@ -63,6 +63,26 @@ export default (plugin: any) => {
     }
   }
 
+  // ─── Allow documentId on /api/users/:id (update) ────────────────────────
+  const originalUpdate = plugin.controllers.user.update
+  plugin.controllers.user.update = async (ctx: any) => {
+    const { id } = ctx.params
+    // If the id param is not numeric, treat it as a documentId and resolve it
+    if (id && isNaN(Number(id))) {
+      const strapiInstance = (globalThis as any).strapi
+      const knex = strapiInstance.db.connection
+      const row = await knex('up_users')
+        .select('id')
+        .where('document_id', id)
+        .first()
+      if (!row) {
+        return ctx.notFound('User not found')
+      }
+      ctx.params.id = row.id
+    }
+    return originalUpdate.call(plugin.controllers.user, ctx)
+  }
+
   // Override the register controller
   plugin.controllers.auth.register = async (ctx: any) => {
     const strapiInstance = (globalThis as any).strapi

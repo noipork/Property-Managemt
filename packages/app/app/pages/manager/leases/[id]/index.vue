@@ -271,9 +271,9 @@ async function approveLease() {
                     },
                     body: JSON.stringify({ residencyStatus: 'active' }),
                 })
-            } catch {
+            } catch (err) {
                 // Non-critical — lease was already approved
-                console.warn('Failed to update resident status')
+                console.warn('Failed to update resident status', err)
             }
         }
 
@@ -343,8 +343,8 @@ async function expireLease() {
                     },
                     body: JSON.stringify({ residencyStatus: 'expired' }),
                 })
-            } catch {
-                console.warn('Failed to update resident status')
+            } catch (err) {
+                console.warn('Failed to update resident status', err)
             }
         }
 
