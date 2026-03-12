@@ -21,11 +21,25 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: 'PropManager',
+      meta: [
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+        { name: 'apple-mobile-web-app-title', content: 'PropManager' },
+        { name: 'theme-color', content: '#4f46e5' },
+      ],
       link: [
         {
           rel: 'icon',
           type: 'image/png',
           href: '/logo.png',
+        },
+        {
+          rel: 'apple-touch-icon',
+          href: '/logo.png',
+        },
+        {
+          rel: 'manifest',
+          href: '/manifest.json',
         },
         {
           rel: 'stylesheet',

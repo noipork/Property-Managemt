@@ -24,8 +24,8 @@ self.addEventListener('push', (event) => {
     const title = payload.title || 'Property Management'
     const options = {
         body: payload.body || '',
-        icon: payload.icon || '/favicon.ico',
-        badge: payload.badge || '/favicon.ico',
+        icon: payload.icon || '/logo.png',
+        badge: payload.badge || '/logo.png',
         tag: payload.tag || 'default',
         renotify: true,
         requireInteraction: payload.data?.type === 'maintenance' || payload.data?.type === 'billing',

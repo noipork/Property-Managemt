@@ -64,8 +64,8 @@ export default factories.createCoreService('api::notification.notification', ({ 
     webPush.sendToUser(strapi, data.recipientId, {
       title: data.title,
       body: data.message,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
+      icon: '/logo.png',
+      badge: '/logo.png',
       url: data.actionUrl || '/',
       tag: `${data.type}-${notification.documentId}`,
       data: {
@@ -145,8 +145,8 @@ export default factories.createCoreService('api::notification.notification', ({ 
     webPush.sendToUsers(strapi, data.recipientIds, {
       title: data.title,
       body: data.message,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
+      icon: '/logo.png',
+      badge: '/logo.png',
       url: data.actionUrl || '/',
       tag: `${data.type}-${notification.documentId}`,
       data: {
