@@ -105,10 +105,7 @@ onMounted(() => {
 
             <div class="relative z-10">
                 <div class="flex items-center gap-3 mb-16">
-                    <div
-                        class="w-10 h-10 bg-primary-600 dark:bg-primary-700 rounded-xl flex items-center justify-center">
-                        <i class="ti-home text-white text-lg"></i>
-                    </div>
+                    <img src="/logo.png" alt="PropManager" class="w-10 h-10 rounded-xl object-contain" />
                     <span class="text-xl font-bold text-white">PropManager</span>
                 </div>
 
@@ -159,7 +156,7 @@ onMounted(() => {
                     </div>
                     <div>
                         <p class="text-white text-sm font-medium">{{ lang === 'TH' ? 'แชทเรียลไทม์' : 'Real-time Chat'
-                            }}</p>
+                        }}</p>
                         <p class="text-gray-500 dark:text-gray-600 text-xs">{{ lang === 'TH' ?
                             'สื่อสารระหว่างผู้จัดการและผู้เช่า' : 'Manager & resident communication' }}</p>
                     </div>
@@ -205,9 +202,7 @@ onMounted(() => {
             <div class="w-full max-w-md">
                 <!-- Mobile brand -->
                 <div class="flex items-center gap-2 mb-8 lg:hidden">
-                    <div class="w-9 h-9 bg-primary-600 dark:bg-primary-700 rounded-lg flex items-center justify-center">
-                        <i class="ti-home text-white text-sm"></i>
-                    </div>
+                    <img src="/logo.png" alt="PropManager" class="w-9 h-9 rounded-lg object-contain" />
                     <span class="text-lg font-bold text-gray-800 dark:text-white">PropManager</span>
                 </div>
 
@@ -239,7 +234,7 @@ onMounted(() => {
                         <div>
                             <div class="flex items-center justify-between mb-1.5">
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.password
-                                }}</label>
+                                    }}</label>
                                 <a href="#" class="text-xs text-primary-600 dark:text-primary-400 hover:underline">{{
                                     t.forgotPassword }}</a>
                             </div>
@@ -262,7 +257,7 @@ onMounted(() => {
                             <input id="remember" v-model="rememberMe" type="checkbox"
                                 class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 dark:bg-gray-800" />
                             <label for="remember" class="text-sm text-gray-600 dark:text-gray-400">{{ t.rememberMe
-                            }}</label>
+                                }}</label>
                         </div>
 
                         <!-- Submit -->

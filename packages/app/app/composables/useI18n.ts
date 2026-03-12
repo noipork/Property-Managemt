@@ -687,7 +687,6 @@ const translations = {
         saveQr: 'Save QR Code',
         qrSaved: 'QR Code saved',
         qrSaveError: 'Failed to save QR Code',
-        paymentInfo: 'Payment Info',
 
         // Payment Approval (Manager)
         approvePayment: 'Approve',
@@ -1924,7 +1923,6 @@ const translations = {
         saveQr: 'บันทึก QR Code',
         qrSaved: 'บันทึก QR Code แล้ว',
         qrSaveError: 'ไม่สามารถบันทึก QR Code ได้',
-        paymentInfo: 'ข้อมูลการชำระเงิน',
 
         // Payment Approval (Manager)
         approvePayment: 'อนุมัติ',

@@ -20,7 +20,13 @@ export default defineNuxtConfig({
 
   app: {
     head: {
+      title: 'PropManager',
       link: [
+        {
+          rel: 'icon',
+          type: 'image/png',
+          href: '/logo.png',
+        },
         {
           rel: 'stylesheet',
           href: 'https://cdn.jsdelivr.net/themify-icons/0.1.2/css/themify-icons.css',

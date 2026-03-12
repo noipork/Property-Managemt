@@ -79,10 +79,7 @@ onMounted(() => {
             <div class="max-w-4xl mx-auto px-6 py-4">
                 <div class="flex items-center justify-between">
                     <NuxtLink to="/" class="flex items-center gap-3">
-                        <div
-                            class="w-10 h-10 bg-primary-600 dark:bg-primary-700 rounded-xl flex items-center justify-center">
-                            <i class="ti-home text-white text-lg"></i>
-                        </div>
+                        <img src="/logo.png" alt="PropManager" class="w-10 h-10 rounded-xl object-contain" />
                         <span class="text-xl font-bold text-gray-800 dark:text-white">PropManager</span>
                     </NuxtLink>
                     <NuxtLink to="/signup"
@@ -189,7 +186,7 @@ onMounted(() => {
                                 <ul class="list-disc list-inside text-amber-800 dark:text-amber-300 space-y-1 text-sm">
                                     <li>{{ lang === 'TH' ? 'ข้อความในระบบแชต' : 'Chat messages' }}</li>
                                     <li>{{ lang === 'TH' ? 'คำร้องแจ้งซ่อมและรูปภาพ' : 'Maintenance requests and images'
-                                        }}</li>
+                                    }}</li>
                                     <li>{{ lang === 'TH' ? 'การแจ้งเตือนและ Push Notification'
                                         : 'Notifications and Push Notifications' }}</li>
                                 </ul>
@@ -349,7 +346,7 @@ onMounted(() => {
                             <div class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                                 <i class="ti-trash text-primary-500 text-sm"></i>
                                 <span class="text-sm">{{ lang === 'TH' ? 'ขอลบข้อมูลส่วนบุคคล' : `Request data deletion`
-                                    }}</span>
+                                }}</span>
                             </div>
                             <div class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                                 <i class="ti-download text-primary-500 text-sm"></i>

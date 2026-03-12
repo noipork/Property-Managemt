@@ -522,10 +522,7 @@ onMounted(() => {
 
             <div class="relative z-10">
                 <div class="flex items-center gap-3 mb-16">
-                    <div
-                        class="w-10 h-10 bg-primary-600 dark:bg-primary-700 rounded-xl flex items-center justify-center">
-                        <i class="ti-home text-white text-lg"></i>
-                    </div>
+                    <img src="/logo.png" alt="PropManager" class="w-10 h-10 rounded-xl object-contain" />
                     <span class="text-xl font-bold text-white">PropManager</span>
                 </div>
 
@@ -573,7 +570,7 @@ onMounted(() => {
                     <p class="text-sm text-gray-300 dark:text-gray-400 leading-relaxed">
                         <span class="font-medium text-white">{{
                             lang === "TH" ? "ฟีเจอร์ครบครัน:" : "Full Features:"
-                        }}</span>
+                            }}</span>
                         {{
                             lang === 'TH'
                                 ? `แดชบอร์ด, จัดการทรัพย์สิน, สัญญาเช่า, บิล/ชำระเงิน, งานซ่อมบำรุง, แชทเรียลไทม์,
@@ -644,9 +641,7 @@ onMounted(() => {
             <div class="w-full max-w-md">
                 <!-- Mobile brand -->
                 <div class="flex items-center gap-2 mb-8 lg:hidden">
-                    <div class="w-9 h-9 bg-primary-600 dark:bg-primary-700 rounded-lg flex items-center justify-center">
-                        <i class="ti-home text-white text-sm"></i>
-                    </div>
+                    <img src="/logo.png" alt="PropManager" class="w-9 h-9 rounded-lg object-contain" />
                     <span class="text-lg font-bold text-gray-800 dark:text-white">PropManager</span>
                 </div>
 

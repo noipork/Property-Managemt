@@ -17,9 +17,7 @@ const props = defineProps<{
         :class="props.sidebarOpen ? 'left-64' : 'left-20'">
         <!-- Brand -->
         <div class="flex items-center gap-2">
-            <div class="w-5 h-5 bg-primary-600 rounded-md flex items-center justify-center flex-shrink-0">
-                <i class="ti-home text-white" style="font-size:10px"></i>
-            </div>
+            <img src="/logo.png" alt="PropManager" class="w-5 h-5 rounded object-contain flex-shrink-0" />
             <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">PropManager</span>
         </div>
 

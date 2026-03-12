@@ -446,7 +446,7 @@ onMounted(async () => {
                         <div>
                             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.date || 'Created' }}</p>
                             <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(bill.createdAt)
-                                }}</p>
+                            }}</p>
                         </div>
                         <div v-if="bill.paidDate">
                             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paidOn || 'Paid on' }}
@@ -597,7 +597,7 @@ onMounted(async () => {
                     <!-- Total -->
                     <div class="flex items-center justify-between pt-3">
                         <span class="text-base font-bold text-gray-900 dark:text-white">{{ t.totalAmount || 'Total'
-                            }}</span>
+                        }}</span>
                         <span class="text-xl font-bold text-primary-600 dark:text-primary-400">
                             {{ formatCurrency(bill.amount, bill.currency) }}
                         </span>
@@ -739,9 +739,29 @@ onMounted(async () => {
                                             <i class="ti-scan text-primary-500"></i>
                                             {{ t.scanQrCode || 'Scan QR Code to Pay' }}
                                         </h4>
-                                        <div
-                                            class="inline-block p-3 bg-white rounded-xl border-2 border-gray-200 dark:border-gray-700">
+                                        <button @click="showQrViewer = true"
+                                            class="inline-block p-3 bg-white rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-500 transition-colors cursor-pointer group relative">
                                             <img :src="qrUrl" alt="QR Code" class="w-48 h-48 object-contain mx-auto" />
+                                            <div
+                                                class="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-xl transition-colors flex items-center justify-center">
+                                                <span
+                                                    class="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-full">
+                                                    <i class="fa-solid fa-expand mr-1"></i>{{ t.viewQr || 'View QR' }}
+                                                </span>
+                                            </div>
+                                        </button>
+                                        <div class="flex items-center justify-center gap-2">
+                                            <button @click="showQrViewer = true"
+                                                class="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
+                                                <i class="fa-solid fa-expand text-[10px]"></i>
+                                                {{ t.viewFullSize || 'View full size' }}
+                                            </button>
+                                            <span class="text-gray-300 dark:text-gray-600">|</span>
+                                            <button @click="saveQrCode" :disabled="isSavingQr"
+                                                class="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1 disabled:opacity-50">
+                                                <i class="fa-solid fa-download text-[10px]"></i>
+                                                {{ t.saveQr || 'Save QR' }}
+                                            </button>
                                         </div>
                                     </div>
 

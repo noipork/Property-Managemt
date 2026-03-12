@@ -79,10 +79,7 @@ onMounted(() => {
             <div class="max-w-4xl mx-auto px-6 py-4">
                 <div class="flex items-center justify-between">
                     <NuxtLink to="/" class="flex items-center gap-3">
-                        <div
-                            class="w-10 h-10 bg-primary-600 dark:bg-primary-700 rounded-xl flex items-center justify-center">
-                            <i class="ti-home text-white text-lg"></i>
-                        </div>
+                        <img src="/logo.png" alt="PropManager" class="w-10 h-10 rounded-xl object-contain" />
                         <span class="text-xl font-bold text-gray-800 dark:text-white">PropManager</span>
                     </NuxtLink>
                     <NuxtLink to="/signup"

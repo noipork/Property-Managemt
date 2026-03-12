@@ -149,10 +149,7 @@ watch(
         <!-- Sidebar Header / Brand -->
         <div
             class="h-16 flex items-center gap-3 px-5 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 bg-white dark:bg-gray-900">
-            <div
-                class="w-9 h-9 bg-primary-600 dark:bg-primary-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                <i class="ti-home text-white text-sm"></i>
-            </div>
+            <img src="/logo.png" alt="PropManager" class="w-9 h-9 rounded-lg object-contain flex-shrink-0" />
             <span v-if="open"
                 class="text-lg font-bold text-gray-900 dark:text-white whitespace-nowrap">PropManager</span>
         </div>
