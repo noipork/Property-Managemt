@@ -55,6 +55,14 @@ async function copyToClipboard(text: string) {
     } catch { /* ignore */ }
 }
 
+async function copyBothToClipboard(email: string, password: string) {
+    try {
+        await navigator.clipboard.writeText(`${email}\n${password}`)
+        copiedPassword.value = true
+        setTimeout(() => { copiedPassword.value = false }, 2000)
+    } catch { /* ignore */ }
+}
+
 const residentProperty = computed(() => {
     const property = resident.value?.property
     if (!property) return null
@@ -1184,9 +1192,10 @@ async function createInvoice() {
                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ resident.email }}</p>
                             <!-- Password -->
                             <div v-if="resident.plainPassword" class="flex items-center gap-2 mt-1.5">
-                                <div
-                                    class="inline-flex items-center gap-2 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                                    <i class="fa-solid fa-key text-xs text-gray-400"></i>
+                                <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
+                                    :class="copiedPassword ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20' : ''">
+                                    <i class="fa-solid fa-key text-xs"
+                                        :class="copiedPassword ? 'text-emerald-500' : 'text-gray-400'"></i>
                                     <span class="text-sm font-mono text-gray-700 dark:text-gray-300 select-all">
                                         {{ showPassword ? resident.plainPassword : '••••••••••••' }}
                                     </span>
@@ -1196,13 +1205,24 @@ async function createInvoice() {
                                         <i :class="showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"
                                             class="text-xs"></i>
                                     </button>
-                                    <button @click="copyToClipboard(resident.plainPassword!)"
-                                        class="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                                        title="Copy">
-                                        <i :class="copiedPassword ? 'fa-solid fa-check text-emerald-500' : 'fa-solid fa-copy'"
+                                    <button @click="copyBothToClipboard(resident.email, resident.plainPassword!)"
+                                        class="p-0.5 transition-colors"
+                                        :class="copiedPassword ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'"
+                                        title="Copy email & password">
+                                        <i :class="copiedPassword ? 'fa-solid fa-check' : 'fa-solid fa-copy'"
                                             class="text-xs"></i>
                                     </button>
                                 </div>
+                                <Transition enter-active-class="transition-all duration-200"
+                                    enter-from-class="opacity-0 -translate-x-1"
+                                    enter-to-class="opacity-100 translate-x-0"
+                                    leave-active-class="transition-all duration-150" leave-from-class="opacity-100"
+                                    leave-to-class="opacity-0">
+                                    <span v-if="copiedPassword"
+                                        class="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                                        <i class="fa-solid fa-check text-xs"></i> Copied email &amp; password
+                                    </span>
+                                </Transition>
                             </div>
                             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                 {{ t.residentRegisteredOn }} {{ formatDate(resident.createdAt) }}
