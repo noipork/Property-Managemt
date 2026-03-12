@@ -8,30 +8,27 @@ const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
 
 interface User {
-    id: number
     documentId: string
     username: string
     email: string
     roomNumber: string | null
-    property?: { id: number; name: string } | null
+    property?: { documentId: string; name: string } | null
 }
 
 interface Message {
-    id: number
     documentId: string
     content: string
     createdAt: string
     isRead: boolean
     isEdited: boolean
     sender: User | null
-    images: { id: number; url: string }[] | null
+    images: { documentId: string; url: string }[] | null
 }
 
 interface Conversation {
-    id: number
     documentId: string
     participants: User[]
-    property: { id: number; name: string } | null
+    property: { documentId: string; name: string } | null
     lastMessage: string | null
     lastMessageAt: string | null
     isActive: boolean
@@ -98,7 +95,8 @@ async function fetchConversations() {
             'populate[participants][fields][1]': 'username',
             'populate[participants][fields][2]': 'email',
             'populate[participants][fields][3]': 'roomNumber',
-            'populate[property][fields][0]': 'name',
+            'populate[property][fields][0]': 'documentId',
+            'populate[property][fields][1]': 'name',
             'sort[0]': 'lastMessageAt:desc',
             'pagination[pageSize]': '100',
         })
@@ -108,10 +106,14 @@ async function fetchConversations() {
         if (!res.ok) throw new Error('Failed to fetch conversations')
         const data = await res.json()
         conversations.value = (data.data ?? []).map((c: any) => ({
-            id: c.id,
             documentId: c.documentId,
-            participants: c.participants ?? [],
-            property: c.property,
+            participants: (c.participants ?? []).map((p: any) => ({
+                documentId: p.documentId,
+                username: p.username,
+                email: p.email,
+                roomNumber: p.roomNumber,
+            })),
+            property: c.property ? { documentId: c.property.documentId, name: c.property.name } : null,
             lastMessage: c.lastMessage,
             lastMessageAt: c.lastMessageAt,
             isActive: c.isActive,
@@ -127,14 +129,13 @@ async function fetchConversations() {
 // ─── Fetch Messages for a Conversation ────────────────────────────────────────
 function mapMessage(m: any): Message {
     return {
-        id: m.id,
         documentId: m.documentId,
         content: m.content,
         createdAt: m.createdAt,
         isRead: m.isRead,
         isEdited: m.isEdited,
-        sender: m.sender,
-        images: m.images?.map((img: any) => ({ id: img.id, url: img.url })) ?? null,
+        sender: m.sender ? { documentId: m.sender.documentId, username: m.sender.username, email: m.sender.email, roomNumber: m.sender.roomNumber ?? null } : null,
+        images: m.images?.map((img: any) => ({ documentId: img.documentId, url: img.url })) ?? null,
     }
 }
 
@@ -271,11 +272,11 @@ async function selectConversation(conversation: Conversation) {
     // Always mark messages as read when opening a conversation
     conversation.unreadCount = 0
     // Check if there are any unread messages from others
-    const hasUnread = messages.value.some(m => m.sender?.id !== user.value?.id && !m.isRead)
+    const hasUnread = messages.value.some(m => m.sender?.documentId !== user.value?.documentId && !m.isRead)
     if (hasUnread) {
         // Update local state immediately
         messages.value.forEach(m => {
-            if (m.sender?.id !== user.value?.id && !m.isRead) {
+            if (m.sender?.documentId !== user.value?.documentId && !m.isRead) {
                 m.isRead = true
             }
         })
@@ -361,7 +362,7 @@ function handleTyping() {
 async function fetchManagers() {
     isLoadingManagers.value = true
     try {
-        if (!user.value?.id) {
+        if (!user.value?.documentId) {
             managers.value = []
             return
         }
@@ -372,7 +373,7 @@ async function fetchManagers() {
         }
 
         // First, get the current user's property from their profile
-        const userRes = await fetch(`${STRAPI_URL}/api/users/${user.value?.id}?populate[property][fields][0]=documentId&populate[property][fields][1]=name`, {
+        const userRes = await fetch(`${STRAPI_URL}/api/users/me?populate[property][fields][0]=documentId&populate[property][fields][1]=name`, {
             headers: { Authorization: `Bearer ${token.value}` },
         })
         if (!userRes.ok) throw new Error('Failed to fetch current user profile')
@@ -381,15 +382,12 @@ async function fetchManagers() {
         const userProperty = getPrimaryProperty(userData?.property)
         const authUserProperty = getPrimaryProperty((user.value as any)?.property)
         const currentPropertyDocumentId = userProperty?.documentId || authUserProperty?.documentId || null
-        const currentPropertyId = userProperty?.id || authUserProperty?.id || null
 
         // Fetch all managers (role 3) and filter client-side by property
-        // The users endpoint doesn't support nested relation filters like content-types do
         const params = new URLSearchParams({
             'filters[role][id][$eq]': '3', // Manager role
             'pagination[pageSize]': '200',
             'populate[property][fields][0]': 'documentId',
-            'populate[property][fields][1]': 'id',
             'fields[0]': 'username',
             'fields[1]': 'email',
             'fields[2]': 'roomNumber',
@@ -398,8 +396,6 @@ async function fetchManagers() {
 
         if (currentPropertyDocumentId) {
             params.set('filters[property][documentId]', currentPropertyDocumentId)
-        } else if (currentPropertyId) {
-            params.set('filters[property][id]', String(currentPropertyId))
         }
 
         const res = await fetch(`${STRAPI_URL}/api/users?${params}`, {
@@ -410,8 +406,7 @@ async function fetchManagers() {
         const data = await res.json()
         const allManagers = Array.isArray(data) ? data : (data.data ?? [])
 
-        // Filter managers by property on the client side.
-        // Prefer documentId matching, fallback to numeric id matching.
+        // Filter managers by property on the client side
         managers.value = allManagers
             .filter((u: any) => {
                 const managerProperties = Array.isArray(u.property)
@@ -421,13 +416,9 @@ async function fetchManagers() {
                 if (currentPropertyDocumentId) {
                     return managerProperties.some((property: any) => property?.documentId === currentPropertyDocumentId)
                 }
-                if (currentPropertyId) {
-                    return managerProperties.some((property: any) => property?.id === currentPropertyId)
-                }
                 return true
             })
             .map((u: any) => ({
-                id: u.id,
                 documentId: u.documentId,
                 username: u.username,
                 email: u.email,
@@ -445,7 +436,7 @@ async function fetchManagers() {
 async function startNewConversation() {
     if (!selectedManagerId.value) return
 
-    const manager = managers.value.find(m => String(m.id) === selectedManagerId.value)
+    const manager = managers.value.find(m => m.documentId === selectedManagerId.value)
     if (!manager) return
 
     // Check if conversation already exists
@@ -488,7 +479,8 @@ async function startNewConversation() {
             'populate[participants][fields][1]': 'username',
             'populate[participants][fields][2]': 'email',
             'populate[participants][fields][3]': 'roomNumber',
-            'populate[property][fields][0]': 'name',
+            'populate[property][fields][0]': 'documentId',
+            'populate[property][fields][1]': 'name',
         })
         const detailRes = await fetch(`${STRAPI_URL}/api/conversations?${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
@@ -496,14 +488,19 @@ async function startNewConversation() {
         if (detailRes.ok) {
             const detailData = await detailRes.json()
             if (detailData.data && detailData.data.length > 0) {
-                const newConv = {
-                    id: detailData.data[0].id,
-                    documentId: detailData.data[0].documentId,
-                    participants: detailData.data[0].participants ?? [],
-                    property: detailData.data[0].property,
-                    lastMessage: detailData.data[0].lastMessage,
-                    lastMessageAt: detailData.data[0].lastMessageAt,
-                    isActive: detailData.data[0].isActive,
+                const d = detailData.data[0]
+                const newConv: Conversation = {
+                    documentId: d.documentId,
+                    participants: (d.participants ?? []).map((p: any) => ({
+                        documentId: p.documentId,
+                        username: p.username,
+                        email: p.email,
+                        roomNumber: p.roomNumber,
+                    })),
+                    property: d.property ? { documentId: d.property.documentId, name: d.property.name } : null,
+                    lastMessage: d.lastMessage,
+                    lastMessageAt: d.lastMessageAt,
+                    isActive: d.isActive,
                     unreadCount: 0,
                 }
                 conversations.value.unshift(newConv)
@@ -601,7 +598,7 @@ onMounted(async () => {
                 // Avoid duplicates (sender already sees their own message)
                 const exists = messages.value.some(m => m.documentId === data.message.documentId)
                 if (!exists) {
-                    messages.value.push(data.message as Message)
+                    messages.value.push(mapMessage(data.message))
                     ensureScrollToBottom()
                 }
                 // Auto-mark as read since conversation is open
@@ -648,7 +645,7 @@ onMounted(async () => {
                     selectedConversation.value.documentId === data.conversationDocumentId
                 ) {
                     messages.value.forEach(m => {
-                        if (m.sender?.id === user.value?.id && !m.isRead) {
+                        if (m.sender?.documentId === user.value?.documentId && !m.isRead) {
                             m.isRead = true
                         }
                     })
@@ -826,9 +823,10 @@ onUnmounted(() => {
 
                     <!-- Conversation Items -->
                     <div v-else>
-                        <button v-for="conv in filteredConversations" :key="conv.id" @click="selectConversation(conv)"
+                        <button v-for="conv in filteredConversations" :key="conv.documentId"
+                            @click="selectConversation(conv)"
                             class="w-full p-3 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800"
-                            :class="{ 'bg-primary-50 dark:bg-primary-900/20': selectedConversation?.id === conv.id }">
+                            :class="{ 'bg-primary-50 dark:bg-primary-900/20': selectedConversation?.documentId === conv.documentId }">
                             <!-- Avatar -->
                             <div
                                 class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center flex-shrink-0">
@@ -937,31 +935,31 @@ onUnmounted(() => {
                                     ↑ {{ t.loadOlder }}
                                 </button>
                             </div>
-                            <div v-for="msg in messages" :key="msg.id" class="flex"
-                                :class="msg.sender?.id === user?.id ? 'justify-end' : 'justify-start'">
+                            <div v-for="msg in messages" :key="msg.documentId" class="flex"
+                                :class="msg.sender?.documentId === user?.documentId ? 'justify-end' : 'justify-start'">
                                 <div class="max-w-[75%] sm:max-w-[65%]"
-                                    :class="msg.sender?.id === user?.id ? 'order-1' : ''">
+                                    :class="msg.sender?.documentId === user?.documentId ? 'order-1' : ''">
                                     <!-- Message Bubble -->
                                     <div class="px-4 py-2 rounded-2xl"
-                                        :class="msg.sender?.id === user?.id
+                                        :class="msg.sender?.documentId === user?.documentId
                                             ? 'bg-primary-600 text-white rounded-br-md'
                                             : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md'">
                                         <p class="text-sm whitespace-pre-wrap break-words">{{ msg.content }}</p>
                                         <!-- Images -->
                                         <div v-if="msg.images && msg.images.length > 0"
                                             class="mt-2 flex flex-wrap gap-2">
-                                            <img v-for="img in msg.images" :key="img.id" :src="STRAPI_URL + img.url"
-                                                alt="Image"
+                                            <img v-for="img in msg.images" :key="img.documentId"
+                                                :src="STRAPI_URL + img.url" alt="Image"
                                                 class="max-w-[200px] max-h-[200px] rounded-lg object-cover cursor-pointer" />
                                         </div>
                                     </div>
                                     <!-- Time -->
                                     <div class="flex items-center gap-1 mt-1 px-1"
-                                        :class="msg.sender?.id === user?.id ? 'justify-end' : 'justify-start'">
+                                        :class="msg.sender?.documentId === user?.documentId ? 'justify-end' : 'justify-start'">
                                         <span class="text-[10px] text-gray-400">{{ formatMessageTime(msg.createdAt)
-                                        }}</span>
+                                            }}</span>
                                         <span v-if="msg.isEdited" class="text-[10px] text-gray-400">({{ t.edited
-                                        }})</span>
+                                            }})</span>
                                     </div>
                                 </div>
                             </div>
@@ -1048,10 +1046,10 @@ onUnmounted(() => {
                                 <!-- Managers List -->
                                 <div v-else-if="managers.length > 0"
                                     class="max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-100 dark:divide-gray-800">
-                                    <button v-for="mgr in managers" :key="mgr.id"
-                                        @click="selectedManagerId = String(mgr.id)" type="button"
+                                    <button v-for="mgr in managers" :key="mgr.documentId"
+                                        @click="selectedManagerId = mgr.documentId" type="button"
                                         class="w-full p-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
-                                        :class="{ 'bg-primary-50 dark:bg-primary-900/20': selectedManagerId === String(mgr.id) }">
+                                        :class="{ 'bg-primary-50 dark:bg-primary-900/20': selectedManagerId === mgr.documentId }">
                                         <div
                                             class="w-9 h-9 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                                             <i
@@ -1064,7 +1062,7 @@ onUnmounted(() => {
                                                 {{ mgr.email }}
                                             </p>
                                         </div>
-                                        <i v-if="selectedManagerId === String(mgr.id)"
+                                        <i v-if="selectedManagerId === mgr.documentId"
                                             class="fa-solid fa-circle-check text-primary-600 dark:text-primary-400"></i>
                                     </button>
                                 </div>
