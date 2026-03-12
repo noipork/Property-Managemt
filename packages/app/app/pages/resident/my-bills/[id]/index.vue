@@ -420,7 +420,7 @@ onMounted(async () => {
                         <div>
                             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.date || 'Created' }}</p>
                             <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(bill.createdAt)
-                                }}</p>
+                            }}</p>
                         </div>
                         <div v-if="bill.paidDate">
                             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paidOn || 'Paid on' }}
@@ -483,7 +483,7 @@ onMounted(async () => {
                     <!-- Total -->
                     <div class="flex items-center justify-between pt-3">
                         <span class="text-base font-bold text-gray-900 dark:text-white">{{ t.totalAmount || 'Total'
-                            }}</span>
+                        }}</span>
                         <span class="text-xl font-bold text-primary-600 dark:text-primary-400">
                             {{ formatCurrency(bill.amount, bill.currency) }}
                         </span>
@@ -555,7 +555,7 @@ onMounted(async () => {
                                     </div>
                                     <div>
                                         <h3 class="font-semibold text-gray-900 dark:text-white">
-                                            {{ payStep === 'info' ? (t.paymentInfo || 'Payment Information') :
+                                            {{ payStep === 'info' ? (t.billPaymentInfo || 'Payment Information') :
                                                 (t.uploadSlip ||
                                                     'Upload Payment Slip') }}
                                         </h3>

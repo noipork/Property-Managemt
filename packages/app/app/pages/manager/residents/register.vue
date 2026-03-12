@@ -9,6 +9,7 @@ const router = useRouter()
 const route = useRoute()
 const pageEntered = ref(false)
 const prefilled = ref(false)
+let initialLoad = true
 
 // ─── Form State ───────────────────────────────────────────────────────────────
 const form = ref({
@@ -52,6 +53,8 @@ onMounted(async () => {
     // Pre-fill from query params (e.g. coming from room click on property page)
     const qPropertyId = route.query.propertyId as string | undefined
     const qRoomNumber = route.query.roomNumber as string | undefined
+    const qBuildingId = route.query.buildingId as string | undefined
+    const qFloorId = route.query.floorId as string | undefined
     if (qRoomNumber) {
         form.value.roomNumber = qRoomNumber
     }
@@ -64,13 +67,38 @@ onMounted(async () => {
         // Trigger unit types + buildings fetch using the documentId from loaded properties
         const prop = properties.value.find(p => String(p.id) === qPropertyId)
         if (prop) {
+            const hasRoomQuery = !!qRoomNumber
             await Promise.all([
                 fetchUnitTypes(prop.documentId),
-                fetchBuildings(prop.documentId),
+                fetchBuildings(prop.documentId, hasRoomQuery),
                 applyPropertyTerms(prop.documentId),
             ])
         }
+        // Auto-select building / floor / room from query params
+        applyRoomPrefill(qBuildingId, qFloorId, qRoomNumber)
+
+        if (!selectedBuildingId.value && qBuildingId) {
+            const b = buildings.value.find(x => matchesEntityId(x, qBuildingId))
+            if (b) selectedBuildingId.value = String(b.id)
+        }
+        if (!selectedFloorId.value && selectedBuilding.value && qFloorId) {
+            const f = selectedBuilding.value.floors.find(x => matchesEntityId(x, qFloorId))
+            if (f) selectedFloorId.value = String(f.id)
+        }
+        if (qRoomNumber && !selectedRoomDocId.value) {
+            form.value.roomNumber = qRoomNumber
+        }
+        // Scroll to room section & pulse highlight when prefilled
+        if (selectedRoomDocId.value) {
+            await nextTick()
+            roomPrefillHighlight.value = true
+            setTimeout(() => {
+                roomSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }, 600)
+            setTimeout(() => { roomPrefillHighlight.value = false }, 3000)
+        }
     }
+    initialLoad = false
 })
 
 const errors = ref<Record<string, string>>({})
@@ -164,6 +192,35 @@ interface BuildingData {
 const properties = ref<Property[]>([])
 const unitTypes = ref<UnitType[]>([])
 const buildings = ref<BuildingData[]>([])
+
+function matchesEntityId(entity: { id: number; documentId: string }, queryId?: string) {
+    if (!queryId) return true
+    return String(entity.id) === queryId || entity.documentId === queryId
+}
+
+function applyRoomPrefill(buildingId?: string, floorId?: string, roomNumber?: string) {
+    if (!roomNumber) return
+    const normalizedRoom = roomNumber.trim().toLowerCase()
+    if (!normalizedRoom) return
+
+    const candidateBuildings = buildings.value.filter(b => matchesEntityId(b, buildingId))
+    const buildingsToSearch = candidateBuildings.length > 0 ? candidateBuildings : buildings.value
+
+    for (const b of buildingsToSearch) {
+        const candidateFloors = b.floors.filter(f => matchesEntityId(f, floorId))
+        const floorsToSearch = candidateFloors.length > 0 ? candidateFloors : b.floors
+
+        for (const f of floorsToSearch) {
+            const match = f.rooms.find(r => r.roomNumber?.trim().toLowerCase() === normalizedRoom)
+            if (!match) continue
+            selectedBuildingId.value = String(b.id)
+            selectedFloorId.value = String(f.id)
+            selectedRoomDocId.value = match.documentId
+            form.value.roomNumber = match.roomNumber
+            return
+        }
+    }
+}
 const isLoadingProperties = ref(false)
 const isLoadingUnitTypes = ref(false)
 const isLoadingBuildings = ref(false)
@@ -180,7 +237,6 @@ const statusLabels = computed(() => ({
     inactive: t.value.statusInactive,
 }))
 
-// ─── Computed ─────────────────────────────────────────────────────────────────
 const selectedUnitType = computed(() =>
     unitTypes.value.find(ut => String(ut.id) === form.value.unitTypeId) ?? null
 )
@@ -209,6 +265,8 @@ const showPassword = ref(false)
 const copiedField = ref<string | null>(null)
 const termsExpanded = ref(false)
 const termsEditor = ref<HTMLElement | null>(null)
+const roomSectionRef = ref<HTMLElement | null>(null)
+const roomPrefillHighlight = ref(false)
 
 function execCmd(command: string, value?: string) {
     document.execCommand(command, false, value)
@@ -383,13 +441,15 @@ async function fetchUnitTypes(propertyDocumentId: string) {
 }
 
 // ─── Fetch Buildings when property changes ───────────────────────────────────
-async function fetchBuildings(propertyDocumentId: string) {
+async function fetchBuildings(propertyDocumentId: string, keepSelection = false) {
     isLoadingBuildings.value = true
     buildings.value = []
-    selectedBuildingId.value = ''
-    selectedFloorId.value = ''
-    selectedRoomDocId.value = ''
-    form.value.roomNumber = ''
+    if (!keepSelection) {
+        selectedBuildingId.value = ''
+        selectedFloorId.value = ''
+        selectedRoomDocId.value = ''
+        form.value.roomNumber = ''
+    }
     try {
         const res = await fetch(
             `${STRAPI_URL}/api/buildings?filters[property][documentId][$eq]=${propertyDocumentId}&populate[floors][populate][rooms][populate]=resident&sort=createdAt:asc`,
@@ -442,8 +502,8 @@ function buildingRoomStats(b: BuildingData) {
     for (const f of b.floors) {
         for (const r of f.rooms) {
             total++
-            if (r.status === 'active' || r.resident) occupied++
-            else if (r.status === 'maintenance') maint++
+            if (r.status === 'maintenance') maint++
+            else if (r.resident) occupied++
             else free++
         }
     }
@@ -451,13 +511,13 @@ function buildingRoomStats(b: BuildingData) {
 }
 
 function roomStatusColor(room: RoomData) {
-    if (room.status === 'active' || room.resident) return 'occupied'
     if (room.status === 'maintenance') return 'maintenance'
+    if (room.resident) return 'occupied'
     return 'free'
 }
 
 function selectRoom(room: RoomData) {
-    if (room.status === 'active' || room.resident || room.status === 'maintenance') return
+    if (room.resident || room.status === 'maintenance') return
     selectedRoomDocId.value = room.documentId
     form.value.roomNumber = room.roomNumber
 }
@@ -466,6 +526,7 @@ function selectRoom(room: RoomData) {
 watch(
     () => form.value.propertyId,
     async (newId) => {
+        if (initialLoad) return
         if (!newId) {
             unitTypes.value = []
             buildings.value = []
@@ -490,12 +551,14 @@ watch(
 
 // Reset floor/room when building changes
 watch(selectedBuildingId, () => {
+    if (initialLoad) return
     selectedFloorId.value = ''
     selectedRoomDocId.value = ''
     form.value.roomNumber = ''
 })
 // Reset room when floor changes
 watch(selectedFloorId, () => {
+    if (initialLoad) return
     selectedRoomDocId.value = ''
     form.value.roomNumber = ''
 })
@@ -870,7 +933,7 @@ function handleTermsPaste(e: ClipboardEvent) {
                     </div>
 
                     <!-- Room Selection: Building → Floor → Room -->
-                    <div>
+                    <div ref="roomSectionRef">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                             {{ t.roomNumber }} <span class="text-red-500">*</span>
                         </label>
@@ -901,7 +964,12 @@ function handleTermsPaste(e: ClipboardEvent) {
                                 <p
                                     class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
                                     <span
-                                        class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 text-[10px] font-bold">1</span>
+                                        class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
+                                        :class="selectedBuildingId && prefilled ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400' : 'bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400'">
+                                        <i v-if="selectedBuildingId && prefilled"
+                                            class="fa-solid fa-check text-[8px]"></i>
+                                        <template v-else>1</template>
+                                    </span>
                                     {{ t.selectBuilding || 'Select Building' }}
                                 </p>
                                 <div class="grid gap-2"
@@ -951,7 +1019,11 @@ function handleTermsPaste(e: ClipboardEvent) {
                                 <p
                                     class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
                                     <span
-                                        class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 text-[10px] font-bold">2</span>
+                                        class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
+                                        :class="selectedFloorId && prefilled ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400' : 'bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400'">
+                                        <i v-if="selectedFloorId && prefilled" class="fa-solid fa-check text-[8px]"></i>
+                                        <template v-else>2</template>
+                                    </span>
                                     {{ t.selectFloor || 'Select Floor' }}
                                 </p>
                                 <div class="flex flex-wrap gap-1.5">
@@ -975,7 +1047,12 @@ function handleTermsPaste(e: ClipboardEvent) {
                                 <p
                                     class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
                                     <span
-                                        class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 text-[10px] font-bold">3</span>
+                                        class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
+                                        :class="selectedRoomDocId && prefilled ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400' : 'bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400'">
+                                        <i v-if="selectedRoomDocId && prefilled"
+                                            class="fa-solid fa-check text-[8px]"></i>
+                                        <template v-else>3</template>
+                                    </span>
                                     {{ t.selectRoom || 'Select Room' }}
                                 </p>
                                 <!-- Legend -->
@@ -1000,7 +1077,7 @@ function handleTermsPaste(e: ClipboardEvent) {
                                         class="relative flex flex-col items-center justify-center py-2 px-1 rounded-lg border-2 text-xs font-semibold transition-all duration-200"
                                         :class="[
                                             selectedRoomDocId === room.documentId
-                                                ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 ring-2 ring-primary-300 dark:ring-primary-700 shadow-sm'
+                                                ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 ring-2 ring-primary-300 dark:ring-primary-700 shadow-sm' + (roomPrefillHighlight ? ' animate-pulse' : '')
                                                 : roomStatusColor(room) === 'free'
                                                     ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer'
                                                     : roomStatusColor(room) === 'occupied'
@@ -1028,11 +1105,24 @@ function handleTermsPaste(e: ClipboardEvent) {
 
                             <!-- Selected room summary -->
                             <div v-if="form.roomNumber && selectedRoomDocId"
-                                class="flex items-center gap-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 rounded-lg text-xs text-primary-700 dark:text-primary-300">
-                                <i class="fa-solid fa-check-circle"></i>
-                                <span>{{ t.selectedRoom || 'Selected' }}: <strong>{{ selectedBuilding?.name }} → {{
-                                    t.floorLabel || 'Floor' }} {{ selectedFloor?.floorNumber }} → {{ form.roomNumber
+                                class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs transition-all duration-300"
+                                :class="roomPrefillHighlight
+                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 shadow-sm'
+                                    : 'bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 text-primary-700 dark:text-primary-300'">
+                                <i
+                                    :class="roomPrefillHighlight ? 'fa-solid fa-circle-check text-emerald-500' : 'fa-solid fa-check-circle'"></i>
+                                <span class="flex-1">{{ t.selectedRoom || 'Selected' }}: <strong>{{
+                                        selectedBuilding?.name }} → {{
+                                            t.floorLabel || 'Floor' }} {{ selectedFloor?.floorNumber }} → {{ form.roomNumber
                                         }}</strong></span>
+                                <span v-if="prefilled"
+                                    class="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                                    :class="roomPrefillHighlight
+                                        ? 'bg-emerald-100 dark:bg-emerald-800/40 text-emerald-600 dark:text-emerald-400'
+                                        : 'bg-primary-100 dark:bg-primary-800/40 text-primary-600 dark:text-primary-400'">
+                                    <i class="fa-solid fa-link text-[8px]"></i>
+                                    {{ t.autoSelected || 'Auto-selected' }}
+                                </span>
                             </div>
                         </div>
 

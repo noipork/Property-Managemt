@@ -112,6 +112,13 @@ const headerVisible = ref(false)
 const filtersVisible = ref(false)
 const cardsVisible = ref(false)
 
+// Live lease counts — property documentId → number of leases (same source as detail page)
+const liveOccupiedByProperty = ref<Record<string, number>>({})
+
+function liveOccupied(p: StrapiProperty): number {
+    return liveOccupiedByProperty.value[p.documentId] ?? p.occupiedUnits
+}
+
 async function fetchProperties() {
     try {
         isLoading.value = true
@@ -129,6 +136,30 @@ async function fetchProperties() {
         if (!res.ok) throw new Error('Failed to fetch')
         const json = await res.json()
         properties.value = json.data ?? []
+
+        // Fetch live lease counts for all owned properties in one request
+        if (properties.value.length > 0) {
+            const leaseParams = new URLSearchParams({
+                'fields[0]': 'status',
+                'populate[property][fields][0]': 'documentId',
+                'pagination[pageSize]': '500',
+            })
+            if (user.value?.documentId) {
+                leaseParams.set('filters[property][owner][documentId][$eq]', user.value.documentId)
+            }
+            const leaseRes = await fetch(`${STRAPI_URL}/api/leases?${leaseParams}`, {
+                headers: { 'Authorization': `Bearer ${token.value}` },
+            })
+            if (leaseRes.ok) {
+                const leaseJson = await leaseRes.json()
+                const counts: Record<string, number> = {}
+                for (const lease of leaseJson.data ?? []) {
+                    const propDocId = lease.property?.documentId
+                    if (propDocId) counts[propDocId] = (counts[propDocId] ?? 0) + 1
+                }
+                liveOccupiedByProperty.value = counts
+            }
+        }
     } catch (e) {
         errorMessage.value = 'Failed to load properties'
     } finally {
@@ -184,7 +215,7 @@ async function handleDelete() {
 
 function occupancyPercent(p: StrapiProperty) {
     if (!p.totalUnits) return 0
-    return Math.round((p.occupiedUnits / p.totalUnits) * 100)
+    return Math.round((liveOccupied(p) / p.totalUnits) * 100)
 }
 
 function imageUrl(url: string) {
@@ -334,7 +365,7 @@ function imageUrl(url: string) {
                             </div>
                             <div class="text-center p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.occupied }}</p>
-                                <p class="text-sm font-bold text-gray-900 dark:text-white">{{ property.occupiedUnits }}
+                                <p class="text-sm font-bold text-gray-900 dark:text-white">{{ liveOccupied(property) }}
                                 </p>
                             </div>
                             <div class="text-center p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">

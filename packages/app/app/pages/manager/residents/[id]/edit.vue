@@ -8,6 +8,9 @@ const STRAPI_URL = config.public.strapiUrl
 const router = useRouter()
 const route = useRoute()
 const residentId = computed(() => route.params.id as string)
+const residentNumericId = ref<number | null>(null)
+const originalRoomNumber = ref('')
+const originalPropertyId = ref('')
 
 // ─── Form State ───────────────────────────────────────────────────────────────
 const form = ref({
@@ -69,7 +72,7 @@ function handleTermsPaste(e: ClipboardEvent) {
 async function fetchLease() {
     try {
         const params = new URLSearchParams({
-            'filters[resident][id][$eq]': residentId.value,
+            'filters[resident][id][$eq]': String(residentNumericId.value),
             'sort[0]': 'createdAt:desc',
             'pagination[pageSize]': '1',
         })
@@ -204,12 +207,12 @@ function unitTypeOptionLabel(ut: { name: string; quantity: number; occupiedCount
 }
 
 // ─── Room Availability Check ─────────────────────────────────────────────────
-async function isRoomTaken(propertyId: string, roomNumber: string, excludeUserId: string): Promise<boolean> {
+async function isRoomTaken(propertyId: string, roomNumber: string, excludeUserId: string | number): Promise<boolean> {
     const params = new URLSearchParams({
         'filters[role][id][$eq]': '4',
         'filters[property][id]': propertyId,
         'filters[roomNumber][$eqi]': roomNumber.trim(),
-        'filters[id][$ne]': excludeUserId,
+        'filters[id][$ne]': String(excludeUserId),
         'pagination[pageSize]': '1',
     })
     const res = await fetch(`${STRAPI_URL}/api/users?${params}`, {
@@ -224,17 +227,23 @@ async function fetchResident() {
     isLoading.value = true
     try {
         const params = new URLSearchParams({
+            'filters[documentId][$eq]': residentId.value,
             'populate[0]': 'property',
             'populate[1]': 'unitType',
+            'pagination[pageSize]': '1',
         })
-        const res = await fetch(`${STRAPI_URL}/api/users/${residentId.value}?${params}`, {
+        const res = await fetch(`${STRAPI_URL}/api/users?${params}`, {
             headers: { Authorization: `Bearer ${token.value}` },
         })
         if (!res.ok) throw new Error('Not found')
-        const data = await res.json()
+        const json = await res.json()
+        const data = Array.isArray(json) ? json[0] : (json.data?.[0] ?? json)
+        if (!data) throw new Error('Not found')
+        residentNumericId.value = data.id
         form.value.username = data.username ?? ''
         form.value.email = data.email ?? ''
         form.value.roomNumber = data.roomNumber ?? ''
+        originalRoomNumber.value = data.roomNumber ?? ''
         form.value.registrationDate = data.registrationDate ?? ''
         form.value.residencyStatus = data.residencyStatus ?? 'reserved'
         form.value.nextBillDate = data.nextBillDate ?? ''
@@ -244,6 +253,7 @@ async function fetchResident() {
         const propertyData = getPrimaryRelation(data.property)
         if (propertyData) {
             form.value.propertyId = String((propertyData as any).id)
+            originalPropertyId.value = String((propertyData as any).id)
         }
 
         const unitTypeData = getPrimaryRelation(data.unitType)
@@ -396,8 +406,8 @@ function buildingRoomStats(b: BuildingData) {
     for (const f of b.floors) {
         for (const r of f.rooms) {
             total++
-            if (r.status === 'active' || r.resident) occupied++
-            else if (r.status === 'maintenance') maint++
+            if (r.status === 'maintenance') maint++
+            else if (r.resident) occupied++
             else free++
         }
     }
@@ -405,18 +415,17 @@ function buildingRoomStats(b: BuildingData) {
 }
 
 function roomStatusColor(room: RoomData) {
-    if (room.status === 'active' || room.resident) return 'occupied'
     if (room.status === 'maintenance') return 'maintenance'
+    if (room.resident) return 'occupied'
     return 'free'
 }
 
 function selectRoom(room: RoomData) {
-    // Allow clicking the currently selected room to deselect, or free rooms
-    if (room.documentId === selectedRoomDocId.value) {
-        // already selected — do nothing (keep it)
-        return
-    }
-    if (room.status === 'active' || room.resident || room.status === 'maintenance') return
+    // Allow clicking the currently selected room (keep it)
+    if (room.documentId === selectedRoomDocId.value) return
+    // Block maintenance rooms or rooms occupied by another resident
+    if (room.status === 'maintenance') return
+    if (room.resident && room.resident.id !== residentNumericId.value) return
     selectedRoomDocId.value = room.documentId
     form.value.roomNumber = room.roomNumber
 }
@@ -485,14 +494,14 @@ async function submit() {
     isSubmitting.value = true
     try {
         // ── Step 1: Check if room number is already taken by another resident ──
-        const taken = await isRoomTaken(form.value.propertyId, form.value.roomNumber, residentId.value)
+        const taken = await isRoomTaken(form.value.propertyId, form.value.roomNumber, residentNumericId.value ?? 0)
         if (taken) {
             showRoomTakenModal.value = true
             return
         }
 
         // ── Step 2: Update resident ──
-        const res = await fetch(`${STRAPI_URL}/api/users/${residentId.value}`, {
+        const res = await fetch(`${STRAPI_URL}/api/users/${residentNumericId.value}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -520,7 +529,48 @@ async function submit() {
             return
         }
 
-        // ── Step 3: Update lease if one exists ──
+        // ── Step 3: Update room assignment in building if room or property changed ──
+        const roomChanged = form.value.roomNumber.trim().toLowerCase() !== originalRoomNumber.value.trim().toLowerCase()
+        const propertyChanged = form.value.propertyId !== originalPropertyId.value
+        if (roomChanged || propertyChanged) {
+            try {
+                // Unassign resident from old room first
+                await fetch(`${STRAPI_URL}/api/rooms/unassign-resident`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token.value}`,
+                    },
+                    body: JSON.stringify({
+                        residentDocumentId: residentId.value,
+                    }),
+                })
+            } catch {
+                // Non-blocking — old room may not exist in building setup
+            }
+            try {
+                // Assign resident to new room
+                await fetch(`${STRAPI_URL}/api/rooms/assign-resident`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token.value}`,
+                    },
+                    body: JSON.stringify({
+                        propertyId: Number(form.value.propertyId),
+                        roomNumber: form.value.roomNumber,
+                        residentDocumentId: residentId.value,
+                    }),
+                })
+            } catch {
+                // Non-blocking — new room may not exist in building setup
+            }
+            // Update tracked originals so subsequent saves don't re-trigger
+            originalRoomNumber.value = form.value.roomNumber
+            originalPropertyId.value = form.value.propertyId
+        }
+
+        // ── Step 4: Update lease if one exists ──
         if (leaseDocumentId.value) {
             await fetch(`${STRAPI_URL}/api/leases/${leaseDocumentId.value}`, {
                 method: 'PUT',
@@ -543,11 +593,11 @@ async function submit() {
             })
         }
 
-        // ── Step 4: Success ──
-        showToast('success', 'Resident updated successfully')
+        // ── Step 5: Success ──
+        showToast('success', t.value.residentUpdated)
         setTimeout(() => router.push('/manager/residents'), 1800)
     } catch (e: any) {
-        modalErrorMessage.value = (e as any)?.message || 'Update failed'
+        modalErrorMessage.value = (e as any)?.message || t.value.residentUpdateError
         showErrorModal.value = true
     } finally {
         isSubmitting.value = false

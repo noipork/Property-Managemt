@@ -993,7 +993,7 @@ onUnmounted(() => {
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.areaLabel }}</dt>
                             <dd class="text-sm font-medium text-gray-900 dark:text-white">{{
                                 Number(property.area).toLocaleString('en-US')
-                                }} {{ property.areaUnit }}</dd>
+                            }} {{ property.areaUnit }}</dd>
                         </div>
                         <div v-if="property.yearBuilt" class="flex justify-between">
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.yearBuiltLabel }}</dt>
@@ -1048,80 +1048,98 @@ onUnmounted(() => {
                     <i class="fa-solid fa-sliders text-primary-500"></i>
                     {{ t.billingConfig }}
                 </h3>
-                <div class="flex gap-6 flex-wrap">
-                    <!-- Rates column -->
-                    <dl class="space-y-3 flex-1 min-w-[180px]">
-                        <div v-if="property.electricPricePerUnit" class="flex justify-between gap-4">
-                            <dt class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+
+                <!-- QR Code (mobile: full-width centered; md: side-by-side) -->
+                <div class="flex flex-col md:flex-row md:gap-6">
+                    <!-- Rates / bank details -->
+                    <dl class="flex-1 space-y-3">
+                        <div v-if="property.electricPricePerUnit" class="flex items-center justify-between gap-2">
+                            <dt class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5 shrink-0">
                                 <i class="fa-solid fa-bolt text-amber-400 text-xs"></i>
                                 {{ t.electricPricePerUnit }}
                             </dt>
-                            <dd class="text-sm font-medium text-gray-900 dark:text-white">
+                            <dd class="text-sm font-medium text-gray-900 dark:text-white text-right">
                                 {{ Number(property.electricPricePerUnit).toLocaleString('en-US') }} {{ property.currency
                                 }}/{{
                                     t.unit }}
                             </dd>
                         </div>
-                        <div v-if="property.waterPricePerUnit" class="flex justify-between gap-4">
-                            <dt class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                        <div v-if="property.waterPricePerUnit" class="flex items-center justify-between gap-2">
+                            <dt class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5 shrink-0">
                                 <i class="fa-solid fa-droplet text-blue-400 text-xs"></i>
                                 {{ t.waterPricePerUnit }}
                             </dt>
-                            <dd class="text-sm font-medium text-gray-900 dark:text-white">
+                            <dd class="text-sm font-medium text-gray-900 dark:text-white text-right">
                                 {{ Number(property.waterPricePerUnit).toLocaleString('en-US') }} {{ property.currency
                                 }}/{{ t.unit
                                 }}
                             </dd>
                         </div>
-                        <div v-if="property.commonAreaFee" class="flex justify-between gap-4">
-                            <dt class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                        <div v-if="property.commonAreaFee" class="flex items-center justify-between gap-2">
+                            <dt class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5 shrink-0">
                                 <i class="fa-solid fa-building-columns text-gray-400 text-xs"></i>
                                 {{ t.commonAreaFee }}
                             </dt>
-                            <dd class="text-sm font-medium text-gray-900 dark:text-white">
+                            <dd class="text-sm font-medium text-gray-900 dark:text-white text-right">
                                 {{ Number(property.commonAreaFee).toLocaleString('en-US') }} {{ property.currency }}/{{
                                     t.month }}
                             </dd>
                         </div>
-                        <div v-if="property.invoiceDueDays" class="flex justify-between gap-4">
-                            <dt class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                        <div v-if="property.invoiceDueDays" class="flex items-center justify-between gap-2">
+                            <dt class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5 shrink-0">
                                 <i class="fa-solid fa-calendar-days text-gray-400 text-xs"></i>
                                 {{ t.invoiceDueDays }}
                             </dt>
-                            <dd class="text-sm font-medium text-gray-900 dark:text-white">{{ property.invoiceDueDays }}
-                                {{ t.days }}
+                            <dd class="text-sm font-medium text-gray-900 dark:text-white text-right">
+                                {{ property.invoiceDueDays }} {{ t.days }}
                             </dd>
                         </div>
                         <div v-if="property.bankName"
-                            class="flex justify-between gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
-                            <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.bankName }}</dt>
-                            <dd class="text-sm font-medium text-gray-900 dark:text-white">{{ property.bankName }}</dd>
+                            class="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                            <dt class="text-sm text-gray-500 dark:text-gray-400 shrink-0">{{ t.bankName }}</dt>
+                            <dd class="text-sm font-medium text-gray-900 dark:text-white text-right">{{
+                                property.bankName }}</dd>
                         </div>
-                        <div v-if="property.bankAccountName" class="flex justify-between gap-4">
-                            <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.bankAccountName }}</dt>
-                            <dd class="text-sm font-medium text-gray-900 dark:text-white">{{ property.bankAccountName }}
+                        <div v-if="property.bankAccountName" class="flex items-center justify-between gap-2">
+                            <dt class="text-sm text-gray-500 dark:text-gray-400 shrink-0">{{ t.bankAccountName }}</dt>
+                            <dd class="text-sm font-medium text-gray-900 dark:text-white text-right">{{
+                                property.bankAccountName }}
                             </dd>
                         </div>
-                        <div v-if="property.bankAccountNumber" class="flex justify-between gap-4">
-                            <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.bankAccountNumber }}</dt>
-                            <dd class="text-sm font-medium text-gray-900 dark:text-white font-mono">{{
-                                property.bankAccountNumber }}
-                            </dd>
+                        <div v-if="property.bankAccountNumber" class="flex items-start justify-between gap-2">
+                            <dt class="text-sm text-gray-500 dark:text-gray-400 shrink-0">{{ t.bankAccountNumber }}</dt>
+                            <dd
+                                class="text-sm font-medium text-gray-900 dark:text-white font-mono text-right break-all">
+                                {{
+                                    property.bankAccountNumber }}</dd>
                         </div>
-                        <div v-if="property.promptPayId" class="flex justify-between gap-4">
-                            <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.promptPayId }}</dt>
-                            <dd class="text-sm font-medium text-gray-900 dark:text-white font-mono">{{
-                                property.promptPayId }}</dd>
+                        <div v-if="property.promptPayId" class="flex items-start justify-between gap-2">
+                            <dt class="text-sm text-gray-500 dark:text-gray-400 shrink-0">{{ t.promptPayId }}</dt>
+                            <dd
+                                class="text-sm font-medium text-gray-900 dark:text-white font-mono text-right break-all">
+                                {{
+                                    property.promptPayId }}</dd>
                         </div>
                     </dl>
+
                     <!-- QR Code -->
-                    <div v-if="property.qrCodeImage" class="flex flex-col items-center gap-2">
+                    <div v-if="property.qrCodeImage" class="flex flex-col items-center gap-2 mt-4 md:mt-0 md:shrink-0">
                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.qrCodeImage }}</p>
-                        <div
-                            class="w-28 h-28 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white flex items-center justify-center">
-                            <img :src="imageUrl(property.qrCodeImage.url)" class="w-full h-full object-contain p-1"
+                        <button
+                            class="group w-36 h-36 md:w-32 md:h-32 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white flex items-center justify-center relative hover:border-primary-400 transition-colors"
+                            @click="openLightboxSet([property.qrCodeImage!], 0)">
+                            <img :src="imageUrl(property.qrCodeImage.url)" class="w-full h-full object-contain p-2"
                                 :alt="t.qrCodeImage" />
-                        </div>
+                            <div
+                                class="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors flex items-center justify-center">
+                                <div
+                                    class="opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 bg-white/90 dark:bg-gray-900/90 rounded-full flex items-center justify-center shadow">
+                                    <i
+                                        class="fa-solid fa-magnifying-glass-plus text-gray-700 dark:text-gray-200 text-xs"></i>
+                                </div>
+                            </div>
+                        </button>
+                        <p class="text-[10px] text-gray-400 dark:text-gray-500">Tap to view</p>
                     </div>
                 </div>
             </div>
@@ -1146,7 +1164,7 @@ onUnmounted(() => {
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ ut.name
-                                    }}</span>
+                                        }}</span>
                                     <span
                                         class="text-xs px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400 capitalize">
                                         {{ ut.unitType?.replace(/^br(\d)$/, '$1BR') ?? ut.unitType }}
@@ -1206,7 +1224,7 @@ onUnmounted(() => {
                         <!-- Description + images -->
                         <div v-if="ut.description || ut.images?.length" class="p-3 space-y-2">
                             <p v-if="ut.description" class="text-xs text-gray-500 dark:text-gray-400">{{ ut.description
-                            }}</p>
+                                }}</p>
                             <div v-if="ut.images?.length" class="flex gap-2 flex-wrap">
                                 <div v-for="(img, imgIdx) in ut.images" :key="img.id"
                                     class="relative w-24 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer group"
@@ -1496,7 +1514,7 @@ onUnmounted(() => {
                                             <div v-for="room in floor.rooms" :key="room.documentId"
                                                 class="relative p-2.5 rounded-lg border transition-all hover:shadow-sm group/room"
                                                 :class="[roomStatusColors[roomDisplayStatus(room)], editingRoom !== room.documentId && (roomDisplayStatus(room) === 'vacant' || room.resident) ? 'cursor-pointer' : '', roomDisplayStatus(room) === 'vacant' && editingRoom !== room.documentId ? 'hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10' : '', room.resident && editingRoom !== room.documentId ? 'hover:opacity-90 hover:shadow-md' : '']"
-                                                @click="editingRoom !== room.documentId ? (room.resident ? $router.push(`/manager/residents/${room.resident.id}/edit`) : roomDisplayStatus(room) === 'vacant' ? $router.push(`/manager/residents/register?propertyId=${property?.id}&roomNumber=${room.roomNumber}`) : null) : null">
+                                                @click="editingRoom !== room.documentId ? (room.resident ? $router.push(`/manager/residents/${room.resident.documentId}/edit`) : roomDisplayStatus(room) === 'vacant' ? $router.push(`/manager/residents/register?propertyId=${property?.id}&roomNumber=${room.roomNumber}&buildingId=${building.id}&floorId=${floor.id}`) : null) : null">
 
                                                 <!-- Room view mode -->
                                                 <template v-if="editingRoom !== room.documentId">
@@ -1512,14 +1530,14 @@ onUnmounted(() => {
                                                             class="ml-auto flex items-center gap-0.5 opacity-0 group-hover/room:opacity-100 transition-opacity">
                                                             <!-- Register resident (vacant rooms only) -->
                                                             <NuxtLink v-if="roomDisplayStatus(room) === 'vacant'"
-                                                                :to="`/manager/residents/register?propertyId=${property?.id}&roomNumber=${room.roomNumber}`"
+                                                                :to="`/manager/residents/register?propertyId=${property?.id}&roomNumber=${room.roomNumber}&buildingId=${building.id}&floorId=${floor.id}`"
                                                                 class="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:text-emerald-500"
                                                                 :title="t.registerResident">
                                                                 <i class="fa-solid fa-user-plus text-[7px]"></i>
                                                             </NuxtLink>
                                                             <!-- Edit resident (occupied rooms) -->
                                                             <NuxtLink v-if="room.resident"
-                                                                :to="`/manager/residents/${room.resident.id}/edit`"
+                                                                :to="`/manager/residents/${room.resident.documentId}/edit`"
                                                                 @click.stop
                                                                 class="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:text-primary-500"
                                                                 :title="t.editResident">
@@ -1860,10 +1878,11 @@ onUnmounted(() => {
                                 <p>{{ t.floor }} {{ newBuilding.startFloor }} – {{ newBuilding.startFloor +
                                     newBuilding.totalFloors - 1 }} · {{ newBuilding.totalFloors }} {{
                                         t.floor?.toLowerCase()
-                                    }}{{ newBuilding.totalFloors > 1 ? 's' : '' }} × {{ newBuilding.roomsPerFloor }} {{
+                                    }} × {{ newBuilding.roomsPerFloor }} {{
                                         t.rooms
                                     }} = <span class="font-bold text-gray-900 dark:text-white">{{
-                                        newBuilding.totalFloors * newBuilding.roomsPerFloor }}</span> total rooms
+                                        newBuilding.totalFloors * newBuilding.roomsPerFloor }}</span>
+                                    {{ t.totalRooms ?? 'total rooms' }}
                                 </p>
                                 <p class="mt-1">Room numbers: {{ newBuilding.totalFloors > 0 &&
                                     newBuilding.roomsPerFloor > 0 ?

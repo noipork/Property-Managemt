@@ -169,16 +169,16 @@ watch(
                                 : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white',
                             open ? 'gap-3 px-3 py-2.5' : 'justify-center py-2 px-0'
                         ]" :title="!open ? item.name : undefined">
-                        <div class="relative flex-shrink-0" :class="open ? 'w-5' : 'w-full'">
+                        <div class="relative flex-shrink-0 w-5">
                             <i :class="[
                                 item.icon,
                                 'text-lg',
-                                open ? 'w-5 text-center block' : 'w-full text-center text-xl block',
+                                open ? 'w-5 text-center block' : 'w-5 text-center text-xl block',
                                 isActive(item.path) ? 'text-white' : 'text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white',
                             ]"></i>
                             <!-- Collapsed badge dot -->
                             <span v-if="!open && badgeCount(item.path) > 0"
-                                class="absolute -top-1 -right-0.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-gray-900"></span>
+                                class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-gray-900"></span>
                         </div>
                         <span v-if="open" class="text-sm font-medium whitespace-nowrap">
                             {{ item.name }}
