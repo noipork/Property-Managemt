@@ -27,6 +27,7 @@ const pathNotifTypes: Record<string, string[]> = {
     '/resident/payment-history': ['payment'],
     '/resident/my-lease': ['lease'],
     '/resident/dashboard': ['announcement'],
+    '/resident/announcements': ['announcement'],
     '/resident/assets': ['asset'],
 }
 
@@ -77,8 +78,10 @@ const managerMenuSections = computed(() => [
     {
         title: t.value.account,
         items: [
+            { name: t.value.profile, icon: 'ti-user', badge: '', path: '/profile' },
             { name: t.value.packages, icon: 'ti-crown', badge: '', path: '/manager/packages' },
             { name: t.value.subscriptions, icon: 'ti-receipt', badge: '', path: '/manager/subscriptions' },
+
         ],
     },
 ])
@@ -103,8 +106,15 @@ const residentMenuSections = computed(() => [
         title: t.value.services,
         items: [
             { name: t.value.maintenance, icon: 'ti-headphone-alt', badge: '', path: '/resident/maintenance' },
+            { name: t.value.announcements, icon: 'ti-announcement', badge: '', path: '/resident/announcements' },
             { name: t.value.messages, icon: 'ti-comment', badge: '', path: '/resident/messages' },
             { name: t.value.assets, icon: 'ti-package', badge: '', path: '/resident/assets' },
+        ],
+    },
+    {
+        title: t.value.account,
+        items: [
+            { name: t.value.profile, icon: 'ti-user', badge: '', path: '/profile' },
         ],
     },
 ])

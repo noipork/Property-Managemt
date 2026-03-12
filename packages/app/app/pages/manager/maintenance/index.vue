@@ -38,6 +38,7 @@ interface Property {
     id: number
     documentId: string
     name: string
+    city: string | null
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ async function fetchProperties() {
         const params = new URLSearchParams({
             'pagination[pageSize]': '200',
             'fields[0]': 'name',
+            'fields[1]': 'city',
         })
         if (user.value?.documentId) {
             params.set('filters[owner][documentId][$eq]', user.value.documentId)
@@ -84,7 +86,7 @@ async function fetchProperties() {
         )
         const data = await res.json()
         propertiesList.value = (data.data ?? []).map((p: any) => ({
-            id: p.id, documentId: p.documentId, name: p.name,
+            id: p.id, documentId: p.documentId, name: p.name, city: p.city ?? null,
         }))
     } catch { /* ignore */ }
 }
@@ -240,10 +242,12 @@ function loadLastSeenMap(): Record<string, number> {
     }
 }
 
+let fetchTimer: ReturnType<typeof setTimeout> | null = null
 watch([filterPropertyId, filterStatus, filterCategory, filterPriority, searchQuery], () => {
     currentPage.value = 1
-    fetchRequests()
-}, { debounce: 300 } as any)
+    if (fetchTimer) clearTimeout(fetchTimer)
+    fetchTimer = setTimeout(() => fetchRequests(), 300)
+})
 
 watch(currentPage, () => {
     nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
@@ -425,10 +429,26 @@ onUnmounted(() => {
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ t.maintenanceSubtitle }}</p>
         </div>
 
+        <!-- Property Dropdown -->
+        <div class="relative w-full sm:w-72 transition-all duration-500 delay-100"
+            :class="headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
+            <i
+                class="fa-solid fa-house absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+            <select v-model="filterPropertyId"
+                class="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none transition-colors">
+                <option value="">{{ t.allProperties }}</option>
+                <option v-for="prop in propertiesList" :key="prop.id" :value="prop.documentId">
+                    {{ prop.name }}{{ prop.city ? ' · ' + prop.city : '' }}
+                </option>
+            </select>
+            <i
+                class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+        </div>
+
         <!-- Filters -->
-        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 transition-all duration-500 delay-100"
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 transition-all duration-500 delay-150"
             :class="filtersVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
-            <!-- Search - Full width on mobile -->
+            <!-- Search -->
             <div class="relative w-full mb-3">
                 <i
                     class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
@@ -436,25 +456,12 @@ onUnmounted(() => {
                     class="w-full pl-9 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
 
-            <!-- Filters grid - 2 columns on mobile, flex on desktop -->
-            <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
-                <!-- Property filter -->
-                <div class="relative col-span-2 sm:col-span-1">
-                    <select v-model="filterPropertyId"
-                        class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
-                        <option value="">{{ t.allProperties }}</option>
-                        <option v-for="prop in propertiesList" :key="prop.id" :value="prop.documentId">
-                            {{ prop.name }}
-                        </option>
-                    </select>
-                    <i
-                        class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                </div>
-
+            <!-- Filters row -->
+            <div class="flex flex-wrap gap-2">
                 <!-- Status filter -->
                 <div class="relative">
                     <select v-model="filterStatus"
-                        class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
+                        class="pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
                         <option value="">{{ t.allStatuses }}</option>
                         <option v-for="s in statuses" :key="s" :value="s">{{ (statusLabels as any)[s] }}</option>
                     </select>
@@ -465,7 +472,7 @@ onUnmounted(() => {
                 <!-- Category filter -->
                 <div class="relative">
                     <select v-model="filterCategory"
-                        class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
+                        class="pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
                         <option value="">{{ t.allCategories }}</option>
                         <option v-for="c in categories" :key="c" :value="c">{{ (categoryLabels as any)[c] }}</option>
                     </select>
@@ -476,14 +483,13 @@ onUnmounted(() => {
                 <!-- Priority filter -->
                 <div class="relative">
                     <select v-model="filterPriority"
-                        class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
+                        class="pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
                         <option value="">{{ t.allPriorities }}</option>
                         <option v-for="p in priorities" :key="p" :value="p">{{ (priorityLabels as any)[p] }}</option>
                     </select>
                     <i
                         class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
-
             </div>
         </div>
 

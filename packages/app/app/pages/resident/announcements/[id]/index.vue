@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
 
 const { t, lang } = useI18n()
-const { token, user } = useAuth()
+const { token } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
@@ -35,52 +35,10 @@ const announcement = ref<Announcement | null>(null)
 const isLoading = ref(true)
 const errorMessage = ref('')
 
-// Delete Modal
-const showDeleteModal = ref(false)
-const isDeleting = ref(false)
-
-// Status update
-const isUpdatingStatus = ref(false)
-
-async function updateStatus(newStatus: 'published' | 'draft' | 'archived') {
-    if (!announcement.value) return
-    isUpdatingStatus.value = true
-    try {
-        const body: any = { data: { status: newStatus } }
-        if (newStatus === 'published' && !announcement.value.publishDate) {
-            body.data.publishDate = new Date().toISOString()
-        }
-        const res = await fetch(`${STRAPI_URL}/api/announcements/${announcementDocumentId}`, {
-            method: 'PUT',
-            headers: {
-                Authorization: `Bearer ${token.value}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(body),
-        })
-        if (!res.ok) throw new Error('Update failed')
-        const msg = newStatus === 'published' ? t.value.announcementPublished
-            : newStatus === 'draft' ? t.value.announcementUnpublished
-                : t.value.announcementArchived
-        showToast('success', msg)
-        await fetchAnnouncement()
-    } catch {
-        showToast('error', t.value.announcementStatusError)
-    } finally {
-        isUpdatingStatus.value = false
-    }
-}
-
 // Image viewer
 const showImageViewer = ref(false)
 const viewerImages = ref<{ url: string }[]>([])
 const viewerIndex = ref(0)
-
-const statusColors: Record<string, string> = {
-    draft: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
-    published: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
-    archived: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
-}
 
 const priorityColors: Record<string, string> = {
     normal: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
@@ -108,13 +66,7 @@ const categoryIcons: Record<string, string> = {
     celebration: 'fa-solid fa-champagne-glasses',
 }
 
-const statusLabels = computed(() => ({
-    draft: t.value.draft,
-    published: t.value.published,
-    archived: t.value.archived,
-}))
-
-const categoryLabels = computed(() => ({
+const categoryLabels = computed((): Record<string, string> => ({
     general: t.value.general,
     maintenance: t.value.maintenance,
     event: t.value.event,
@@ -124,22 +76,11 @@ const categoryLabels = computed(() => ({
     celebration: t.value.celebration,
 }))
 
-const priorityLabels = computed(() => ({
+const priorityLabels = computed((): Record<string, string> => ({
     normal: t.value.normal,
     important: t.value.important,
     urgent: t.value.urgent,
 }))
-
-// ─── Toast ────────────────────────────────────────────────────────────────────
-interface Toast { id: number; type: 'success' | 'error'; message: string }
-const toasts = ref<Toast[]>([])
-let toastCounter = 0
-function showToast(type: 'success' | 'error', message: string) {
-    const id = ++toastCounter
-    toasts.value.push({ id, type, message })
-    setTimeout(() => { const i = toasts.value.findIndex(t => t.id === id); if (i !== -1) toasts.value.splice(i, 1) }, 4000)
-}
-function dismissToast(id: number) { const i = toasts.value.findIndex(t => t.id === id); if (i !== -1) toasts.value.splice(i, 1) }
 
 function formatDate(dateStr: string | null) {
     if (!dateStr) return '—'
@@ -213,25 +154,6 @@ async function fetchAnnouncement() {
     }
 }
 
-// ─── Delete ───────────────────────────────────────────────────────────────────
-async function deleteAnnouncement() {
-    if (!announcement.value) return
-    isDeleting.value = true
-    try {
-        const res = await fetch(`${STRAPI_URL}/api/announcements/${announcement.value.documentId}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token.value}` },
-        })
-        if (!res.ok) throw new Error('Delete failed')
-        showToast('success', t.value.announcementDeleted)
-        setTimeout(() => router.push('/manager/announcements'), 800)
-    } catch {
-        showToast('error', t.value.announcementDeleteError)
-    } finally {
-        isDeleting.value = false
-    }
-}
-
 // ─── Entry Animation ─────────────────────────────────────────────────────────
 const sectionsVisible = ref(false)
 
@@ -250,31 +172,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="max-w-4xl mx-auto space-y-6">
-        <!-- Toast -->
-        <Teleport to="body">
-            <div class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"
-                style="min-width:300px;max-width:400px">
-                <TransitionGroup enter-active-class="transition-all duration-300"
-                    enter-from-class="opacity-0 translate-x-8" enter-to-class="opacity-100 translate-x-0"
-                    leave-active-class="transition-all duration-300" leave-from-class="opacity-100 translate-x-0"
-                    leave-to-class="opacity-0 translate-x-8">
-                    <div v-for="toast in toasts" :key="toast.id"
-                        class="pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium"
-                        :class="toast.type === 'success'
-                            ? 'bg-emerald-50 dark:bg-emerald-900/80 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
-                            : 'bg-red-50 dark:bg-red-900/80 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'">
-                        <i :class="toast.type === 'success' ? 'fa-solid fa-check' : 'fa-solid fa-circle-exclamation'"
-                            class="text-base mt-0.5 shrink-0"></i>
-                        <span class="flex-1 leading-snug">{{ toast.message }}</span>
-                        <button @click="dismissToast(toast.id)"
-                            class="shrink-0 opacity-50 hover:opacity-100 transition-opacity"><i
-                                class="fa-solid fa-xmark text-xs"></i></button>
-                    </div>
-                </TransitionGroup>
-            </div>
-        </Teleport>
-
+    <div class="max-w-3xl mx-auto space-y-6 pb-20 md:pb-0">
         <!-- Loading -->
         <div v-if="isLoading" class="flex items-center justify-center py-20">
             <div class="flex flex-col items-center gap-3">
@@ -288,75 +186,43 @@ onMounted(async () => {
             class="text-center py-16 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
             <i class="fa-solid fa-circle-exclamation text-4xl text-red-400 mb-4"></i>
             <p class="text-gray-600 dark:text-gray-400">{{ errorMessage }}</p>
-            <NuxtLink to="/manager/announcements" class="mt-4 text-sm text-primary-600 hover:underline">{{
+            <NuxtLink to="/resident/announcements" class="mt-4 text-sm text-primary-600 hover:underline inline-block">{{
                 t.backToAnnouncements
                 }}</NuxtLink>
         </div>
 
         <template v-else-if="announcement">
             <!-- Header -->
-            <div class="flex items-start justify-between gap-4 transition-all duration-500"
+            <div class="flex items-start gap-4 transition-all duration-500"
                 :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3'">
-                <div class="flex items-start gap-4">
-                    <NuxtLink to="/manager/announcements"
-                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors shrink-0 mt-1">
-                        <i class="fa-solid fa-arrow-left text-gray-500 dark:text-gray-400"></i>
-                    </NuxtLink>
-                    <div>
-                        <div class="flex items-center gap-2 mb-2 flex-wrap">
-                            <span :class="categoryColors[announcement.category]"
-                                class="px-2.5 py-1 rounded-full text-xs font-medium text-white flex items-center gap-1">
-                                <i :class="categoryIcons[announcement.category]" class="text-[10px]"></i>
-                                {{ categoryLabels[announcement.category] }}
-                            </span>
-                            <span :class="statusColors[announcement.status]"
-                                class="px-2.5 py-1 rounded-full text-xs font-semibold">
-                                {{ statusLabels[announcement.status] }}
-                            </span>
-                            <span v-if="announcement.priority !== 'normal'"
-                                :class="priorityColors[announcement.priority]"
-                                class="px-2.5 py-1 rounded-full text-xs font-semibold">
-                                {{ priorityLabels[announcement.priority] }}
-                            </span>
-                            <span v-if="announcement.isPinned"
-                                class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 flex items-center gap-1">
-                                <i class="fa-solid fa-thumbtack text-[10px]"></i>
-                                {{ t.pinned }}
-                            </span>
-                        </div>
-                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ announcement.title }}</h1>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            {{ formatDateTime(announcement.publishDate || announcement.createdAt) }}
-                            <span v-if="announcement.author"> · {{ announcement.author.username }}</span>
-                            <span v-if="announcement.property"> · {{ announcement.property.name }}</span>
-                        </p>
+                <NuxtLink to="/resident/announcements"
+                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors shrink-0 mt-1">
+                    <i class="fa-solid fa-arrow-left text-gray-500 dark:text-gray-400"></i>
+                </NuxtLink>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-2 flex-wrap">
+                        <span :class="categoryColors[announcement.category]"
+                            class="px-2.5 py-1 rounded-full text-xs font-medium text-white flex items-center gap-1">
+                            <i :class="categoryIcons[announcement.category]" class="text-[10px]"></i>
+                            {{ categoryLabels[announcement.category] }}
+                        </span>
+                        <span v-if="announcement.priority !== 'normal'" :class="priorityColors[announcement.priority]"
+                            class="px-2.5 py-1 rounded-full text-xs font-semibold">
+                            {{ priorityLabels[announcement.priority] }}
+                        </span>
+                        <span v-if="announcement.isPinned"
+                            class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                            <i class="fa-solid fa-thumbtack text-[10px]"></i>
+                            {{ t.pinned }}
+                        </span>
                     </div>
-                </div>
-                <div class="flex items-center gap-2 shrink-0 flex-wrap">
-                    <!-- Publish / Unpublish -->
-                    <button v-if="announcement.status !== 'published'" @click="updateStatus('published')"
-                        :disabled="isUpdatingStatus"
-                        class="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2">
-                        <i :class="isUpdatingStatus ? 'fa-solid fa-rotate animate-spin' : 'fa-solid fa-paper-plane'"
-                            class="text-xs"></i>
-                        {{ t.publishAnnouncement }}
-                    </button>
-                    <button v-else @click="updateStatus('draft')" :disabled="isUpdatingStatus"
-                        class="px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2">
-                        <i :class="isUpdatingStatus ? 'fa-solid fa-rotate animate-spin' : 'fa-solid fa-rotate-left'"
-                            class="text-xs"></i>
-                        {{ t.unpublishAnnouncement }}
-                    </button>
-                    <NuxtLink :to="`/manager/announcements/${announcementDocumentId}/edit`"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2">
-                        <i class="fa-solid fa-pen text-xs"></i>
-                        {{ t.edit }}
-                    </NuxtLink>
-                    <button @click="showDeleteModal = true"
-                        class="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors flex items-center gap-2">
-                        <i class="fa-solid fa-trash text-xs"></i>
-                        {{ t.delete }}
-                    </button>
+                    <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{{ announcement.title }}
+                    </h1>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {{ formatDateTime(announcement.publishDate || announcement.createdAt) }}
+                        <span v-if="announcement.author"> · {{ announcement.author.username }}</span>
+                        <span v-if="announcement.property"> · {{ announcement.property.name }}</span>
+                    </p>
                 </div>
             </div>
 
@@ -364,12 +230,12 @@ onMounted(async () => {
             <div v-if="announcement.coverImage" class="rounded-xl overflow-hidden transition-all duration-500 delay-100"
                 :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
                 <img :src="getFullImageUrl(announcement.coverImage)" :alt="announcement.title"
-                    class="w-full h-64 sm:h-80 lg:h-96 object-cover cursor-pointer"
+                    class="w-full h-52 sm:h-72 lg:h-80 object-cover cursor-pointer"
                     @click="openImageViewer([announcement.coverImage!], 0)" />
             </div>
 
             <!-- Content -->
-            <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 transition-all duration-500 delay-150"
+            <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 sm:p-6 transition-all duration-500 delay-150"
                 :class="sectionsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
                 <!-- Excerpt -->
                 <p v-if="announcement.excerpt"
@@ -400,7 +266,7 @@ onMounted(async () => {
                 <h3
                     class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2 mb-4">
                     <i class="fa-solid fa-images text-primary-500"></i>
-                    {{ t.attachImages }}
+                    {{ t.attachImages || 'Images' }}
                 </h3>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     <button v-for="(img, idx) in announcement.images" :key="img.id"
@@ -448,44 +314,6 @@ onMounted(async () => {
                 </div>
             </div>
         </template>
-
-        <!-- Delete Modal -->
-        <Teleport to="body">
-            <Transition enter-active-class="transition-all duration-200" enter-from-class="opacity-0"
-                enter-to-class="opacity-100" leave-active-class="transition-all duration-200"
-                leave-from-class="opacity-100" leave-to-class="opacity-0">
-                <div v-if="showDeleteModal"
-                    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div
-                        class="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-800 max-w-md w-full p-6">
-                        <div class="flex items-start gap-4">
-                            <div
-                                class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                                <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-900 dark:text-white">{{ t.deleteAnnouncement }}</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                                    {{ t.deleteAnnouncementConfirm }} <strong class="text-gray-900 dark:text-white">"{{
-                                        announcement?.title }}"</strong>{{ t.deleteAnnouncementConfirm2 }}
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex justify-end gap-3 mt-6">
-                            <button @click="showDeleteModal = false" :disabled="isDeleting"
-                                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                                {{ t.cancel }}
-                            </button>
-                            <button @click="deleteAnnouncement" :disabled="isDeleting"
-                                class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2">
-                                <i v-if="isDeleting" class="fa-solid fa-rotate text-xs animate-spin"></i>
-                                {{ t.delete }}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </Transition>
-        </Teleport>
 
         <!-- Image Viewer Modal -->
         <Teleport to="body">

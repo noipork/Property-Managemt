@@ -31,6 +31,7 @@ interface Property {
     id: number
     documentId: string
     name: string
+    city: string | null
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -77,7 +78,7 @@ async function fetchProperties() {
         )
         const data = await res.json()
         propertiesList.value = (data.data ?? []).map((p: any) => ({
-            id: p.id, documentId: p.documentId, name: p.name,
+            id: p.id, documentId: p.documentId, name: p.name, city: p.city ?? null,
         }))
     } catch { /* ignore */ }
 }
@@ -210,10 +211,12 @@ async function fetchAnnouncements() {
     }
 }
 
+let fetchTimer: ReturnType<typeof setTimeout> | null = null
 watch([filterPropertyId, filterStatus, filterCategory, filterPriority, filterPinned, searchQuery], () => {
     currentPage.value = 1
-    fetchAnnouncements()
-}, { debounce: 300 } as any)
+    if (fetchTimer) clearTimeout(fetchTimer)
+    fetchTimer = setTimeout(() => fetchAnnouncements(), 300)
+})
 
 watch(currentPage, () => {
     nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
@@ -242,6 +245,64 @@ async function deleteAnnouncement() {
         showToast('error', t.value.announcementDeleteError)
     } finally {
         isDeleting.value = false
+    }
+}
+
+// ─── Publish / Unpublish / Archive ────────────────────────────────────────────
+const showStatusModal = ref(false)
+const statusTarget = ref<Announcement | null>(null)
+const statusAction = ref<'publish' | 'unpublish' | 'archive'>('publish')
+const isUpdatingStatus = ref(false)
+
+function confirmStatusChange(ann: Announcement, action: 'publish' | 'unpublish' | 'archive') {
+    statusTarget.value = ann
+    statusAction.value = action
+    showStatusModal.value = true
+}
+
+const statusModalTitle = computed(() => {
+    if (statusAction.value === 'publish') return t.value.publishAnnouncement
+    if (statusAction.value === 'unpublish') return t.value.unpublishAnnouncement
+    return t.value.archiveAnnouncement
+})
+
+const statusModalDesc = computed(() => {
+    if (statusAction.value === 'publish') return t.value.publishAnnouncementConfirm
+    if (statusAction.value === 'unpublish') return t.value.unpublishAnnouncementConfirm
+    return t.value.archiveAnnouncementConfirm
+})
+
+async function updateAnnouncementStatus() {
+    if (!statusTarget.value) return
+    isUpdatingStatus.value = true
+    try {
+        const newStatus = statusAction.value === 'publish' ? 'published'
+            : statusAction.value === 'unpublish' ? 'draft'
+                : 'archived'
+        const body: any = { data: { status: newStatus } }
+        if (statusAction.value === 'publish' && !statusTarget.value.publishDate) {
+            body.data.publishDate = new Date().toISOString()
+        }
+        const res = await fetch(`${STRAPI_URL}/api/announcements/${statusTarget.value.documentId}`, {
+            method: 'PUT',
+            headers: {
+                Authorization: `Bearer ${token.value}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        })
+        if (!res.ok) throw new Error('Update failed')
+        const msg = statusAction.value === 'publish' ? t.value.announcementPublished
+            : statusAction.value === 'unpublish' ? t.value.announcementUnpublished
+                : t.value.announcementArchived
+        showToast('success', msg)
+        showStatusModal.value = false
+        statusTarget.value = null
+        await fetchAnnouncements()
+    } catch {
+        showToast('error', t.value.announcementStatusError)
+    } finally {
+        isUpdatingStatus.value = false
     }
 }
 
@@ -283,7 +344,7 @@ onMounted(async () => {
     }))
     await fetchProperties()
     if (propertiesList.value.length > 0) {
-        filterPropertyId.value = String(propertiesList.value[0]?.documentId ?? '')
+        filterPropertyId.value = propertiesList.value[0]?.documentId ?? ''
     }
     initializing = false
     await fetchAnnouncements()
@@ -334,75 +395,77 @@ onMounted(async () => {
             </NuxtLink>
         </div>
 
+        <!-- Property Dropdown -->
+        <div class="relative w-full sm:w-72 transition-all duration-500 delay-100"
+            :class="headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
+            <i
+                class="fa-solid fa-house absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+            <select v-model="filterPropertyId"
+                class="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none transition-colors">
+                <option value="">{{ t.allProperties }}</option>
+                <option v-for="prop in propertiesList" :key="prop.id" :value="prop.documentId">
+                    {{ prop.name }}{{ prop.city ? ' · ' + prop.city : '' }}
+                </option>
+            </select>
+            <i
+                class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+        </div>
+
         <!-- Filters -->
-        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 transition-all duration-500 delay-100"
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 transition-all duration-500 delay-150"
             :class="filtersVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
-            <!-- Search - Full width on mobile -->
+            <!-- Search -->
             <div class="relative w-full mb-3">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <i
+                    class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                 <input v-model="searchQuery" type="text" :placeholder="t.searchAnnouncements"
                     class="w-full pl-9 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
 
-            <!-- Filters grid -->
-            <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
-                <!-- Property filter -->
-                <div class="relative col-span-2 sm:col-span-1">
-                    <select v-model="filterPropertyId"
-                        class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
-                        <option value="">{{ t.allProperties }}</option>
-                        <option v-for="prop in propertiesList" :key="prop.id" :value="prop.documentId">
-                            {{ prop.name }}
-                        </option>
-                    </select>
-                    <i
-                        class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                </div>
-
+            <!-- Filters row -->
+            <div class="flex flex-wrap gap-2">
                 <!-- Status filter -->
                 <div class="relative">
                     <select v-model="filterStatus"
-                        class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
+                        class="pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
                         <option value="">{{ t.allStatuses }}</option>
                         <option v-for="s in statuses" :key="s" :value="s">{{ statusLabels[s] }}</option>
                     </select>
                     <i
-                        class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
 
                 <!-- Category filter -->
                 <div class="relative">
                     <select v-model="filterCategory"
-                        class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
+                        class="pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
                         <option value="">{{ t.allCategories }}</option>
                         <option v-for="c in categories" :key="c" :value="c">{{ categoryLabels[c] }}</option>
                     </select>
                     <i
-                        class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
 
                 <!-- Priority filter -->
                 <div class="relative">
                     <select v-model="filterPriority"
-                        class="w-full pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
+                        class="pl-3 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
                         <option value="">{{ t.allPriorities }}</option>
                         <option v-for="p in priorities" :key="p" :value="p">{{ priorityLabels[p] }}</option>
                     </select>
                     <i
-                        class="fa-solid fa-angle-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 </div>
 
                 <!-- Pinned toggle -->
                 <button @click="filterPinned = !filterPinned"
-                    class="flex items-center justify-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors"
+                    class="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors"
                     :class="filterPinned
                         ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-400'
                         : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'">
                     <i class="fa-solid fa-thumbtack text-xs"></i>
                     <span class="hidden sm:inline">{{ t.pinned }}</span>
                 </button>
-
-
             </div>
         </div>
 
@@ -505,6 +568,27 @@ onMounted(async () => {
 
                             <!-- Actions -->
                             <div class="flex items-center gap-0.5" @click.stop>
+                                <!-- Publish (for draft/archived) -->
+                                <button v-if="ann.status !== 'published'"
+                                    @click.stop="confirmStatusChange(ann, 'publish')"
+                                    class="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                                    :title="t.publishAnnouncement">
+                                    <i class="fa-solid fa-paper-plane text-emerald-500 text-sm"></i>
+                                </button>
+                                <!-- Unpublish (for published) -->
+                                <button v-if="ann.status === 'published'"
+                                    @click.stop="confirmStatusChange(ann, 'unpublish')"
+                                    class="p-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                                    :title="t.unpublishAnnouncement">
+                                    <i class="fa-solid fa-rotate-left text-amber-500 text-sm"></i>
+                                </button>
+                                <!-- Archive (for non-archived) -->
+                                <button v-if="ann.status !== 'archived'"
+                                    @click.stop="confirmStatusChange(ann, 'archive')"
+                                    class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                    :title="t.archiveAnnouncement">
+                                    <i class="fa-solid fa-box-archive text-gray-400 text-sm"></i>
+                                </button>
                                 <NuxtLink :to="`/manager/announcements/${ann.documentId}/edit`"
                                     class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                                     title="Edit">
@@ -576,6 +660,57 @@ onMounted(async () => {
                                 class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2">
                                 <i v-if="isDeleting" class="fa-solid fa-rotate text-xs animate-spin"></i>
                                 {{ t.delete }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+        <!-- Status Change Modal -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition-all duration-200" enter-from-class="opacity-0"
+                enter-to-class="opacity-100" leave-active-class="transition-all duration-200"
+                leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <div v-if="showStatusModal"
+                    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div
+                        class="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-800 max-w-md w-full p-6">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" :class="statusAction === 'publish'
+                                ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                                : statusAction === 'unpublish'
+                                    ? 'bg-amber-100 dark:bg-amber-900/30'
+                                    : 'bg-gray-100 dark:bg-gray-800'">
+                                <i :class="statusAction === 'publish'
+                                    ? 'fa-solid fa-paper-plane text-emerald-500'
+                                    : statusAction === 'unpublish'
+                                        ? 'fa-solid fa-rotate-left text-amber-500'
+                                        : 'fa-solid fa-box-archive text-gray-500'"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 dark:text-white">{{ statusModalTitle }}</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                    {{ statusModalDesc }}
+                                </p>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                                    "{{ statusTarget?.title }}"
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+                            <button @click="showStatusModal = false; statusTarget = null" :disabled="isUpdatingStatus"
+                                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors w-full sm:w-auto justify-center">
+                                {{ t.cancel }}
+                            </button>
+                            <button @click="updateAnnouncementStatus" :disabled="isUpdatingStatus"
+                                class="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors flex items-center gap-2 w-full sm:w-auto justify-center"
+                                :class="statusAction === 'publish'
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50'
+                                    : statusAction === 'unpublish'
+                                        ? 'bg-amber-600 hover:bg-amber-700 disabled:opacity-50'
+                                        : 'bg-gray-600 hover:bg-gray-700 disabled:opacity-50'">
+                                <i v-if="isUpdatingStatus" class="fa-solid fa-rotate text-xs animate-spin"></i>
+                                {{ statusModalTitle }}
                             </button>
                         </div>
                     </div>

@@ -162,6 +162,7 @@ const ui = computed(() => ({
     allInfoCompleted: t.value.allInfoCompleted || 'All required information is completed.',
     saving: t.value.saving || 'Saving…',
     saveInfo: t.value.saveInfo || 'Save Information',
+    saveAndSubmit: t.value.saveAndSubmit || 'Save & Submit for Review',
     uploadDocuments: t.value.uploadDocuments || 'Identity Documents',
     uploadDocumentsHint: t.value.uploadDocumentsHint || 'Upload a photo of your ID, passport, or other identity document (JPG, PNG, PDF).',
     uploadDocumentsBtn: t.value.uploadDocumentsBtn || 'Choose files',
@@ -422,7 +423,7 @@ async function acceptLease() {
         isAccepting.value = false
     }
 }
-// ─── Save Resident Info ─────────────────────────────────────────────────────
+// ─── Save Resident Info (auto-accepts when all info is complete) ────────────
 async function saveLeaseInfo() {
     if (!lease.value) return
     isSavingInfo.value = true
@@ -430,21 +431,34 @@ async function saveLeaseInfo() {
         const newFileIds = await uploadFilesToStrapi()
         const existingIds = existingDocuments.value.map(d => d.id)
         const allDocIds = [...existingIds, ...newFileIds]
+
+        // Auto-accept: if all required fields filled + has documents + status is pending
+        const shouldAutoAccept =
+            lease.value.status === 'pending' &&
+            missingRequiredFields.value.length === 0 &&
+            (allDocIds.length > 0)
+
+        const payload: Record<string, any> = {
+            ...cleanedFormData(),
+            identityDocuments: allDocIds,
+        }
+        if (shouldAutoAccept) {
+            payload.status = 'reviewing'
+            payload.acceptedAt = new Date().toISOString()
+        }
+
         const res = await fetch(`${STRAPI_URL}/api/leases/${lease.value.documentId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token.value}`,
             },
-            body: JSON.stringify({
-                data: {
-                    ...cleanedFormData(),
-                    identityDocuments: allDocIds,
-                },
-            }),
+            body: JSON.stringify({ data: payload }),
         })
-        if (!res.ok) throw new Error('Save failed')
-        showToast('success', t.value.leaseInfoSaved || 'Information saved')
+        if (!res.ok) throw new Error(shouldAutoAccept ? 'Accept failed' : 'Save failed')
+        showToast('success', shouldAutoAccept
+            ? (t.value.leaseSubmittedForReview || 'Lease submitted for manager review')
+            : (t.value.leaseInfoSaved || 'Information saved'))
         await fetchLease()
     } catch (err: any) {
         const errorMessage = err.message || t.value.leaseInfoSaveError || 'Could not save information'
@@ -581,14 +595,17 @@ onMounted(async () => {
                         <p class="text-xs text-amber-600 dark:text-amber-400 mt-0.5">{{ pendingBannerDesc }}</p>
                     </div>
                 </div>
-                <div class="flex flex-col gap-1 items-start">
-                    <button @click="acceptLease" :disabled="!canAcceptLease"
-                        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0">
-                        <i :class="isAccepting ? 'fa-solid fa-spinner animate-spin' : 'fa-solid fa-check'"
-                            class="text-sm"></i>
-                        {{ isAccepting ? t.acceptingLease : t.acceptLease }}
-                    </button>
-
+                <div class="flex items-center gap-2">
+                    <span v-if="canAcceptLease"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-lg text-xs font-semibold">
+                        <i class="fa-solid fa-circle-check text-xs"></i>
+                        {{ t.readyToSubmit || 'Ready — save to submit' }}
+                    </span>
+                    <span v-else
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg text-xs font-semibold">
+                        <i class="fa-solid fa-circle-info text-xs"></i>
+                        {{ t.completeInfoFirst || 'Complete info below' }}
+                    </span>
                 </div>
             </div>
 
@@ -916,17 +933,19 @@ onMounted(async () => {
 
                                     <!-- Saved (already uploaded) files -->
                                     <div v-for="doc in existingDocuments" :key="'ex-' + doc.id"
-                                        class="group relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 aspect-[4/3] flex flex-col w-full">
+                                        class="group relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col w-full">
                                         <!-- Image preview -->
                                         <template v-if="isImageFile(doc.name)">
-                                            <img :src="STRAPI_URL + doc.url" :alt="doc.name"
-                                                class="w-full h-full object-cover cursor-zoom-in"
-                                                @click="openLightbox(STRAPI_URL + doc.url, doc.name)" />
+                                            <div class="aspect-[4/3] overflow-hidden">
+                                                <img :src="STRAPI_URL + doc.url" :alt="doc.name"
+                                                    class="w-full h-full object-cover cursor-zoom-in"
+                                                    @click="openLightbox(STRAPI_URL + doc.url, doc.name)" />
+                                            </div>
                                         </template>
                                         <!-- Non-image (PDF, etc.) -->
                                         <template v-else>
                                             <button type="button"
-                                                class="w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer"
+                                                class="aspect-[4/3] w-full flex flex-col items-center justify-center gap-2 cursor-pointer"
                                                 @click="openLightbox(STRAPI_URL + doc.url, doc.name)">
                                                 <i :class="fileTypeIcon(doc.name)" class="text-3xl text-gray-400"></i>
                                                 <span
@@ -934,15 +953,24 @@ onMounted(async () => {
                                                         doc.name }}</span>
                                             </button>
                                         </template>
-                                        <!-- Overlay: name + remove -->
+                                        <!-- Mobile-friendly action bar -->
                                         <div
-                                            class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5 flex items-end justify-between gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span class="text-[10px] text-white truncate leading-tight">{{ doc.name
-                                            }}</span>
-                                            <button type="button" @click.stop="removeExistingDocument(doc.id)"
-                                                class="shrink-0 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors">
-                                                <i class="fa-solid fa-xmark text-white text-[9px]"></i>
-                                            </button>
+                                            class="flex items-center justify-between gap-2 px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                                            <span
+                                                class="text-[11px] text-gray-600 dark:text-gray-400 truncate flex-1">{{
+                                                    doc.name }}</span>
+                                            <div class="flex items-center gap-1.5 shrink-0">
+                                                <button type="button"
+                                                    @click="openLightbox(STRAPI_URL + doc.url, doc.name)"
+                                                    class="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-primary-100 dark:hover:bg-primary-900/30 flex items-center justify-center transition-colors">
+                                                    <i
+                                                        class="fa-solid fa-eye text-[10px] text-gray-500 dark:text-gray-400"></i>
+                                                </button>
+                                                <button type="button" @click.stop="removeExistingDocument(doc.id)"
+                                                    class="w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center transition-colors">
+                                                    <i class="fa-solid fa-trash-can text-[10px] text-red-500"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                         <!-- Saved badge -->
                                         <span
@@ -953,15 +981,17 @@ onMounted(async () => {
 
                                     <!-- New (pending upload) files -->
                                     <div v-for="(file, idx) in uploadedFiles" :key="'new-' + idx"
-                                        class="group relative rounded-xl overflow-hidden border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 aspect-[4/3] flex flex-col w-full">
+                                        class="group relative rounded-xl overflow-hidden border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 flex flex-col w-full">
                                         <template v-if="isImageFile(file.name)">
-                                            <img :src="fileObjectUrl(file)" :alt="file.name"
-                                                class="w-full h-full object-cover cursor-zoom-in"
-                                                @click="openLightbox(fileObjectUrl(file), file.name)" />
+                                            <div class="aspect-[4/3] overflow-hidden">
+                                                <img :src="fileObjectUrl(file)" :alt="file.name"
+                                                    class="w-full h-full object-cover cursor-zoom-in"
+                                                    @click="openLightbox(fileObjectUrl(file), file.name)" />
+                                            </div>
                                         </template>
                                         <template v-else>
                                             <button type="button"
-                                                class="w-full h-full flex flex-col items-center justify-center gap-2"
+                                                class="aspect-[4/3] w-full flex flex-col items-center justify-center gap-2"
                                                 @click="openLightbox(fileObjectUrl(file), file.name)">
                                                 <i :class="fileTypeIcon(file.name)" class="text-3xl text-blue-400"></i>
                                                 <span
@@ -969,14 +999,24 @@ onMounted(async () => {
                                                         file.name }}</span>
                                             </button>
                                         </template>
+                                        <!-- Mobile-friendly action bar -->
                                         <div
-                                            class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5 flex items-end justify-between gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span class="text-[10px] text-white truncate leading-tight">{{ file.name
-                                            }}</span>
-                                            <button type="button" @click.stop="removeNewFile(idx)"
-                                                class="shrink-0 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors">
-                                                <i class="fa-solid fa-xmark text-white text-[9px]"></i>
-                                            </button>
+                                            class="flex items-center justify-between gap-2 px-3 py-2 border-t border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-800">
+                                            <span
+                                                class="text-[11px] text-gray-600 dark:text-gray-400 truncate flex-1">{{
+                                                    file.name }}</span>
+                                            <div class="flex items-center gap-1.5 shrink-0">
+                                                <button type="button"
+                                                    @click="openLightbox(fileObjectUrl(file), file.name)"
+                                                    class="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-primary-100 dark:hover:bg-primary-900/30 flex items-center justify-center transition-colors">
+                                                    <i
+                                                        class="fa-solid fa-eye text-[10px] text-gray-500 dark:text-gray-400"></i>
+                                                </button>
+                                                <button type="button" @click.stop="removeNewFile(idx)"
+                                                    class="w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center transition-colors">
+                                                    <i class="fa-solid fa-trash-can text-[10px] text-red-500"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                         <!-- Pending badge -->
                                         <span
@@ -1017,10 +1057,12 @@ onMounted(async () => {
                                         </span>
                                     </p>
                                     <button type="submit" :disabled="isSavingInfo"
-                                        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 transition-colors shrink-0">
-                                        <i :class="isSavingInfo ? 'fa-solid fa-spinner animate-spin' : 'fa-solid fa-floppy-disk'"
+                                        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-colors shrink-0"
+                                        :class="canAcceptLease ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-primary-600 hover:bg-primary-700'">
+                                        <i :class="isSavingInfo ? 'fa-solid fa-spinner animate-spin' : (canAcceptLease ? 'fa-solid fa-paper-plane' : 'fa-solid fa-floppy-disk')"
                                             class="text-sm"></i>
-                                        {{ isSavingInfo ? ui.saving : ui.saveInfo }}
+                                        {{ isSavingInfo ? ui.saving : (canAcceptLease ? ui.saveAndSubmit : ui.saveInfo)
+                                        }}
                                     </button>
                                 </div>
                             </div>
@@ -1090,31 +1132,31 @@ onMounted(async () => {
                             <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">{{ ui.uploadDocuments }}</p>
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                 <div v-for="doc in lease.identityDocuments" :key="doc.id"
-                                    @click="openLightbox(STRAPI_URL + doc.url, doc.name)"
-                                    class="group relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-400 transition-all cursor-pointer bg-gray-50 dark:bg-gray-800">
+                                    class="group relative rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-400 transition-all bg-gray-50 dark:bg-gray-800">
                                     <!-- Image preview -->
-                                    <img v-if="isImageFile(doc.name)" :src="STRAPI_URL + doc.url" :alt="doc.name"
-                                        class="w-full h-full object-cover" />
-                                    <!-- PDF/Other icon -->
-                                    <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2">
-                                        <i
-                                            :class="[fileTypeIcon(doc.name), 'text-4xl', /\.pdf$/i.test(doc.name) ? 'text-red-400' : 'text-gray-400']"></i>
-                                        <span
-                                            class="text-xs text-gray-500 dark:text-gray-400 font-medium px-2 text-center truncate w-full">{{
-                                                doc.ext.toUpperCase() }}</span>
-                                    </div>
-                                    <!-- Overlay on hover -->
-                                    <div
-                                        class="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                        <div class="flex flex-col items-center gap-1">
-                                            <i class="fa-solid fa-eye text-white text-xl"></i>
-                                            <span class="text-white text-xs font-medium">View</span>
+                                    <div class="aspect-square cursor-pointer"
+                                        @click="openLightbox(STRAPI_URL + doc.url, doc.name)">
+                                        <img v-if="isImageFile(doc.name)" :src="STRAPI_URL + doc.url" :alt="doc.name"
+                                            class="w-full h-full object-cover" />
+                                        <!-- PDF/Other icon -->
+                                        <div v-else
+                                            class="w-full h-full flex flex-col items-center justify-center gap-2">
+                                            <i
+                                                :class="[fileTypeIcon(doc.name), 'text-4xl', /\.pdf$/i.test(doc.name) ? 'text-red-400' : 'text-gray-400']"></i>
+                                            <span
+                                                class="text-xs text-gray-500 dark:text-gray-400 font-medium px-2 text-center truncate w-full">{{
+                                                    doc.ext.toUpperCase() }}</span>
                                         </div>
                                     </div>
-                                    <!-- File name label -->
+                                    <!-- Always-visible action bar -->
                                     <div
-                                        class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                                        <p class="text-xs text-white font-medium truncate">{{ doc.name }}</p>
+                                        class="flex items-center justify-between gap-1 px-2 py-1.5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                                        <span class="text-[10px] text-gray-600 dark:text-gray-400 truncate flex-1">{{
+                                            doc.name }}</span>
+                                        <button type="button" @click="openLightbox(STRAPI_URL + doc.url, doc.name)"
+                                            class="shrink-0 w-6 h-6 rounded-md bg-gray-100 dark:bg-gray-700 hover:bg-primary-100 dark:hover:bg-primary-900/30 flex items-center justify-center transition-colors">
+                                            <i class="fa-solid fa-eye text-[9px] text-gray-500 dark:text-gray-400"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>

@@ -33,6 +33,9 @@ async function fetchResidentProfile() {
         })
         if (!res.ok) return
         const d = await res.json()
+        // property is manyToMany – may come as array or single object
+        const prop = Array.isArray(d.property) ? d.property[0] : d.property
+        userPropertyDocumentId.value = prop?.documentId ?? null
         residentProfile.value = {
             id: d.id,
             username: d.username,
@@ -40,7 +43,7 @@ async function fetchResidentProfile() {
             roomNumber: d.roomNumber ?? null,
             registrationDate: d.registrationDate ?? null,
             residencyStatus: d.residencyStatus ?? null,
-            property: d.property ? { id: d.property.id, name: d.property.name, city: d.property.city, address: d.property.address } : null,
+            property: prop ? { id: prop.id, name: prop.name, city: prop.city, address: prop.address } : null,
             unitType: d.unitType ? { id: d.unitType.id, name: d.unitType.name, unitType: d.unitType.unitType } : null,
         }
     } catch { /* silent */ } finally {
@@ -51,6 +54,133 @@ async function fetchResidentProfile() {
 // ─── Quick stats ──────────────────────────────────────────────────────────────
 const stats = ref({ activeLease: false, openBills: 0, openMaintenance: 0 })
 const isLoading = ref(true)
+
+// ─── Announcements ────────────────────────────────────────────────────────────
+interface DashboardAnnouncement {
+    id: number
+    documentId: string
+    title: string
+    excerpt: string | null
+    content: string
+    category: string
+    priority: string
+    publishDate: string | null
+    isPinned: boolean
+    createdAt: string
+    coverImage: { id: number; url: string; formats?: any } | null
+}
+
+const recentAnnouncements = ref<DashboardAnnouncement[]>([])
+const isLoadingAnnouncements = ref(false)
+const userPropertyDocumentId = ref<string | null>(null)
+
+const categoryIcons: Record<string, string> = {
+    general: 'fa-solid fa-circle-info',
+    maintenance: 'fa-solid fa-wrench',
+    event: 'fa-solid fa-calendar-days',
+    emergency: 'fa-solid fa-triangle-exclamation',
+    policy: 'fa-solid fa-file-lines',
+    reminder: 'fa-solid fa-bell',
+    celebration: 'fa-solid fa-champagne-glasses',
+}
+
+const categoryColors: Record<string, string> = {
+    general: 'text-gray-500 bg-gray-100 dark:bg-gray-800 dark:text-gray-400',
+    maintenance: 'text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400',
+    event: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400',
+    emergency: 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400',
+    policy: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400',
+    reminder: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400',
+    celebration: 'text-pink-600 bg-pink-100 dark:bg-pink-900/30 dark:text-pink-400',
+}
+
+const categoryLabels: Record<string, string> = {
+    general: 'General',
+    maintenance: 'Maintenance',
+    event: 'Event',
+    emergency: 'Emergency',
+    policy: 'Policy',
+    reminder: 'Reminder',
+    celebration: 'Celebration',
+}
+// Reactive labels using i18n
+function getCategoryLabel(cat: string) {
+    const tv = t.value as any
+    const labels: Record<string, string> = {
+        general: tv.general || 'General',
+        maintenance: tv.maintenance || 'Maintenance',
+        event: tv.event || 'Event',
+        emergency: tv.emergency || 'Emergency',
+        policy: tv.policy || 'Policy',
+        reminder: tv.reminder || 'Reminder',
+        celebration: tv.celebration || 'Celebration',
+    }
+    return labels[cat] || cat
+}
+
+async function fetchAnnouncements() {
+    if (!token.value) return
+    // Need user's property to filter – skip if not loaded yet
+    if (!userPropertyDocumentId.value) return
+    isLoadingAnnouncements.value = true
+    try {
+        const params = new URLSearchParams({
+            'filters[status][$eq]': 'published',
+            'filters[property][documentId][$eq]': userPropertyDocumentId.value,
+            'sort[0]': 'isPinned:desc',
+            'sort[1]': 'id:desc',
+            'pagination[pageSize]': '5',
+            'populate[0]': 'coverImage',
+        })
+        const res = await fetch(`${STRAPI_URL}/api/announcements?${params}`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        recentAnnouncements.value = (data.data ?? []).map((a: any) => ({
+            id: a.id,
+            documentId: a.documentId,
+            title: a.title,
+            excerpt: a.excerpt ?? null,
+            content: a.content,
+            category: a.category,
+            priority: a.priority,
+            publishDate: a.publishDate,
+            isPinned: a.isPinned,
+            createdAt: a.createdAt,
+            coverImage: a.coverImage ?? null,
+        }))
+    } catch { /* silent */ } finally {
+        isLoadingAnnouncements.value = false
+    }
+}
+
+function getImageUrl(img: { url: string; formats?: any } | null) {
+    if (!img) return ''
+    if (img.formats?.small?.url) return `${STRAPI_URL}${img.formats.small.url}`
+    if (img.formats?.thumbnail?.url) return `${STRAPI_URL}${img.formats.thumbnail.url}`
+    return `${STRAPI_URL}${img.url}`
+}
+
+function stripHtml(html: string) {
+    return html.replace(/<[^>]*>/g, '').substring(0, 120)
+}
+
+function formatAnnouncementDate(dateStr: string | null) {
+    if (!dateStr) return ''
+    const isThai = lang.value === 'TH'
+    return new Date(dateStr).toLocaleDateString(isThai ? 'th-TH' : 'en-GB', {
+        day: '2-digit', month: 'short',
+        ...(isThai ? { calendar: 'buddhist' } : {}),
+    })
+}
+
+// ─── Entry Animation ─────────────────────────────────────────────────────────
+const profileVisible = ref(false)
+const navVisible = ref(false)
+const statsVisible = ref(false)
+const announcementsVisible = ref(false)
+const chartVisible = ref(false)
 
 async function fetchStats() {
     if (!token.value) return
@@ -87,10 +217,20 @@ async function fetchStats() {
     }
 }
 
-onMounted(() => {
-    fetchResidentProfile()
+onMounted(async () => {
+    await fetchResidentProfile()
     fetchStats()
     fetchBillingHistory()
+    await fetchAnnouncements()
+
+    await nextTick()
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        profileVisible.value = true
+        navVisible.value = true
+        statsVisible.value = true
+        announcementsVisible.value = true
+        chartVisible.value = true
+    }))
 })
 
 // ─── Billing Analytics ────────────────────────────────────────────────────────
@@ -212,13 +352,14 @@ watch(() => billingHistory.value.length, () => nextTick(() => renderChart()))
 <template>
     <div class="space-y-6 max-w-3xl mx-auto pb-20 md:pb-0">
         <!-- Resident Profile Card -->
-        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-5">
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-5 transition-all duration-500"
+            :class="profileVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3'">
             <div class="flex items-center gap-4">
                 <!-- Avatar -->
                 <div
                     class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
                     <span class="text-xl sm:text-2xl font-bold text-primary-600 dark:text-primary-400">
-                        {{ (user?.name || user?.email || 'R')[0].toUpperCase() }}
+                        {{ (user?.name || user?.email || 'R').charAt(0).toUpperCase() }}
                     </span>
                 </div>
                 <!-- Info -->
@@ -276,17 +417,19 @@ watch(() => billingHistory.value.length, () => nextTick(() => renderChart()))
             </div>
         </div>
 
-        <!-- Quick nav – horizontal scroll strip -->
-        <div class="-mx-1 overflow-x-auto scrollbar-none">
-            <div class="flex gap-3 px-1 pb-1 w-max">
+        <!-- Quick nav – 2-row grid -->
+        <div class="transition-all duration-500 delay-75"
+            :class="navVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
+            <div class="grid grid-cols-3 gap-3">
                 <NuxtLink v-for="link in [
                     { to: '/resident/my-lease', icon: 'fa-file-contract', label: t.myLease || 'My Lease' },
                     { to: '/resident/my-bills', icon: 'fa-receipt', label: t.myBills || 'My Bills' },
                     { to: '/resident/maintenance', icon: 'fa-wrench', label: t.maintenance || 'Maintenance' },
+                    { to: '/resident/announcements', icon: 'fa-bullhorn', label: t.announcements || 'Announcements' },
                     { to: '/resident/assets', icon: 'fa-puzzle-piece', label: t.assets || 'Assets' },
                     { to: '/resident/payment-history', icon: 'fa-clock-rotate-left', label: t.paymentHistory || 'Payment History' },
                 ]" :key="link.to" :to="link.to"
-                    class="flex flex-col items-center justify-center gap-2 py-3 px-4 w-24 flex-shrink-0 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 hover:shadow-md transition-shadow">
+                    class="flex flex-col items-center justify-center gap-2 py-3 px-2 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 hover:shadow-md transition-shadow">
                     <i :class="`fa-solid ${link.icon} text-primary-600 dark:text-primary-400 text-lg`"></i>
                     <span class="text-xs font-medium text-gray-700 dark:text-gray-300 text-center leading-tight">{{
                         link.label }}</span>
@@ -295,7 +438,8 @@ watch(() => billingHistory.value.length, () => nextTick(() => renderChart()))
         </div>
 
         <!-- Quick stat cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 transition-all duration-500 delay-100"
+            :class="statsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'">
             <NuxtLink to="/resident/my-lease"
                 class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 hover:shadow-md transition-shadow group">
                 <div class="flex items-center justify-between mb-3">
@@ -349,9 +493,82 @@ watch(() => billingHistory.value.length, () => nextTick(() => renderChart()))
             </NuxtLink>
         </div>
 
+        <!-- Recent Announcements -->
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 space-y-4 transition-all duration-500 delay-150"
+            :class="announcementsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-bullhorn text-primary-600 dark:text-primary-400"></i>
+                    {{ t.announcements || 'Announcements' }}
+                </h3>
+                <NuxtLink to="/resident/announcements"
+                    class="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
+                    {{ t.viewAll || 'View All' }}
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </NuxtLink>
+            </div>
+
+            <!-- Loading -->
+            <div v-if="isLoadingAnnouncements" class="flex items-center justify-center py-8">
+                <div class="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+
+            <!-- Empty -->
+            <div v-else-if="!recentAnnouncements.length" class="text-center py-8 text-gray-400">
+                <i class="fa-solid fa-bullhorn text-3xl mb-2 opacity-30"></i>
+                <p class="text-sm">{{ t.noAnnouncementsResident || 'No announcements yet' }}</p>
+            </div>
+
+            <!-- Announcement list -->
+            <div v-else class="space-y-3">
+                <NuxtLink v-for="ann in recentAnnouncements" :key="ann.id"
+                    :to="`/resident/announcements/${ann.documentId}`"
+                    class="flex gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
+                    <!-- Cover image thumbnail -->
+                    <div v-if="ann.coverImage"
+                        class="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-800">
+                        <img :src="getImageUrl(ann.coverImage)" :alt="ann.title"
+                            class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    </div>
+                    <div v-else
+                        class="w-16 h-16 sm:w-20 sm:h-20 rounded-lg flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+                        <i :class="categoryIcons[ann.category]" class="text-xl text-gray-300 dark:text-gray-600"></i>
+                    </div>
+                    <!-- Content -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            <span :class="categoryColors[ann.category]"
+                                class="px-1.5 py-0.5 rounded text-[10px] font-medium">
+                                {{ getCategoryLabel(ann.category) }}
+                            </span>
+                            <span v-if="ann.isPinned" class="text-amber-500 text-[10px]">
+                                <i class="fa-solid fa-thumbtack"></i>
+                            </span>
+                            <span v-if="ann.priority === 'urgent'" class="text-red-500 text-[10px] font-medium">● {{
+                                t.urgent || 'Urgent' }}</span>
+                            <span v-else-if="ann.priority === 'important'"
+                                class="text-blue-500 text-[10px] font-medium">● {{ t.important || 'Important' }}</span>
+                        </div>
+                        <h4
+                            class="text-sm font-medium text-gray-900 dark:text-white line-clamp-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                            {{ ann.title }}
+                        </h4>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
+                            {{ ann.excerpt || stripHtml(ann.content) }}
+                        </p>
+                        <p class="text-[10px] text-gray-400 mt-1">
+                            {{ formatAnnouncementDate(ann.publishDate || ann.createdAt) }}
+                        </p>
+                    </div>
+                    <i
+                        class="fa-solid fa-chevron-right text-gray-300 dark:text-gray-600 text-xs self-center flex-shrink-0 group-hover:text-primary-400 transition-colors"></i>
+                </NuxtLink>
+            </div>
+        </div>
+
         <!-- Billing Analytics -->
-        <div
-            class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 space-y-4">
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 space-y-4 transition-all duration-500 delay-200"
+            :class="chartVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
             <div class="flex items-start justify-between gap-3 flex-wrap">
                 <div>
                     <h3 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">

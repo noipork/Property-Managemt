@@ -101,6 +101,7 @@ const leaseStatuses = ['pending', 'active', 'expired', 'terminated', 'cancelled'
 
 const statusColors: Record<string, string> = {
     pending: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+    reviewing: 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400',
     active: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
     expired: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
     terminated: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
@@ -109,6 +110,7 @@ const statusColors: Record<string, string> = {
 
 const statusLabels = computed(() => ({
     pending: t.value.pending,
+    reviewing: t.value.leaseStatusReviewing || 'Under Review',
     active: t.value.active,
     expired: t.value.statusExpired,
     terminated: t.value.leaseTerminated,

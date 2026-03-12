@@ -8,18 +8,17 @@ const { unreadTotal, unreadByType } = useNotificationBadge()
 const managerNavItems = computed(() => [
     { name: t.value.dashboard, icon: 'fa-solid fa-gauge', path: '/manager/dashboard' },
     { name: t.value.properties, icon: 'fa-solid fa-house', path: '/manager/properties' },
-    { name: t.value.payments, icon: 'fa-solid fa-wallet', path: '/manager/payments' },
     { name: t.value.messages, icon: 'fa-solid fa-comment', path: '/manager/messages', badge: (unreadByType.value.message ?? 0) + (unreadByType.value.conversation ?? 0) },
     { name: t.value.notifications, icon: 'fa-solid fa-bell', path: '/notifications', badge: unreadTotal.value },
+    { name: t.value.settings, icon: 'fa-solid fa-gear', path: '/settings' },
 ])
 
 // Resident nav items
 const residentNavItems = computed(() => [
     { name: t.value.dashboard, icon: 'fa-solid fa-gauge', path: '/resident/dashboard' },
-    { name: t.value.maintenance, icon: 'fa-solid fa-screwdriver-wrench', path: '/resident/maintenance', badge: unreadByType.value.maintenance ?? 0 },
-    { name: t.value.assets, icon: 'fa-solid fa-puzzle-piece', path: '/resident/assets', badge: unreadByType.value.asset ?? 0 },
     { name: t.value.messages, icon: 'fa-solid fa-comment', path: '/resident/messages', badge: (unreadByType.value.message ?? 0) + (unreadByType.value.conversation ?? 0) },
     { name: t.value.notifications, icon: 'fa-solid fa-bell', path: '/notifications', badge: unreadTotal.value },
+    { name: t.value.settings, icon: 'fa-solid fa-gear', path: '/settings' },
 ])
 
 // Use appropriate nav based on user role

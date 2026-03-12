@@ -171,7 +171,7 @@ async function renewLease() {
 
 const statusColors: Record<string, string> = {
     pending: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
-    reviewing: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+    reviewing: 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400',
     active: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
     expired: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
     terminated: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
@@ -463,31 +463,31 @@ onMounted(async () => {
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ t.leaseDetails }}</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="grid grid-cols-2 sm:flex w-full sm:w-auto gap-2">
                     <template v-if="lease.status === 'reviewing'">
                         <button @click="showApproveModal = true"
-                            class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors">
+                            class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors">
                             <i class="fa-solid fa-check text-sm"></i>
                             {{ t.approveLease || 'Approve' }}
                         </button>
                         <button @click="showRejectModal = true"
-                            class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors">
+                            class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors">
                             <i class="fa-solid fa-xmark text-sm"></i>
                             {{ t.rejectLease || 'Reject' }}
                         </button>
                     </template>
                     <button @click="openRenewModal"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors">
+                        class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors">
                         <i class="fa-solid fa-rotate text-sm"></i>
                         {{ t.renewLease }}
                     </button>
                     <NuxtLink v-if="lease.status === 'pending'" :to="`/manager/leases/${lease.documentId}/edit`"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
+                        class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
                         <i class="fa-solid fa-pen text-sm"></i>
                         {{ t.edit }}
                     </NuxtLink>
                     <button @click="showDeleteModal = true"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+                        class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
                         <i class="fa-solid fa-trash text-sm"></i>
                         {{ t.delete }}
                     </button>
@@ -945,7 +945,7 @@ onMounted(async () => {
                         </div>
 
                         <!-- Actions -->
-                        <div class="flex gap-3 pt-1">
+                        <div class="flex flex-col sm:flex-row gap-3 pt-1">
                             <button @click="showRenewModal = false"
                                 class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
                                 {{ t.cancel }}
@@ -981,7 +981,7 @@ onMounted(async () => {
                             </div>
                             <div>
                                 <h3 class="font-semibold text-gray-900 dark:text-white">
-                                    {{ t.approveLease || 'Approveb Lease' }}
+                                    {{ t.approveLease || 'Approve Lease' }}
                                 </h3>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">
                                     {{ t.activateLeaseDesc || 'Activate this lease agreement' }}</p>
@@ -993,7 +993,7 @@ onMounted(async () => {
                                 class="text-gray-900 dark:text-white">{{ lease?.leaseNo }}</strong>{{ t.questionMark ||
                                     '?' }}
                         </p>
-                        <div class="flex gap-3 pt-2">
+                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
                             <button @click="showApproveModal = false"
                                 class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">{{
                                     t.cancel }}</button>
@@ -1041,7 +1041,7 @@ onMounted(async () => {
                                 class="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                                 :placeholder="t.rejectionReasonPlaceholder || 'Explain why the lease is being rejected...'"></textarea>
                         </div>
-                        <div class="flex gap-3 pt-2">
+                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
                             <button @click="showRejectModal = false; rejectionReason = ''"
                                 class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">{{
                                     t.cancel }}</button>
@@ -1080,7 +1080,7 @@ onMounted(async () => {
                                 class="text-gray-900 dark:text-white">{{ lease?.leaseNo }}</strong>{{ t.questionMark ||
                                     '?' }}
                         </p>
-                        <div class="flex gap-3 pt-2">
+                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
                             <button @click="showExpireModal = false"
                                 class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">{{
                                     t.cancel }}</button>

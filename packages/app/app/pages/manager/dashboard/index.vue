@@ -854,6 +854,29 @@ onMounted(async () => {
             </div>
         </div>
 
+        <!-- Quick nav – 2-row grid (visible on mobile) -->
+        <div class="animate-fadeUp md:hidden" style="animation-delay:40ms">
+            <div class="grid grid-cols-5 gap-2">
+                <NuxtLink v-for="link in [
+                    { to: '/manager/properties', icon: 'fa-house', label: t.properties },
+                    { to: '/manager/residents', icon: 'fa-users', label: t.residents },
+                    { to: '/manager/leases', icon: 'fa-file-contract', label: t.leases },
+                    { to: '/manager/invoices', icon: 'fa-receipt', label: t.invoices },
+                    { to: '/manager/payments', icon: 'fa-wallet', label: t.payments },
+                    { to: '/manager/maintenance', icon: 'fa-wrench', label: t.maintenance },
+                    { to: '/manager/announcements', icon: 'fa-bullhorn', label: t.announcements },
+                    { to: '/manager/messages', icon: 'fa-comment', label: t.messages },
+                    { to: '/manager/assets', icon: 'fa-puzzle-piece', label: t.assets },
+                    { to: '/manager/asset-requests', icon: 'fa-envelope', label: t.assetRequests },
+                ]" :key="link.to" :to="link.to"
+                    class="flex flex-col items-center justify-center gap-1.5 py-3 px-1 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 hover:shadow-md transition-shadow">
+                    <i :class="`fa-solid ${link.icon} text-primary-600 dark:text-primary-400 text-lg`"></i>
+                    <span class="text-[10px] font-medium text-gray-700 dark:text-gray-300 text-center leading-tight">{{
+                        link.label }}</span>
+                </NuxtLink>
+            </div>
+        </div>
+
         <!-- Stat Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fadeUp" style="animation-delay:80ms">
             <NuxtLink to="/manager/leases"
