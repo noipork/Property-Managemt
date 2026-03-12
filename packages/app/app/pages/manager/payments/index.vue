@@ -18,9 +18,9 @@ interface Payment {
     status: string
     transactionId: string | null
     notes: string | null
-    resident: { id: number; username: string; email: string; roomNumber: string | null } | null
+    resident: { id: number; documentId: string; username: string; email: string; roomNumber: string | null } | null
     property: { id: number; documentId: string; name: string; city: string } | null
-    billing: { id: number; invoiceNo: string; amount: number } | null
+    billing: { id: number; documentId: string; invoiceNo: string; amount: number } | null
 }
 
 interface Property {
@@ -173,8 +173,8 @@ watch(filterPropertyId, () => { if (!initializing) resetAndFetch() })
 watch([filterMethod, filterStatus, filterDateFrom, filterDateTo], resetAndFetch)
 watch(pageSize, () => { currentPage.value = 1 })
 
-function goToPayment(id: number) {
-    router.push(`/manager/payments/${id}`)
+function goToPayment(documentId: string) {
+    router.push(`/manager/payments/${documentId}`)
 }
 
 function formatDate(dateStr: string | null) {
@@ -228,7 +228,8 @@ onMounted(async () => {
         <!-- Property Dropdown -->
         <div class="relative w-full sm:w-72 transition-all duration-500 delay-100"
             :class="headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
-            <i class="fa-solid fa-house absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+            <i
+                class="fa-solid fa-house absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
             <select v-model="filterPropertyId"
                 class="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none transition-colors">
                 <option value="">{{ t.allProperties }}</option>
@@ -244,7 +245,8 @@ onMounted(async () => {
         <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3 space-y-3 transition-all duration-500 delay-150"
             :class="filtersVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'">
             <div class="relative">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <i
+                    class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                 <input v-model="searchQuery" type="text" :placeholder="t.searchPayments"
                     class="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
@@ -274,7 +276,7 @@ onMounted(async () => {
                 <!-- Date Range -->
                 <div class="flex items-center gap-1.5">
                     <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t.filterPaymentDate
-                        }}</span>
+                    }}</span>
                     <input v-model="filterDateFrom" type="date"
                         class="px-2 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
                         @click="($event.target as HTMLInputElement).showPicker?.()" />
@@ -312,10 +314,11 @@ onMounted(async () => {
 
         <!-- Payment Card List -->
         <div v-if="!isLoading && payments.length > 0" class="space-y-3">
-            <div v-for="(pay, index) in payments" :key="pay.id"
+            <div v-for="(pay, index) in payments" :key="pay.documentId"
                 class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-all duration-500 cursor-pointer"
                 :class="listVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'"
-                :style="{ transitionDelay: listVisible ? `${index * 40}ms` : '0ms' }" @click="goToPayment(pay.id)">
+                :style="{ transitionDelay: listVisible ? `${index * 40}ms` : '0ms' }"
+                @click="goToPayment(pay.documentId)">
                 <div class="flex items-center gap-4">
                     <!-- Icon -->
                     <div
@@ -366,7 +369,7 @@ onMounted(async () => {
 
                     <!-- Actions -->
                     <div class="flex items-center gap-1 shrink-0">
-                        <NuxtLink :to="`/manager/payments/${pay.id}`" @click.stop
+                        <NuxtLink :to="`/manager/payments/${pay.documentId}`" @click.stop
                             class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                             :title="t.view">
                             <i class="fa-solid fa-eye text-base"></i>

@@ -21,7 +21,7 @@ interface Payment {
     notes: string | null
     createdAt: string
     paymentSlip: { url: string; formats?: any } | null
-    resident: { id: number; username: string; email: string; roomNumber: string | null } | null
+    resident: { id: number; documentId: string; username: string; email: string; roomNumber: string | null } | null
     property: { id: number; documentId: string; name: string; city: string } | null
     billing: { id: number; documentId: string; invoiceNo: string; amount: number; currency: string; status: string; dueDate: string; type: string } | null
 }
@@ -133,7 +133,7 @@ onMounted(async () => {
             </div>
             <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">{{ errorMessage }}</h3>
             <NuxtLink to="/manager/payments" class="mt-4 text-sm text-primary-600 hover:underline">{{ t.backToPayments
-            }}
+                }}
             </NuxtLink>
         </div>
 
@@ -179,13 +179,13 @@ onMounted(async () => {
                                         class="text-sm text-gray-500"></i>
                                     <span class="text-sm font-medium text-gray-900 dark:text-white">{{
                                         methodLabels[payment.method as keyof typeof methodLabels] || payment.method
-                                        }}</span>
+                                    }}</span>
                                 </div>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paymentDate }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(payment.date)
-                                    }}</p>
+                                }}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paymentAmount }}</p>
@@ -194,7 +194,7 @@ onMounted(async () => {
                             </div>
                             <div v-if="payment.transactionId">
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paymentTransactionId
-                                    }}</p>
+                                }}</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white font-mono">{{
                                     payment.transactionId }}</p>
                             </div>
@@ -226,13 +226,13 @@ onMounted(async () => {
                         class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-3">
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">{{
                             t.paymentBilling }}</h3>
-                        <NuxtLink :to="`/manager/invoices/${payment.billing.id}`"
+                        <NuxtLink :to="`/manager/invoices/${payment.billing.documentId}`"
                             class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                             <div>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{
                                     payment.billing.invoiceNo }}</p>
                                 <p class="text-xs text-gray-400">{{ t.dueDate }}: {{ formatDate(payment.billing.dueDate)
-                                    }}</p>
+                                }}</p>
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
@@ -285,7 +285,7 @@ onMounted(async () => {
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ payment.property.name }}
                                 </p>
                                 <p v-if="payment.property.city" class="text-xs text-gray-400">{{ payment.property.city
-                                    }}</p>
+                                }}</p>
                             </div>
                         </div>
                         <p v-else class="text-sm text-gray-400">—</p>
@@ -296,7 +296,8 @@ onMounted(async () => {
                         <p class="text-sm opacity-80">{{ t.paymentAmount }}</p>
                         <p class="text-3xl font-bold mt-1">{{ formatCurrency(payment.amount, payment.currency) }}</p>
                         <div class="flex items-center gap-2 mt-2">
-                            <i :class="methodIcons[payment.method] || 'fa-solid fa-wallet'" class="text-sm opacity-80"></i>
+                            <i :class="methodIcons[payment.method] || 'fa-solid fa-wallet'"
+                                class="text-sm opacity-80"></i>
                             <p class="text-sm opacity-80">{{ methodLabels[payment.method as keyof typeof methodLabels]
                                 || payment.method }}</p>
                         </div>
