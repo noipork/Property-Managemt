@@ -65,6 +65,32 @@ const isSubmittingPayment = ref(false)
 // Copied state
 const copiedField = ref('')
 
+// QR Viewer
+const showQrViewer = ref(false)
+const isSavingQr = ref(false)
+
+async function saveQrCode() {
+    if (!qrUrl.value) return
+    isSavingQr.value = true
+    try {
+        const response = await fetch(qrUrl.value)
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `QR-${bill.value?.invoiceNo || 'payment'}.png`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        showToast('success', t.value.qrSaved || 'QR Code saved')
+    } catch {
+        showToast('error', t.value.qrSaveError || 'Failed to save QR Code')
+    } finally {
+        isSavingQr.value = false
+    }
+}
+
 // ─── Toast ────────────────────────────────────────────────────────────────────
 interface Toast { id: number; type: 'success' | 'error'; message: string }
 const toasts = ref<Toast[]>([])
@@ -420,7 +446,7 @@ onMounted(async () => {
                         <div>
                             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.date || 'Created' }}</p>
                             <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(bill.createdAt)
-                            }}</p>
+                                }}</p>
                         </div>
                         <div v-if="bill.paidDate">
                             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.paidOn || 'Paid on' }}
@@ -433,6 +459,94 @@ onMounted(async () => {
                     <div v-if="bill.notes" class="pt-2 border-t border-gray-100 dark:border-gray-800">
                         <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">{{ t.notes || 'Notes' }}</p>
                         <p class="text-sm text-gray-700 dark:text-gray-300">{{ bill.notes }}</p>
+                    </div>
+                </div>
+
+                <!-- Payment Info (QR + Bank) -->
+                <div v-if="qrUrl || bill.property?.bankName || bill.property?.promptPayId"
+                    class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+                    <h3
+                        class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                        <i class="ti-credit-card text-primary-500"></i>
+                        {{ t.paymentInfo || 'Payment Info' }}
+                    </h3>
+
+                    <!-- QR Code -->
+                    <div v-if="qrUrl" class="flex flex-col items-center gap-3">
+                        <button @click="showQrViewer = true"
+                            class="inline-block p-3 bg-white rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-500 transition-colors cursor-pointer group relative">
+                            <img :src="qrUrl" alt="QR Code" class="w-48 h-48 object-contain" />
+                            <div
+                                class="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-xl transition-colors flex items-center justify-center">
+                                <span
+                                    class="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-full">
+                                    <i class="fa-solid fa-expand mr-1"></i>{{ t.viewQr || 'View QR' }}
+                                </span>
+                            </div>
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <button @click="showQrViewer = true"
+                                class="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-expand text-[10px]"></i>
+                                {{ t.viewFullSize || 'View full size' }}
+                            </button>
+                            <span class="text-gray-300 dark:text-gray-600">|</span>
+                            <button @click="saveQrCode" :disabled="isSavingQr"
+                                class="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1 disabled:opacity-50">
+                                <i class="fa-solid fa-download text-[10px]"></i>
+                                {{ t.saveQr || 'Save QR' }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bank Details -->
+                    <div v-if="bill.property?.bankName || bill.property?.promptPayId"
+                        class="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 space-y-3">
+                        <div v-if="bill.property?.bankName" class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-400 uppercase tracking-wider">{{ t.bankName || 'Bank' }}</p>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white mt-0.5">{{
+                                    bill.property.bankName }}</p>
+                            </div>
+                        </div>
+                        <div v-if="bill.property?.bankAccountName" class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-400 uppercase tracking-wider">{{ t.bankAccountName ||
+                                    'Account Name' }}</p>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white mt-0.5">{{
+                                    bill.property.bankAccountName }}</p>
+                            </div>
+                            <button @click="copyToClipboard(bill.property.bankAccountName!, 'accName2')"
+                                class="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <i :class="copiedField === 'accName2' ? 'fa-solid fa-check text-emerald-500' : 'fa-regular fa-copy'"
+                                    class="text-sm"></i>
+                            </button>
+                        </div>
+                        <div v-if="bill.property?.bankAccountNumber" class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-400 uppercase tracking-wider">{{ t.bankAccountNumber ||
+                                    'Account No.' }}</p>
+                                <p class="text-sm font-mono font-medium text-gray-900 dark:text-white mt-0.5">{{
+                                    bill.property.bankAccountNumber }}</p>
+                            </div>
+                            <button @click="copyToClipboard(bill.property.bankAccountNumber!, 'accNum2')"
+                                class="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <i :class="copiedField === 'accNum2' ? 'fa-solid fa-check text-emerald-500' : 'fa-regular fa-copy'"
+                                    class="text-sm"></i>
+                            </button>
+                        </div>
+                        <div v-if="bill.property?.promptPayId" class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-400 uppercase tracking-wider">PromptPay</p>
+                                <p class="text-sm font-mono font-medium text-gray-900 dark:text-white mt-0.5">{{
+                                    bill.property.promptPayId }}</p>
+                            </div>
+                            <button @click="copyToClipboard(bill.property.promptPayId!, 'promptpay2')"
+                                class="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <i :class="copiedField === 'promptpay2' ? 'fa-solid fa-check text-emerald-500' : 'fa-regular fa-copy'"
+                                    class="text-sm"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -483,7 +597,7 @@ onMounted(async () => {
                     <!-- Total -->
                     <div class="flex items-center justify-between pt-3">
                         <span class="text-base font-bold text-gray-900 dark:text-white">{{ t.totalAmount || 'Total'
-                        }}</span>
+                            }}</span>
                         <span class="text-xl font-bold text-primary-600 dark:text-primary-400">
                             {{ formatCurrency(bill.amount, bill.currency) }}
                         </span>
@@ -530,6 +644,40 @@ onMounted(async () => {
                 </div>
             </div>
         </template>
+
+        <!-- ── QR Viewer Overlay ── -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition-all duration-200" enter-from-class="opacity-0"
+                enter-to-class="opacity-100" leave-active-class="transition-all duration-150"
+                leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <div v-if="showQrViewer && qrUrl"
+                    class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                    @click.self="showQrViewer = false">
+                    <!-- Close -->
+                    <button @click="showQrViewer = false"
+                        class="absolute top-4 right-4 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                    <!-- QR Image -->
+                    <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-2xl max-w-sm w-full">
+                        <img :src="qrUrl" alt="QR Code" class="w-full h-auto object-contain" />
+                    </div>
+                    <!-- Actions -->
+                    <div class="flex items-center gap-3 mt-4">
+                        <button @click="saveQrCode" :disabled="isSavingQr"
+                            class="px-5 py-2.5 bg-white text-gray-900 text-sm font-semibold rounded-xl shadow-lg hover:bg-gray-100 transition-colors flex items-center gap-2 disabled:opacity-50">
+                            <i v-if="isSavingQr" class="fa-solid fa-spinner animate-spin text-sm"></i>
+                            <i v-else class="fa-solid fa-download text-sm"></i>
+                            {{ t.saveQr || 'Save QR Code' }}
+                        </button>
+                        <button @click="showQrViewer = false"
+                            class="px-5 py-2.5 bg-white/10 text-white text-sm font-medium rounded-xl hover:bg-white/20 transition-colors">
+                            {{ t.close || 'Close' }}
+                        </button>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
 
         <!-- ── Pay Modal ── -->
         <Teleport to="body">

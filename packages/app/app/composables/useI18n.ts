@@ -682,6 +682,12 @@ const translations = {
         submitPayment: 'Submit Payment',
         paymentSubmitted: 'Payment submitted! Waiting for manager approval.',
         paymentSubmitError: 'Failed to submit payment',
+        viewQr: 'View QR',
+        viewFullSize: 'View full size',
+        saveQr: 'Save QR Code',
+        qrSaved: 'QR Code saved',
+        qrSaveError: 'Failed to save QR Code',
+        paymentInfo: 'Payment Info',
 
         // Payment Approval (Manager)
         approvePayment: 'Approve',
@@ -1913,6 +1919,12 @@ const translations = {
         submitPayment: 'ส่งการชำระเงิน',
         paymentSubmitted: 'ส่งการชำระเงินแล้ว! รอผู้จัดการอนุมัติ',
         paymentSubmitError: 'ไม่สามารถส่งการชำระเงินได้',
+        viewQr: 'ดู QR',
+        viewFullSize: 'ดูขนาดเต็ม',
+        saveQr: 'บันทึก QR Code',
+        qrSaved: 'บันทึก QR Code แล้ว',
+        qrSaveError: 'ไม่สามารถบันทึก QR Code ได้',
+        paymentInfo: 'ข้อมูลการชำระเงิน',
 
         // Payment Approval (Manager)
         approvePayment: 'อนุมัติ',
