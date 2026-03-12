@@ -19,6 +19,7 @@ function showToast(type: 'success' | 'error', message: string) {
 const profileForm = ref({
     username: user.value?.name ?? '',
     email: user.value?.email ?? '',
+    phone: (user.value as any)?.phone ?? '',
 })
 const isSavingProfile = ref(false)
 
@@ -35,6 +36,7 @@ async function saveProfile() {
             body: JSON.stringify({
                 username: profileForm.value.username,
                 email: profileForm.value.email,
+                phone: profileForm.value.phone || null,
             }),
         })
         if (!res.ok) throw new Error('Failed')
@@ -171,6 +173,16 @@ const roleColor = computed(() =>
                         <input v-model="profileForm.email" type="email"
                             class="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
                             :placeholder="t.emailPlaceholder" />
+                    </div>
+
+                    <!-- Phone -->
+                    <div class="space-y-1.5 sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {{ t.profilePhone }}
+                        </label>
+                        <input v-model="profileForm.phone" type="tel"
+                            class="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+                            :placeholder="t.profilePhonePlaceholder" />
                     </div>
                 </div>
 

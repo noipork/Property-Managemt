@@ -16,6 +16,7 @@ const originalPropertyId = ref('')
 const form = ref({
     username: '',
     email: '',
+    phone: '',
     propertyId: '',
     unitTypeId: '',
     roomNumber: '',
@@ -242,6 +243,7 @@ async function fetchResident() {
         residentNumericId.value = data.id
         form.value.username = data.username ?? ''
         form.value.email = data.email ?? ''
+        form.value.phone = data.phone ?? ''
         form.value.roomNumber = data.roomNumber ?? ''
         originalRoomNumber.value = data.roomNumber ?? ''
         form.value.registrationDate = data.registrationDate ?? ''
@@ -510,6 +512,7 @@ async function submit() {
             body: JSON.stringify({
                 username: form.value.username,
                 email: form.value.email,
+                phone: form.value.phone || null,
                 property: propertyRelationMode.value === 'array'
                     ? [Number(form.value.propertyId)]
                     : Number(form.value.propertyId),
@@ -698,6 +701,15 @@ onMounted(async () => {
                                 class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
                                 :class="errors.email ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'" />
                             <p v-if="errors.email" class="mt-1 text-xs text-red-500">{{ errors.email }}</p>
+                        </div>
+
+                        <!-- Phone -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                {{ t.residentPhone }}
+                            </label>
+                            <input v-model="form.phone" type="tel" :placeholder="t.residentPhonePlaceholder"
+                                class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors" />
                         </div>
                     </div>
                 </Transition>
@@ -931,7 +943,7 @@ onMounted(async () => {
                                     class="flex items-center gap-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 rounded-lg text-xs text-primary-700 dark:text-primary-300">
                                     <i class="fa-solid fa-check-circle"></i>
                                     <span>{{ t.selectedRoom }}: <strong>{{ selectedBuilding?.name }} → {{ t.floorLabel
-                                    }} {{ selectedFloor?.floorNumber }} → {{ form.roomNumber }}</strong></span>
+                                            }} {{ selectedFloor?.floorNumber }} → {{ form.roomNumber }}</strong></span>
                                 </div>
                             </div>
 
@@ -955,7 +967,7 @@ onMounted(async () => {
                                 @click="($event.target as HTMLInputElement).showPicker?.()" />
                             <p v-if="errors.registrationDate" class="mt-1 text-xs text-red-500">{{
                                 errors.registrationDate
-                                }}</p>
+                            }}</p>
                         </div>
 
                         <!-- Residency Status -->
@@ -1057,7 +1069,7 @@ onMounted(async () => {
                                     :class="errors.leaseEndDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                                     @click="($event.target as HTMLInputElement).showPicker?.()" />
                                 <p v-if="errors.leaseEndDate" class="mt-1 text-xs text-red-500">{{ errors.leaseEndDate
-                                    }}</p>
+                                }}</p>
                             </div>
                         </div>
 

@@ -15,6 +15,7 @@ let initialLoad = true
 const form = ref({
     username: '',
     email: '',
+    phone: '',
     password: '',
     propertyId: '',
     unitTypeId: '',
@@ -629,6 +630,7 @@ async function submit() {
             },
             body: JSON.stringify({
                 role: 4,
+                phone: form.value.phone || null,
                 property: Number(form.value.propertyId),
                 unitType: Number(form.value.unitTypeId),
                 roomNumber: form.value.roomNumber,
@@ -812,6 +814,23 @@ function handleTermsPaste(e: ClipboardEvent) {
                             </button>
                         </div>
                         <p v-if="errors.email" class="mt-1 text-xs text-red-500">{{ errors.email }}</p>
+                    </div>
+
+                    <!-- Phone -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                            {{ t.residentPhone }}
+                        </label>
+                        <div class="relative">
+                            <input v-model="form.phone" type="tel" :placeholder="t.residentPhonePlaceholder"
+                                class="w-full pl-3 pr-10 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors" />
+                            <button type="button" @click="copyToClipboard(form.phone, 'phone')" :disabled="!form.phone"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 transition-colors"
+                                title="Copy phone">
+                                <i :class="copiedField === 'phone' ? 'fa-solid fa-check text-emerald-500' : 'fa-solid fa-copy'"
+                                    class="text-sm"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Password -->
@@ -1112,7 +1131,7 @@ function handleTermsPaste(e: ClipboardEvent) {
                                 <i
                                     :class="roomPrefillHighlight ? 'fa-solid fa-circle-check text-emerald-500' : 'fa-solid fa-check-circle'"></i>
                                 <span class="flex-1">{{ t.selectedRoom || 'Selected' }}: <strong>{{
-                                        selectedBuilding?.name }} → {{
+                                    selectedBuilding?.name }} → {{
                                             t.floorLabel || 'Floor' }} {{ selectedFloor?.floorNumber }} → {{ form.roomNumber
                                         }}</strong></span>
                                 <span v-if="prefilled"
@@ -1144,7 +1163,7 @@ function handleTermsPaste(e: ClipboardEvent) {
                             :class="errors.registrationDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                             @click="($event.target as HTMLInputElement).showPicker?.()" />
                         <p v-if="errors.registrationDate" class="mt-1 text-xs text-red-500">{{ errors.registrationDate
-                            }}
+                        }}
                         </p>
                     </div>
 
@@ -1236,7 +1255,7 @@ function handleTermsPaste(e: ClipboardEvent) {
                                 :class="errors.leaseStartDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                                 @click="($event.target as HTMLInputElement).showPicker?.()" />
                             <p v-if="errors.leaseStartDate" class="mt-1 text-xs text-red-500">{{ errors.leaseStartDate
-                            }}</p>
+                                }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">

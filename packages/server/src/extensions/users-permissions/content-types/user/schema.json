@@ -80,6 +80,9 @@
     "roomNumber": {
       "type": "string"
     },
+    "phone": {
+      "type": "string"
+    },
     "plainPassword": {
       "type": "string",
       "private": true
