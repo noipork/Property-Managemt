@@ -821,33 +821,37 @@ onUnmounted(() => {
 <template>
     <div class="max-w-4xl mx-auto">
         <!-- Header -->
-        <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center gap-3">
+        <div class="flex items-center justify-between gap-2 mb-6">
+            <div class="flex items-center gap-3 min-w-0">
                 <button @click="$router.back()"
-                    class="w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <i class="fa-solid fa-arrow-left text-gray-600 dark:text-gray-300"></i>
                 </button>
-                <div>
-                    <h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{{ t.propertyDetails }}</h1>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ t.backToProperties }}</p>
+                <div class="min-w-0">
+                    <h1 class="text-lg md:text-2xl font-bold text-gray-900 dark:text-white truncate">{{
+                        t.propertyDetails }}</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 hidden sm:block">{{ t.backToProperties }}
+                    </p>
                 </div>
             </div>
-            <div v-if="property" class="flex items-center gap-2">
+            <div v-if="property" class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 <NuxtLink :to="`/manager/properties/${property.documentId}/meters`"
-                    class="inline-flex items-center gap-1.5 px-2.5 md:px-4 py-2 text-sm font-medium text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors"
+                    class="inline-flex items-center justify-center gap-1.5 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 text-sm font-medium text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors"
                     :title="t.meterReadings">
                     <i class="fa-solid fa-gauge text-xs"></i>
-                    <span class="hidden md:inline">{{ t.meterReadings }}</span>
+                    <span class="hidden sm:inline">{{ t.meterReadings }}</span>
                 </NuxtLink>
                 <NuxtLink :to="`/manager/properties/${property.documentId}/edit`"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-700 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors">
+                    class="inline-flex items-center justify-center gap-1.5 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 text-sm font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-700 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors"
+                    :title="t.edit">
                     <i class="fa-solid fa-pen text-xs"></i>
-                    {{ t.edit }}
+                    <span class="hidden sm:inline">{{ t.edit }}</span>
                 </NuxtLink>
                 <button @click="showDeleteModal = true"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
+                    class="inline-flex items-center justify-center gap-1.5 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                    :title="t.delete">
                     <i class="fa-solid fa-trash text-xs"></i>
-                    {{ t.delete }}
+                    <span class="hidden sm:inline">{{ t.delete }}</span>
                 </button>
             </div>
         </div>
@@ -993,7 +997,7 @@ onUnmounted(() => {
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.areaLabel }}</dt>
                             <dd class="text-sm font-medium text-gray-900 dark:text-white">{{
                                 Number(property.area).toLocaleString('en-US')
-                            }} {{ property.areaUnit }}</dd>
+                                }} {{ property.areaUnit }}</dd>
                         </div>
                         <div v-if="property.yearBuilt" class="flex justify-between">
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.yearBuiltLabel }}</dt>
@@ -1164,7 +1168,7 @@ onUnmounted(() => {
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ ut.name
-                                        }}</span>
+                                    }}</span>
                                     <span
                                         class="text-xs px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400 capitalize">
                                         {{ ut.unitType?.replace(/^br(\d)$/, '$1BR') ?? ut.unitType }}
@@ -1224,7 +1228,7 @@ onUnmounted(() => {
                         <!-- Description + images -->
                         <div v-if="ut.description || ut.images?.length" class="p-3 space-y-2">
                             <p v-if="ut.description" class="text-xs text-gray-500 dark:text-gray-400">{{ ut.description
-                                }}</p>
+                            }}</p>
                             <div v-if="ut.images?.length" class="flex gap-2 flex-wrap">
                                 <div v-for="(img, imgIdx) in ut.images" :key="img.id"
                                     class="relative w-24 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer group"
@@ -1261,22 +1265,23 @@ onUnmounted(() => {
                         </span>
                     </h3>
                     <div class="flex flex-col items-end gap-1">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1.5 sm:gap-2">
                             <NuxtLink :to="`/manager/properties/${propertyId}/meters`"
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors">
+                                class="inline-flex items-center justify-center gap-1.5 w-8 h-8 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 text-xs font-medium text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors"
+                                :title="t.meterReadings">
                                 <i class="fa-solid fa-gauge text-[10px]"></i>
-                                {{ t.meterReadings }}
+                                <span class="hidden sm:inline">{{ t.meterReadings }}</span>
                             </NuxtLink>
                             <button @click="showCreateBuildingModal = true"
                                 :disabled="!!(planBuildingLimit && planBuildingLimit < 999 && buildings.length >= planBuildingLimit)"
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors"
+                                class="inline-flex items-center justify-center gap-1.5 w-8 h-8 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 text-xs font-medium border rounded-lg transition-colors"
                                 :class="planBuildingLimit && planBuildingLimit < 999 && buildings.length >= planBuildingLimit
                                     ? 'text-gray-300 dark:text-gray-600 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 cursor-not-allowed'
                                     : 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-700 hover:bg-primary-100 dark:hover:bg-primary-900/40'">
                                 <i v-if="planBuildingLimit && planBuildingLimit < 999 && buildings.length >= planBuildingLimit"
                                     class="fa-solid fa-crown text-amber-500 text-[10px]"></i>
                                 <i v-else class="fa-solid fa-plus text-[10px]"></i>
-                                {{ t.createBuilding }}
+                                <span class="hidden sm:inline">{{ t.createBuilding }}</span>
                             </button>
                         </div>
                         <span

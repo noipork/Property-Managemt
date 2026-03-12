@@ -474,37 +474,47 @@ onMounted(() => {
 <template>
     <div class="max-w-5xl mx-auto space-y-6">
         <!-- Header -->
-        <div class="flex items-center justify-between gap-4 flex-wrap">
-            <div class="flex items-center gap-3">
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-center gap-3 min-w-0">
                 <button @click="router.back()"
-                    class="w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <i class="fa-solid fa-arrow-left text-gray-600 dark:text-gray-300"></i>
                 </button>
-                <div>
-                    <h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{{ t.meterReadings }}</h1>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ property?.name }}</p>
+                <div class="min-w-0">
+                    <h1 class="text-lg md:text-2xl font-bold text-gray-900 dark:text-white truncate">{{ t.meterReadings
+                        }}</h1>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">{{ property?.name }}</p>
                 </div>
             </div>
 
-            <!-- Bulk Save -->
-            <div class="flex items-center gap-3">
+            <!-- Actions -->
+            <div class="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+                <!-- Import Residents -->
+                <NuxtLink :to="`/manager/properties/${propertyId}/import`"
+                    class="inline-flex items-center justify-center gap-2 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 text-sm font-medium text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
+                    :title="t.importResidents">
+                    <i class="fa-solid fa-file-import text-sm"></i>
+                    <span class="hidden sm:inline">{{ t.importResidents }}</span>
+                </NuxtLink>
+
+                <!-- Bulk Save -->
                 <Transition enter-active-class="transition-all duration-300" enter-from-class="opacity-0 scale-95"
                     enter-to-class="opacity-100 scale-100" leave-active-class="transition-all duration-200"
                     leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
                     <span v-if="saveSuccess"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                        class="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
                         <i class="fa-solid fa-check"></i>
-                        {{ t.saved }}
+                        <span class="hidden sm:inline">{{ t.saved }}</span>
                     </span>
                 </Transition>
                 <button @click="bulkSave" :disabled="isSaving || dirtyCount === 0"
-                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     :class="dirtyCount > 0 ? 'bg-primary-600 hover:bg-primary-700' : 'bg-gray-400'">
                     <span v-if="isSaving"
                         class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                     <i v-else class="fa-solid fa-floppy-disk text-sm"></i>
-                    {{ t.bulkSave }}
-                    <span v-if="dirtyCount > 0" class="ml-1 px-1.5 py-0.5 text-xs bg-white/20 rounded-full">{{
+                    <span class="hidden sm:inline">{{ t.bulkSave }}</span>
+                    <span v-if="dirtyCount > 0" class="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">{{
                         dirtyCount }}</span>
                 </button>
             </div>
@@ -587,7 +597,7 @@ onMounted(() => {
                                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ building.name }}</h3>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">
                                     {{ building.floors.length }} {{ t.floor }}{{ lang !== 'TH' && building.floors.length
-                                    !== 1 ? 's' : '' }}
+                                        !== 1 ? 's' : '' }}
                                     · {{ buildingStats(building).roomCount }} {{ t.rooms }}
                                 </p>
                             </div>
