@@ -4,6 +4,7 @@ import { ref, onMounted } from 'vue'
 const { t, lang, setLanguage } = useI18n()
 const { user, logout } = useAuth()
 const router = useRouter()
+const { init: initPush, subscribe: subscribePush, unsubscribe: unsubscribePush, toggle: togglePush, isSupported: pushSupported, isSubscribed: pushSubscribed, isPermissionDenied: pushDenied, isLoading: pushLoading } = usePushNotification()
 
 const isManager = computed(() => user.value?.role !== 'resident')
 
@@ -11,6 +12,7 @@ const isManager = computed(() => user.value?.role !== 'resident')
 const isDarkMode = ref(false)
 onMounted(() => {
     isDarkMode.value = localStorage.getItem('theme') === 'dark'
+    initPush()
 })
 
 function toggleTheme() {
@@ -139,6 +141,31 @@ const menuItems = computed(() => isManager.value ? managerMenuItems.value : resi
                     class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                     {{ lang === 'EN' ? 'English' : 'ไทย' }}
                 </span>
+            </button>
+
+            <!-- Push Notifications toggle -->
+            <button v-if="pushSupported" @click="togglePush()" :disabled="pushLoading || pushDenied"
+                class="flex items-center gap-3 px-4 py-3.5 w-full hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors disabled:opacity-50">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-bell text-sm"
+                        :class="pushSubscribed ? 'text-emerald-500' : 'text-gray-400'"></i>
+                </div>
+                <div class="flex-1 text-left">
+                    <span class="text-sm font-medium text-gray-900 dark:text-white block">{{ t.pushNotifications
+                        }}</span>
+                    <span v-if="pushDenied" class="text-[11px] text-red-500 dark:text-red-400 leading-tight block">
+                        {{ t.pushDenied }}
+                    </span>
+                </div>
+                <div v-if="pushLoading"
+                    class="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin flex-shrink-0">
+                </div>
+                <div v-else class="relative w-11 h-6 rounded-full transition-colors flex-shrink-0"
+                    :class="pushSubscribed ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'">
+                    <div class="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"
+                        :class="pushSubscribed ? 'translate-x-5' : 'translate-x-0.5'"></div>
+                </div>
             </button>
         </div>
 

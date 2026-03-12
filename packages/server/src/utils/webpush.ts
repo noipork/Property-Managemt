@@ -10,7 +10,7 @@ function ensureConfigured() {
   const email = process.env.VAPID_EMAIL || 'mailto:admin@example.com'
 
   if (!publicKey || !privateKey) {
-    strapi?.log?.warn('[WebPush] VAPID keys not configured. Push notifications will not work.')
+    console.warn('[WebPush] VAPID keys not configured. Push notifications will not work.')
     return
   }
 

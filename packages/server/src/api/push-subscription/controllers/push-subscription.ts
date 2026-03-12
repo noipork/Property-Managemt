@@ -25,7 +25,7 @@ export default factories.createCoreController('api::push-subscription.push-subsc
     const existing = await strapi.documents('api::push-subscription.push-subscription').findMany({
       filters: {
         endpoint: { $eq: subscription.endpoint },
-        user: { id: { $eq: user.id } },
+        user: { documentId: { $eq: user.documentId } },
       },
     })
 
@@ -47,7 +47,7 @@ export default factories.createCoreController('api::push-subscription.push-subsc
       data: {
         endpoint: subscription.endpoint,
         keys: subscription.keys,
-        user: { id: user.id },
+        user: { documentId: user.documentId },
         userAgent: userAgent || null,
         isActive: true,
       },
@@ -69,7 +69,7 @@ export default factories.createCoreController('api::push-subscription.push-subsc
     const existing = await strapi.documents('api::push-subscription.push-subscription').findMany({
       filters: {
         endpoint: { $eq: endpoint },
-        user: { id: { $eq: user.id } },
+        user: { documentId: { $eq: user.documentId } },
       },
     })
 
