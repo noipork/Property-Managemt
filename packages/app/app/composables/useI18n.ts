@@ -168,6 +168,31 @@ const translations = {
         orContinueWith: 'Or continue with',
         invalidCredentials: 'Invalid email or password. Please try again.',
 
+        // Auth - Forgot Password
+        forgotPasswordTitle: 'Forgot Password',
+        forgotPasswordSubtitle: 'Enter your email address and we\'ll send you a link to reset your password.',
+        sendResetLink: 'Send Reset Link',
+        sendingResetLink: 'Sending...',
+        resetLinkSent: 'Reset link sent!',
+        resetLinkSentDesc: 'Check your email inbox for a link to reset your password. If it doesn\'t appear within a few minutes, check your spam folder.',
+        backToSignIn: 'Back to Sign In',
+        forgotPasswordError: 'Failed to send reset link. Please check the email and try again.',
+        tryAnotherEmail: 'Try another email',
+
+        // Auth - Reset Password
+        resetPasswordTitle: 'Reset Password',
+        resetPasswordSubtitle: 'Enter your new password below.',
+        newPasswordLabel: 'New Password',
+        confirmNewPassword: 'Confirm New Password',
+        confirmNewPasswordPlaceholder: 'Confirm your new password',
+        resetPassword: 'Reset Password',
+        resettingPassword: 'Resetting...',
+        passwordResetSuccess: 'Password Reset Successful',
+        passwordResetSuccessDesc: 'Your password has been reset. You can now sign in with your new password.',
+        goToSignIn: 'Go to Sign In',
+        resetPasswordError: 'Failed to reset password. The link may have expired.',
+        invalidResetLink: 'Invalid or expired reset link. Please request a new one.',
+
         // Auth - Sign Up
         getStarted: 'Get Started',
         signUpSubtitle: 'Create your account to start managing properties',
@@ -1446,6 +1471,31 @@ const translations = {
         signUp: 'สมัครสมาชิก',
         orContinueWith: 'หรือดำเนินการต่อด้วย',
         invalidCredentials: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองอีกครั้ง',
+
+        // Auth - Forgot Password
+        forgotPasswordTitle: 'ลืมรหัสผ่าน',
+        forgotPasswordSubtitle: 'กรอกอีเมลของคุณ แล้วเราจะส่งลิงก์สำหรับรีเซ็ตรหัสผ่านให้คุณ',
+        sendResetLink: 'ส่งลิงก์รีเซ็ต',
+        sendingResetLink: 'กำลังส่ง...',
+        resetLinkSent: 'ส่งลิงก์รีเซ็ตแล้ว!',
+        resetLinkSentDesc: 'ตรวจสอบกล่องข้อความอีเมลของคุณเพื่อรีเซ็ตรหัสผ่าน หากไม่พบภายในไม่กี่นาที ให้ตรวจสอบโฟลเดอร์สแปม',
+        backToSignIn: 'กลับไปหน้าเข้าสู่ระบบ',
+        forgotPasswordError: 'ไม่สามารถส่งลิงก์รีเซ็ตได้ กรุณาตรวจสอบอีเมลแล้วลองอีกครั้ง',
+        tryAnotherEmail: 'ลองอีเมลอื่น',
+
+        // Auth - Reset Password
+        resetPasswordTitle: 'รีเซ็ตรหัสผ่าน',
+        resetPasswordSubtitle: 'กรอกรหัสผ่านใหม่ของคุณด้านล่าง',
+        newPasswordLabel: 'รหัสผ่านใหม่',
+        confirmNewPassword: 'ยืนยันรหัสผ่านใหม่',
+        confirmNewPasswordPlaceholder: 'ยืนยันรหัสผ่านใหม่ของคุณ',
+        resetPassword: 'รีเซ็ตรหัสผ่าน',
+        resettingPassword: 'กำลังรีเซ็ต...',
+        passwordResetSuccess: 'รีเซ็ตรหัสผ่านสำเร็จ',
+        passwordResetSuccessDesc: 'รหัสผ่านของคุณถูกรีเซ็ตแล้ว คุณสามารถเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้',
+        goToSignIn: 'ไปหน้าเข้าสู่ระบบ',
+        resetPasswordError: 'ไม่สามารถรีเซ็ตรหัสผ่านได้ ลิงก์อาจหมดอายุแล้ว',
+        invalidResetLink: 'ลิงก์รีเซ็ตไม่ถูกต้องหรือหมดอายุ กรุณาขอลิงก์ใหม่',
 
         // Auth - Sign Up
         getStarted: 'เริ่มต้นใช้งาน',

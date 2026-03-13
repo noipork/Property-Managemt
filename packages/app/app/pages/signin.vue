@@ -235,8 +235,9 @@ onMounted(() => {
                             <div class="flex items-center justify-between mb-1.5">
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.password
                                     }}</label>
-                                <a href="#" class="text-xs text-primary-600 dark:text-primary-400 hover:underline">{{
-                                    t.forgotPassword }}</a>
+                                <NuxtLink to="/forgot-password"
+                                    class="text-xs text-primary-600 dark:text-primary-400 hover:underline">{{
+                                        t.forgotPassword }}</NuxtLink>
                             </div>
                             <div class="relative">
                                 <i
@@ -270,12 +271,12 @@ onMounted(() => {
                     </form>
 
                     <!-- Sign up link -->
-                    <p class="text-center text-sm text-gray-500 dark:text-gray-400 mt-8">
+                    <!-- <p class="text-center text-sm text-gray-500 dark:text-gray-400 mt-8">
                         {{ t.noAccount }}
                         <NuxtLink to="/signup"
                             class="text-primary-600 dark:text-primary-400 font-medium hover:underline">{{ t.signUp }}
                         </NuxtLink>
-                    </p>
+                    </p> -->
                 </div>
             </div>
         </div>
