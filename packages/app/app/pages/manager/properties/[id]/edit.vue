@@ -216,11 +216,6 @@ async function fetchProperty() {
             invoiceDueDays: p.invoiceDueDays ?? 7,
             terms: p.terms || '',
         }
-        // Populate terms editor
-        await nextTick()
-        if (termsEditor.value) {
-            termsEditor.value.innerHTML = p.terms || ''
-        }
         // Load QR code
         if (p.qrCodeImage) {
             existingQrCodeId.value = p.qrCodeImage.id
@@ -267,6 +262,9 @@ async function fetchProperty() {
     } finally {
         isLoading.value = false
         await nextTick()
+        if (termsEditor.value) {
+            termsEditor.value.innerHTML = form.value.terms || ''
+        }
         await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => {
             sectionsVisible.value = true
             resolve()
@@ -800,7 +798,7 @@ function handleUnitTypesUpdate(newVal: UnitTypeEntry[]) {
                     <!-- QR Code -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t.qrCodeImage
-                            }}</label>
+                        }}</label>
                         <div class="flex items-start gap-4">
                             <div v-if="qrCodePreview"
                                 class="relative w-36 h-36 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white">
@@ -876,7 +874,7 @@ function handleUnitTypesUpdate(newVal: UnitTypeEntry[]) {
                         {{ termsExpanded ? t.leaseTermsCollapse : t.leaseTermsExpand }}
                     </button>
                     <span class="text-[10px] text-gray-400 px-1">{{ (form.terms || '').replace(/<[^>]*>/g, '').length
-                            }}</span>
+                    }}</span>
                 </div>
 
                 <!-- Editor -->

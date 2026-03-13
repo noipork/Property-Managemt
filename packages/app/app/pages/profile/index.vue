@@ -17,6 +17,7 @@ function showToast(type: 'success' | 'error', message: string) {
 
 // ─── Profile form ─────────────────────────────────────────────────────────────
 const profileForm = ref({
+    fullName: '',
     username: user.value?.name ?? '',
     email: user.value?.email ?? '',
     phone: '',   // populated on mount from /api/users/me
@@ -34,6 +35,7 @@ async function saveProfile() {
                 Authorization: `Bearer ${token.value}`,
             },
             body: JSON.stringify({
+                fullName: profileForm.value.fullName,
                 username: profileForm.value.username,
                 email: profileForm.value.email,
                 phone: profileForm.value.phone || null,
@@ -43,7 +45,7 @@ async function saveProfile() {
         // Update cached user
         user.value = {
             ...user.value,
-            name: profileForm.value.username,
+            name: profileForm.value.fullName || profileForm.value.username,
             email: profileForm.value.email,
         } as any
         if (process.client) {
@@ -120,6 +122,8 @@ onMounted(async () => {
         })
         if (!res.ok) return
         const data = await res.json()
+        profileForm.value.fullName = data.fullName ?? ''
+        profileForm.value.username = data.username ?? ''
         profileForm.value.phone = data.phone ?? ''
     } catch {
         // silently fail — form stays empty
@@ -175,20 +179,32 @@ onMounted(async () => {
                 </h2>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <!-- Display name -->
+                    <!-- Full Name -->
                     <div class="space-y-1.5">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {{ t.profileDisplayName }}
+                            {{ t.fullName }}
+                        </label>
+                        <input v-model="profileForm.fullName" type="text"
+                            class="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+                            :placeholder="t.fullNamePlaceholder" />
+                    </div>
+
+                    <!-- Username -->
+                    <div class="space-y-1.5">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {{ t.usernameLabel }}
                         </label>
                         <input v-model="profileForm.username" type="text"
                             class="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
-                            :placeholder="t.fullNamePlaceholder" />
+                            :placeholder="t.usernamePlaceholder" />
                     </div>
 
                     <!-- Email -->
                     <div class="space-y-1.5">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                             {{ t.emailAddress }}
+                            <span class="text-xs font-normal text-gray-400 dark:text-gray-500 ml-1">({{ t.emailOptional
+                                }})</span>
                         </label>
                         <input v-model="profileForm.email" type="email"
                             class="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"

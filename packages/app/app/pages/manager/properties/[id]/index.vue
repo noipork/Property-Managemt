@@ -823,7 +823,7 @@ onUnmounted(() => {
         <!-- Header -->
         <div class="flex items-center justify-between gap-2 mb-6">
             <div class="flex items-center gap-3 min-w-0">
-                <button @click="$router.back()"
+                <button @click="navigateTo('/manager/properties')"
                     class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <i class="fa-solid fa-arrow-left text-gray-600 dark:text-gray-300"></i>
                 </button>
@@ -997,7 +997,7 @@ onUnmounted(() => {
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.areaLabel }}</dt>
                             <dd class="text-sm font-medium text-gray-900 dark:text-white">{{
                                 Number(property.area).toLocaleString('en-US')
-                                }} {{ property.areaUnit }}</dd>
+                            }} {{ property.areaUnit }}</dd>
                         </div>
                         <div v-if="property.yearBuilt" class="flex justify-between">
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.yearBuiltLabel }}</dt>
@@ -1168,7 +1168,7 @@ onUnmounted(() => {
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ ut.name
-                                    }}</span>
+                                        }}</span>
                                     <span
                                         class="text-xs px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400 capitalize">
                                         {{ ut.unitType?.replace(/^br(\d)$/, '$1BR') ?? ut.unitType }}
@@ -1228,7 +1228,7 @@ onUnmounted(() => {
                         <!-- Description + images -->
                         <div v-if="ut.description || ut.images?.length" class="p-3 space-y-2">
                             <p v-if="ut.description" class="text-xs text-gray-500 dark:text-gray-400">{{ ut.description
-                            }}</p>
+                                }}</p>
                             <div v-if="ut.images?.length" class="flex gap-2 flex-wrap">
                                 <div v-for="(img, imgIdx) in ut.images" :key="img.id"
                                     class="relative w-24 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer group"
