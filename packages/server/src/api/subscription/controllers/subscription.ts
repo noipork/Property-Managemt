@@ -104,10 +104,15 @@ export default factories.createCoreController('api::subscription.subscription', 
         })
       }
 
-      // Calculate total price with discount
+      // Calculate total price with duration discount
       const baseTotal = plan.price * duration
-      const discountAmount = baseTotal * (discountPercent / 100)
-      let finalPrice = Math.round(baseTotal - discountAmount)
+      const durationDiscountAmount = baseTotal * (discountPercent / 100)
+      let afterDurationDiscount = Math.round(baseTotal - durationDiscountAmount)
+
+      // Apply user-specific special discount (percentDiscount on user record)
+      const userPercentDiscount = Number(user.percentDiscount) || 0
+      const userDiscountAmount = Math.round(afterDurationDiscount * (userPercentDiscount / 100))
+      let finalPrice = afterDurationDiscount - userDiscountAmount
 
       // ─── Proration: credit remaining days on current subscription ────────
       let creditAmount = 0
@@ -174,7 +179,7 @@ export default factories.createCoreController('api::subscription.subscription', 
               currency: (plan.currency || 'THB').toLowerCase(),
               product_data: {
                 name: `${plan.name} - ${durationLabel}`,
-                description: `${plan.maxProperties} properties, ${plan.maxUnitsPerProperty} units per property${discountPercent > 0 ? ` (${discountPercent}% discount applied)` : ''}${creditAmount > 0 ? ` — ฿${creditAmount.toLocaleString()} credit from current plan` : ''}`,
+                description: `${plan.maxProperties} properties, ${plan.maxUnitsPerProperty} units per property${discountPercent > 0 ? ` (${discountPercent}% duration discount)` : ''}${userPercentDiscount > 0 ? ` (${userPercentDiscount}% special discount)` : ''}${creditAmount > 0 ? ` — ฿${creditAmount.toLocaleString()} credit from current plan` : ''}`,
               },
               unit_amount: Math.round(finalPrice * 100), // Stripe uses cents (satang for THB)
             },

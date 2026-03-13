@@ -16,6 +16,8 @@ interface Plan {
     currency: string
     maxProperties: number
     maxUnitsPerProperty: number
+    maxUnitTypesPerProperty: number
+    maxBuildingsPerProperty: number
     features: string[]
     isActive: boolean
     sortOrder: number
@@ -30,6 +32,9 @@ interface DurationOption {
 const plans = ref<Plan[]>([])
 const isLoading = ref(true)
 const isLoadingSubscription = ref(true)
+
+// User-specific special discount
+const userPercentDiscount = ref(0)
 
 // Duration options with discounts
 const durationOptions: DurationOption[] = [
@@ -60,8 +65,16 @@ function getDiscountedPrice(basePrice: number, months: number): number {
     if (!option) return basePrice * months
 
     const totalPrice = basePrice * months
-    const discountAmount = totalPrice * (option.discount / 100)
-    return Math.round(totalPrice - discountAmount)
+    const durationDiscountAmount = totalPrice * (option.discount / 100)
+    let afterDuration = Math.round(totalPrice - durationDiscountAmount)
+
+    // Apply user-specific special discount
+    if (userPercentDiscount.value > 0) {
+        const userDiscountAmount = Math.round(afterDuration * (userPercentDiscount.value / 100))
+        afterDuration -= userDiscountAmount
+    }
+
+    return afterDuration
 }
 
 function getMonthlyEquivalent(basePrice: number, months: number): number {
@@ -223,6 +236,8 @@ async function fetchPlans() {
             currency: p.currency || 'THB',
             maxProperties: p.maxProperties,
             maxUnitsPerProperty: p.maxUnitsPerProperty,
+            maxUnitTypesPerProperty: p.maxUnitTypesPerProperty,
+            maxBuildingsPerProperty: p.maxBuildingsPerProperty,
             features: p.features || [],
             isActive: p.isActive,
             sortOrder: p.sortOrder,
@@ -396,10 +411,25 @@ async function handleCancelScheduledDowngrade() {
     isCancellingDowngrade.value = false
 }
 
+async function fetchUserDiscount() {
+    try {
+        const res = await fetch(`${STRAPI_URL}/api/users/me`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        if (res.ok) {
+            const data = await res.json()
+            userPercentDiscount.value = Number(data.percentDiscount) || 0
+        }
+    } catch (err) {
+        console.error('Failed to fetch user discount:', err)
+    }
+}
+
 onMounted(() => {
     fetchPlans()
     loadSubscription()
     checkPaymentStatus()
+    fetchUserDiscount()
 })
 </script>
 
@@ -662,10 +692,21 @@ onMounted(() => {
                                 <template v-if="activePlan && plan.sortOrder < activePlan.sortOrder">
                                     <div class="flex items-baseline gap-1">
                                         <span class="text-3xl font-bold text-gray-900 dark:text-white">
-                                            {{ formatPrice(plan.price, plan.currency) }}
+                                            {{ formatPrice(userPercentDiscount > 0 ? Math.round(plan.price * (1 -
+                                                userPercentDiscount / 100)) : plan.price, plan.currency) }}
                                         </span>
                                         <span class="text-sm text-gray-500 dark:text-gray-400">
                                             / {{ getDurationLabel(1) }}
+                                        </span>
+                                    </div>
+                                    <div v-if="userPercentDiscount > 0" class="flex flex-wrap items-center gap-2 mt-1">
+                                        <span class="text-sm text-gray-400 line-through">
+                                            {{ formatPrice(plan.price, plan.currency) }}
+                                        </span>
+                                        <span
+                                            class="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded font-semibold">
+                                            <i class="fa-solid fa-star text-[9px] mr-0.5"></i>
+                                            {{ lang === 'TH' ? 'ส่วนลดพิเศษ' : 'Special' }} {{ userPercentDiscount }}%
                                         </span>
                                     </div>
                                     <p class="text-xs text-blue-500 dark:text-blue-400 mt-1">
@@ -687,13 +728,19 @@ onMounted(() => {
                                         </span>
                                     </div>
                                     <!-- Original price if discounted -->
-                                    <div v-if="getDiscount(selectedDuration) > 0" class="flex items-center gap-2 mt-1">
+                                    <div v-if="getDiscount(selectedDuration) > 0 || userPercentDiscount > 0"
+                                        class="flex flex-wrap items-center gap-2 mt-1">
                                         <span class="text-sm text-gray-400 line-through">
                                             {{ formatPrice(plan.price * selectedDuration, plan.currency) }}
                                         </span>
-                                        <span
+                                        <span v-if="getDiscount(selectedDuration) > 0"
                                             class="text-xs px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded font-semibold">
                                             {{ t.savePct }} {{ getDiscount(selectedDuration) }}%
+                                        </span>
+                                        <span v-if="userPercentDiscount > 0"
+                                            class="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded font-semibold">
+                                            <i class="fa-solid fa-star text-[9px] mr-0.5"></i>
+                                            {{ lang === 'TH' ? 'ส่วนลดพิเศษ' : 'Special' }} {{ userPercentDiscount }}%
                                         </span>
                                     </div>
                                     <!-- Per month equivalent -->
@@ -736,6 +783,19 @@ onMounted(() => {
                                 <i class="fa-solid fa-door-open w-5" :class="getPlanTierStyle(plan.sortOrder).text"></i>
                                 <span class="text-gray-600 dark:text-gray-300">
                                     {{ plan.maxUnitsPerProperty }} {{ t.unitsPerProperty }}
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm">
+                                <i class="fa-solid fa-layer-group w-5"
+                                    :class="getPlanTierStyle(plan.sortOrder).text"></i>
+                                <span class="text-gray-600 dark:text-gray-300">
+                                    {{ plan.maxUnitTypesPerProperty }} {{ t.maxUnitTypesPerProperty }}
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm">
+                                <i class="fa-solid fa-city w-5" :class="getPlanTierStyle(plan.sortOrder).text"></i>
+                                <span class="text-gray-600 dark:text-gray-300">
+                                    {{ plan.maxBuildingsPerProperty }} {{ t.maxBuildingsPerProperty }}
                                 </span>
                             </div>
                         </div>
@@ -937,18 +997,26 @@ onMounted(() => {
                                             }}</span>
                                         <span class="text-lg font-bold text-emerald-700 dark:text-emerald-400">
                                             {{ activePlan ? formatPrice(getDiscountedPrice(activePlan.price,
-                                            renewDuration),
-                                            activePlan.currency) : '' }}
+                                                renewDuration),
+                                                activePlan.currency) : '' }}
                                         </span>
                                     </div>
-                                    <div v-if="getDiscount(renewDuration) > 0"
-                                        class="flex items-center justify-between mt-1">
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ t.savePct }} {{
-                                            getDiscount(renewDuration) }}%</span>
+                                    <div v-if="getDiscount(renewDuration) > 0 || userPercentDiscount > 0"
+                                        class="flex flex-wrap items-center justify-between mt-1">
+                                        <div class="flex flex-wrap items-center gap-1.5">
+                                            <span v-if="getDiscount(renewDuration) > 0"
+                                                class="text-xs text-gray-500 dark:text-gray-400">{{ t.savePct }} {{
+                                                    getDiscount(renewDuration) }}%</span>
+                                            <span v-if="userPercentDiscount > 0"
+                                                class="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded font-semibold">
+                                                <i class="fa-solid fa-star text-[9px] mr-0.5"></i>{{ userPercentDiscount
+                                                }}%
+                                            </span>
+                                        </div>
                                         <span class="text-xs text-gray-400 line-through">
                                             {{ activePlan ? formatPrice(activePlan.price * renewDuration,
-                                            activePlan.currency) :
-                                            '' }}
+                                                activePlan.currency) :
+                                                '' }}
                                         </span>
                                     </div>
                                 </div>

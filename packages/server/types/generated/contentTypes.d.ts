@@ -2061,6 +2061,15 @@ export interface PluginUsersPermissionsUser
         minLength: 6;
       }>;
     payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
+    percentDiscount: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
     phone: Schema.Attribute.String;
     plainPassword: Schema.Attribute.String & Schema.Attribute.Private;
     plan: Schema.Attribute.Relation<'manyToOne', 'api::plan.plan'>;

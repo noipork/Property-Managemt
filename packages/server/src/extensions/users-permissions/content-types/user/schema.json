@@ -150,6 +150,12 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::subscription.subscription"
+    },
+    "percentDiscount": {
+      "type": "integer",
+      "default": 0,
+      "min": 0,
+      "max": 100
     }
   }
 }
