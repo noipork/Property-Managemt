@@ -144,6 +144,9 @@ async function fetchProperties() {
                 'populate[property][fields][0]': 'documentId',
                 'pagination[pageSize]': '500',
             })
+            leaseParams.set('filters[status][$notIn][0]', 'expired')
+            leaseParams.set('filters[status][$notIn][1]', 'terminated')
+            leaseParams.set('filters[status][$notIn][2]', 'cancelled')
             if (user.value?.documentId) {
                 leaseParams.set('filters[property][owner][documentId][$eq]', user.value.documentId)
             }

@@ -266,11 +266,20 @@ async function fetchProperty() {
     try {
         isLoading.value = true
         sectionsVisible.value = false
+        const leaseParams = new URLSearchParams({
+            'populate[0]': 'unitType',
+            'populate[1]': 'property',
+            'filters[property][documentId][$eq]': propertyId,
+            'pagination[pageSize]': '200',
+        })
+        leaseParams.set('filters[status][$notIn][0]', 'expired')
+        leaseParams.set('filters[status][$notIn][1]', 'terminated')
+        leaseParams.set('filters[status][$notIn][2]', 'cancelled')
         const [propRes, leasesRes] = await Promise.all([
             fetch(`${STRAPI_URL}/api/properties/${propertyId}?populate[0]=image&populate[1]=images&populate[2]=unitTypes.images&populate[3]=qrCodeImage`, {
                 headers: { 'Authorization': `Bearer ${token.value}` },
             }),
-            fetch(`${STRAPI_URL}/api/leases?populate[0]=unitType&populate[1]=property&filters[property][documentId][$eq]=${propertyId}&pagination[pageSize]=200`, {
+            fetch(`${STRAPI_URL}/api/leases?${leaseParams.toString()}`, {
                 headers: { 'Authorization': `Bearer ${token.value}` },
             }),
         ])
@@ -349,6 +358,9 @@ async function fetchBuildings() {
                 'fields[0]': 'status',
                 'populate[resident][fields][0]': 'documentId',
             })
+            leaseParams.set('filters[status][$notIn][0]', 'expired')
+            leaseParams.set('filters[status][$notIn][1]', 'terminated')
+            leaseParams.set('filters[status][$notIn][2]', 'cancelled')
             residentDocIds.forEach((id, i) => {
                 leaseParams.set(`filters[resident][documentId][$in][${i}]`, id)
             })
