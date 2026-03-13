@@ -178,6 +178,8 @@ const selectedBuildingId = ref<string>('')
 const selectedFloorId = ref<string>('')
 const selectedRoomDocId = ref<string>('')
 const initialUnitTypeId = ref('')
+const roomSectionRef = ref<HTMLElement | null>(null)
+const roomPrefillHighlight = ref(false)
 
 const statuses = ['reserved', 'active', 'nearlyExpired', 'expired', 'inactive']
 const statusLabels = computed(() => ({
@@ -620,12 +622,33 @@ onMounted(async () => {
         }
         // Restore unit type selection
         if (initialUnitTypeId.value) form.value.unitTypeId = initialUnitTypeId.value
-        // Restore building/floor/room selection from the loaded roomNumber
-        const currentRoom = form.value.roomNumber
-        if (currentRoom) {
+        // Restore building/floor/room selection — prefer query params, fallback to roomNumber scan
+        const qBuildingId = route.query.buildingId as string | undefined
+        const qFloorId = route.query.floorId as string | undefined
+        const qRoomNumber = (route.query.roomNumber as string | undefined) || form.value.roomNumber
+        if (qBuildingId) {
+            const b = buildings.value.find(x => String(x.id) === qBuildingId)
+            if (b) {
+                selectedBuildingId.value = String(b.id)
+                if (qFloorId) {
+                    const f = b.floors.find(x => String(x.id) === qFloorId)
+                    if (f) {
+                        selectedFloorId.value = String(f.id)
+                        const match = qRoomNumber
+                            ? f.rooms.find(r => r.roomNumber.toLowerCase() === qRoomNumber.toLowerCase())
+                            : null
+                        if (match) {
+                            selectedRoomDocId.value = match.documentId
+                        }
+                    }
+                }
+            }
+        }
+        // Fallback: scan all buildings if query params didn't resolve
+        if (!selectedRoomDocId.value && qRoomNumber) {
             for (const b of buildings.value) {
                 for (const f of b.floors) {
-                    const match = f.rooms.find(r => r.roomNumber.toLowerCase() === currentRoom.toLowerCase())
+                    const match = f.rooms.find(r => r.roomNumber.toLowerCase() === qRoomNumber.toLowerCase())
                     if (match) {
                         selectedBuildingId.value = String(b.id)
                         selectedFloorId.value = String(f.id)
@@ -635,6 +658,15 @@ onMounted(async () => {
                 }
                 if (selectedRoomDocId.value) break
             }
+        }
+        // Scroll to room section & pulse highlight when auto-selected
+        if (selectedRoomDocId.value) {
+            await nextTick()
+            roomPrefillHighlight.value = true
+            setTimeout(() => {
+                roomSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }, 600)
+            setTimeout(() => { roomPrefillHighlight.value = false }, 3000)
         }
     }
     initialLoad = false
@@ -803,7 +835,7 @@ onMounted(async () => {
                             </div>
 
                             <!-- Building picker -->
-                            <div v-else-if="buildings.length > 0" class="space-y-3">
+                            <div v-else-if="buildings.length > 0" ref="roomSectionRef" class="space-y-3">
                                 <!-- Step 1: Select Building -->
                                 <div>
                                     <p
@@ -911,7 +943,7 @@ onMounted(async () => {
                                             class="relative flex flex-col items-center justify-center py-2 px-1 rounded-lg border-2 text-xs font-semibold transition-all duration-200"
                                             :class="[
                                                 selectedRoomDocId === room.documentId
-                                                    ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 ring-2 ring-primary-300 dark:ring-primary-700 shadow-sm'
+                                                    ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 ring-2 ring-primary-300 dark:ring-primary-700 shadow-sm' + (roomPrefillHighlight ? ' animate-pulse' : '')
                                                     : roomStatusColor(room) === 'free'
                                                         ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer'
                                                         : roomStatusColor(room) === 'occupied'
@@ -940,10 +972,20 @@ onMounted(async () => {
 
                                 <!-- Selected room summary -->
                                 <div v-if="form.roomNumber && selectedRoomDocId"
-                                    class="flex items-center gap-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 rounded-lg text-xs text-primary-700 dark:text-primary-300">
-                                    <i class="fa-solid fa-check-circle"></i>
-                                    <span>{{ t.selectedRoom }}: <strong>{{ selectedBuilding?.name }} → {{ t.floorLabel
+                                    class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs transition-all duration-300"
+                                    :class="roomPrefillHighlight
+                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 shadow-sm'
+                                        : 'bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 text-primary-700 dark:text-primary-300'">
+                                    <i
+                                        :class="roomPrefillHighlight ? 'fa-solid fa-circle-check text-emerald-500' : 'fa-solid fa-check-circle'"></i>
+                                    <span class="flex-1">{{ t.selectedRoom }}: <strong>{{ selectedBuilding?.name }} → {{
+                                        t.floorLabel
                                             }} {{ selectedFloor?.floorNumber }} → {{ form.roomNumber }}</strong></span>
+                                    <span v-if="roomPrefillHighlight"
+                                        class="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-800/40 text-emerald-600 dark:text-emerald-400">
+                                        <i class="fa-solid fa-link text-[8px]"></i>
+                                        {{ t.autoSelected || 'Auto-selected' }}
+                                    </span>
                                 </div>
                             </div>
 
@@ -967,7 +1009,7 @@ onMounted(async () => {
                                 @click="($event.target as HTMLInputElement).showPicker?.()" />
                             <p v-if="errors.registrationDate" class="mt-1 text-xs text-red-500">{{
                                 errors.registrationDate
-                            }}</p>
+                                }}</p>
                         </div>
 
                         <!-- Residency Status -->
@@ -1069,7 +1111,7 @@ onMounted(async () => {
                                     :class="errors.leaseEndDate ? 'border-red-400 dark:border-red-500' : 'border-gray-200 dark:border-gray-700'"
                                     @click="($event.target as HTMLInputElement).showPicker?.()" />
                                 <p v-if="errors.leaseEndDate" class="mt-1 text-xs text-red-500">{{ errors.leaseEndDate
-                                }}</p>
+                                    }}</p>
                             </div>
                         </div>
 

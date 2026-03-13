@@ -997,7 +997,7 @@ onUnmounted(() => {
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.areaLabel }}</dt>
                             <dd class="text-sm font-medium text-gray-900 dark:text-white">{{
                                 Number(property.area).toLocaleString('en-US')
-                            }} {{ property.areaUnit }}</dd>
+                                }} {{ property.areaUnit }}</dd>
                         </div>
                         <div v-if="property.yearBuilt" class="flex justify-between">
                             <dt class="text-sm text-gray-500 dark:text-gray-400">{{ t.yearBuiltLabel }}</dt>
@@ -1168,7 +1168,7 @@ onUnmounted(() => {
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ ut.name
-                                        }}</span>
+                                    }}</span>
                                     <span
                                         class="text-xs px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400 capitalize">
                                         {{ ut.unitType?.replace(/^br(\d)$/, '$1BR') ?? ut.unitType }}
@@ -1228,7 +1228,7 @@ onUnmounted(() => {
                         <!-- Description + images -->
                         <div v-if="ut.description || ut.images?.length" class="p-3 space-y-2">
                             <p v-if="ut.description" class="text-xs text-gray-500 dark:text-gray-400">{{ ut.description
-                                }}</p>
+                            }}</p>
                             <div v-if="ut.images?.length" class="flex gap-2 flex-wrap">
                                 <div v-for="(img, imgIdx) in ut.images" :key="img.id"
                                     class="relative w-24 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer group"
@@ -1519,7 +1519,7 @@ onUnmounted(() => {
                                             <div v-for="room in floor.rooms" :key="room.documentId"
                                                 class="relative p-2.5 rounded-lg border transition-all hover:shadow-sm group/room"
                                                 :class="[roomStatusColors[roomDisplayStatus(room)], editingRoom !== room.documentId && (roomDisplayStatus(room) === 'vacant' || room.resident) ? 'cursor-pointer' : '', roomDisplayStatus(room) === 'vacant' && editingRoom !== room.documentId ? 'hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10' : '', room.resident && editingRoom !== room.documentId ? 'hover:opacity-90 hover:shadow-md' : '']"
-                                                @click="editingRoom !== room.documentId ? (room.resident ? $router.push(`/manager/residents/${room.resident.documentId}/edit`) : roomDisplayStatus(room) === 'vacant' ? $router.push(`/manager/residents/register?propertyId=${property?.id}&roomNumber=${room.roomNumber}&buildingId=${building.id}&floorId=${floor.id}`) : null) : null">
+                                                @click="editingRoom !== room.documentId ? (room.resident ? $router.push(`/manager/residents/${room.resident.documentId}/edit?buildingId=${building.id}&floorId=${floor.id}&roomNumber=${room.roomNumber}`) : roomDisplayStatus(room) === 'vacant' ? $router.push(`/manager/residents/register?propertyId=${property?.id}&roomNumber=${room.roomNumber}&buildingId=${building.id}&floorId=${floor.id}`) : null) : null">
 
                                                 <!-- Room view mode -->
                                                 <template v-if="editingRoom !== room.documentId">
@@ -1542,7 +1542,7 @@ onUnmounted(() => {
                                                             </NuxtLink>
                                                             <!-- Edit resident (occupied rooms) -->
                                                             <NuxtLink v-if="room.resident"
-                                                                :to="`/manager/residents/${room.resident.documentId}/edit`"
+                                                                :to="`/manager/residents/${room.resident.documentId}/edit?buildingId=${building.id}&floorId=${floor.id}&roomNumber=${room.roomNumber}`"
                                                                 @click.stop
                                                                 class="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:text-primary-500"
                                                                 :title="t.editResident">
