@@ -249,7 +249,6 @@ function loadStripe(): Promise<any> {
 const handleSubmit = async () => {
     if (
         !fullName.value ||
-        !email.value ||
         !password.value ||
         !agreeTerms.value ||
         !selectedPlan.value
@@ -301,7 +300,7 @@ const handleSubmit = async () => {
                     },
                     body: JSON.stringify({
                         fullName: fullName.value,
-                        email: email.value,
+                        email: email.value || `${fullName.value.replace(/\s+/g, '').toLowerCase()}@noemail.local`,
                         password: password.value,
                         planId: selectedPlan.value.documentId,
                         durationMonths: selectedDuration.value,
@@ -570,7 +569,7 @@ onMounted(() => {
                     <p class="text-sm text-gray-300 dark:text-gray-400 leading-relaxed">
                         <span class="font-medium text-white">{{
                             lang === "TH" ? "ฟีเจอร์ครบครัน:" : "Full Features:"
-                            }}</span>
+                        }}</span>
                         {{
                             lang === 'TH'
                                 ? `แดชบอร์ด, จัดการทรัพย์สิน, สัญญาเช่า, บิล/ชำระเงิน, งานซ่อมบำรุง, แชทเรียลไทม์,
@@ -675,16 +674,22 @@ onMounted(() => {
                             </div>
                         </div>
 
-                        <!-- Email -->
+                        <!-- Email (optional) -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{
-                                t.emailAddress }}</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                {{ t.emailAddress }}
+                                <span class="text-xs font-normal text-gray-400 dark:text-gray-500 ml-1">({{
+                                    t.emailOptional }})</span>
+                            </label>
                             <div class="relative">
                                 <i
                                     class="ti-email absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-sm"></i>
                                 <input v-model="email" type="email" :placeholder="t.emailPlaceholder"
                                     class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all" />
                             </div>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                <i class="fa-solid fa-circle-info mr-1"></i>{{ t.emailOptionalHint }}
+                            </p>
                         </div>
 
                         <!-- Password -->
@@ -875,7 +880,6 @@ onMounted(() => {
                         <!-- Submit -->
                         <button type="submit" :disabled="isLoading ||
                             !fullName ||
-                            !email ||
                             !password ||
                             !agreeTerms ||
                             password !== confirmPassword ||

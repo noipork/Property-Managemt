@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { token, user } = useAuth()
 const config = useRuntimeConfig()
 const STRAPI_URL = config.public.strapiUrl
@@ -39,6 +39,7 @@ const isLoadingProperty = ref(true)
 // ─── CSV State ────────────────────────────────────────────────────────────────
 interface CsvRow {
     fullName: string
+    username: string
     email: string
     phone: string
     registeredDate: string
@@ -81,6 +82,7 @@ const skippedCount = computed(() => importResults.value.filter(r => r.status ===
 // ─── CSV Column Order ─────────────────────────────────────────────────────────
 const CSV_HEADERS = [
     'Full Name',
+    'Username (optional)',
     'Email',
     'Phone',
     'Registered Date',
@@ -93,6 +95,23 @@ const CSV_HEADERS = [
     'Water Meter (Now)',
     'Next Bill Date',
     'Assets',
+]
+
+const CSV_HEADERS_TH = [
+    'ชื่อ-นามสกุล',
+    'ชื่อผู้ใช้ (ไม่บังคับ)',
+    'อีเมล',
+    'เบอร์โทร',
+    'วันที่ลงทะเบียน',
+    'หมายเลขห้อง',
+    'ระยะเวลาสัญญาเช่า (เดือน)',
+    'ค่าเช่ารายเดือน',
+    'มิเตอร์ไฟฟ้า (ก่อน)',
+    'มิเตอร์ไฟฟ้า (ปัจจุบัน)',
+    'มิเตอร์น้ำ (ก่อน)',
+    'มิเตอร์น้ำ (ปัจจุบัน)',
+    'วันเรียกเก็บเงินถัดไป',
+    'ทรัพย์สิน',
 ]
 
 // ─── Fetch Property ───────────────────────────────────────────────────────────
@@ -139,8 +158,8 @@ onMounted(() => {
 // ─── Template Download ────────────────────────────────────────────────────────
 function downloadTemplate() {
     const sampleRows = [
-        ['John Doe', 'john@example.com', '0812345678', '2026-03-01', '101', '12', '5000', '1000', '1050', '200', '220', '2026-04-01', 'Air conditioner, Refrigerator'],
-        ['Jane Smith', 'jane@example.com', '0898765432', '2026-03-01', '102', '6', '4500', '500', '530', '100', '115', '2026-04-01', ''],
+        ['John Doe', 'johndoe', 'john@example.com', '0812345678', '2026-03-01', '101', '12', '5000', '1000', '1050', '200', '220', '2026-04-01', 'Air conditioner, Refrigerator'],
+        ['Jane Smith', '', 'jane@example.com', '0898765432', '2026-03-01', '102', '6', '4500', '500', '530', '100', '115', '2026-04-01', ''],
     ]
     const csvContent = [CSV_HEADERS.join(','), ...sampleRows.map(r => r.map(c => `"${c}"`).join(','))].join('\n')
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -148,6 +167,21 @@ function downloadTemplate() {
     const a = document.createElement('a')
     a.href = url
     a.download = `residents-import-template.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+}
+
+function downloadTemplateTH() {
+    const sampleRows = [
+        ['สมชาย ใจดี', 'somchai', 'somchai@example.com', '0812345678', '2026-03-01', '101', '12', '5000', '1000', '1050', '200', '220', '2026-04-01', 'แอร์, ตู้เย็น'],
+        ['สมหญิง รักดี', '', 'somying@example.com', '0898765432', '2026-03-01', '102', '6', '4500', '500', '530', '100', '115', '2026-04-01', ''],
+    ]
+    const csvContent = [CSV_HEADERS_TH.join(','), ...sampleRows.map(r => r.map(c => `"${c}"`).join(','))].join('\n')
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `residents-import-template-th.csv`
     a.click()
     URL.revokeObjectURL(url)
 }
@@ -206,27 +240,28 @@ function handleFile(file: File) {
         const rows: CsvRow[] = []
         for (let i = 1; i < lines.length; i++) {
             const cols = parseCsvLine(lines[i]!)
-            if (!cols[0] || !cols[1]) continue // skip rows without name or email
+            if (!cols[0]) continue // skip rows without name
 
-            const registeredDate = cols[3]?.trim() || new Date().toISOString().split('T')[0]!
-            const leaseDuration = parseInt(cols[5] ?? '12') || 12
+            const registeredDate = cols[4]?.trim() || new Date().toISOString().split('T')[0]!
+            const leaseDuration = parseInt(cols[6] ?? '12') || 12
             const endDate = new Date(registeredDate)
             endDate.setMonth(endDate.getMonth() + leaseDuration)
 
             rows.push({
                 fullName: cols[0]?.trim() || '',
-                email: cols[1]?.trim() || '',
-                phone: cols[2]?.trim() || '',
+                username: cols[1]?.trim() || '',
+                email: cols[2]?.trim() || '',
+                phone: cols[3]?.trim() || '',
                 registeredDate,
-                roomNumber: cols[4]?.trim() || '',
+                roomNumber: cols[5]?.trim() || '',
                 leaseDuration,
-                monthlyRent: parseFloat(cols[6] ?? '0') || 0,
-                electricPrev: parseFloat(cols[7] ?? '0') || 0,
-                electricNow: parseFloat(cols[8] ?? '0') || 0,
-                waterPrev: parseFloat(cols[9] ?? '0') || 0,
-                waterNow: parseFloat(cols[10] ?? '0') || 0,
-                nextBillDate: cols[11]?.trim() || '',
-                assets: cols[12]?.trim() || '',
+                monthlyRent: parseFloat(cols[7] ?? '0') || 0,
+                electricPrev: parseFloat(cols[8] ?? '0') || 0,
+                electricNow: parseFloat(cols[9] ?? '0') || 0,
+                waterPrev: parseFloat(cols[10] ?? '0') || 0,
+                waterNow: parseFloat(cols[11] ?? '0') || 0,
+                nextBillDate: cols[12]?.trim() || '',
+                assets: cols[13]?.trim() || '',
             })
         }
 
@@ -280,13 +315,19 @@ async function startImport() {
         importProgress.value = i + 1
 
         try {
-            // ── 1. Register user ──
+            // ── 1. Generate username if not provided ──
+            const username = row.username
+                || `${property.value!.name.replace(/\s+/g, '').toLowerCase()}${row.roomNumber}`
+            const email = row.email
+                || `${username.replace(/\s+/g, '').toLowerCase()}@noemail.local`
+
+            // ── 2. Register user ──
             const registerRes = await fetch(`${STRAPI_URL}/api/auth/local/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    username: row.fullName,
-                    email: row.email,
+                    username,
+                    email,
                     password: DEFAULT_PASSWORD,
                 }),
             })
@@ -309,7 +350,7 @@ async function startImport() {
                 continue
             }
 
-            // ── 2. Update user with role=4, property, unitType, roomNumber, etc. ──
+            // ── 3. Update user with role=4, property, unitType, roomNumber, etc. ──
             await fetch(`${STRAPI_URL}/api/users/${newUserId}`, {
                 method: 'PUT',
                 headers: {
@@ -318,6 +359,7 @@ async function startImport() {
                 },
                 body: JSON.stringify({
                     role: 4,
+                    fullName: row.fullName,
                     phone: row.phone || null,
                     property: propertyNumericId,
                     unitType: unitTypeNumericId,
@@ -329,7 +371,7 @@ async function startImport() {
                 }),
             })
 
-            // ── 3. Assign resident to room in building ──
+            // ── 4. Assign resident to room in building ──
             if (row.roomNumber && newUserDocumentId) {
                 try {
                     await fetch(`${STRAPI_URL}/api/rooms/assign-resident`, {
@@ -349,7 +391,7 @@ async function startImport() {
                 }
             }
 
-            // ── 4. Create lease ──
+            // ── 5. Create lease ──
             const leaseStartDate = row.registeredDate
             const leaseEndDate = new Date(leaseStartDate)
             leaseEndDate.setMonth(leaseEndDate.getMonth() + row.leaseDuration)
@@ -387,7 +429,7 @@ async function startImport() {
                 // Non-blocking — user was still created
             }
 
-            // ── 5. Save meter readings if values differ ──
+            // ── 6. Save meter readings if values differ ──
             if (row.electricNow !== row.electricPrev || row.waterNow !== row.waterPrev) {
                 try {
                     await fetch(`${STRAPI_URL}/api/meter-readings/bulk`, {
@@ -492,16 +534,23 @@ async function startImport() {
                             <i class="fa-solid fa-file-csv text-emerald-500"></i>
                             CSV Template
                         </h2>
-                        <button @click="downloadTemplate"
-                            class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
-                            <i class="fa-solid fa-download text-sm"></i>
-                            {{ t.downloadTemplate }}
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button @click="downloadTemplate"
+                                class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
+                                <i class="fa-solid fa-download text-sm"></i>
+                                EN
+                            </button>
+                            <button @click="downloadTemplateTH"
+                                class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+                                <i class="fa-solid fa-download text-sm"></i>
+                                TH
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Column descriptions -->
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                        <div v-for="(header, i) in CSV_HEADERS" :key="i"
+                        <div v-for="(header, i) in (lang === 'TH' ? CSV_HEADERS_TH : CSV_HEADERS)" :key="i"
                             class="flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg">
                             <span
                                 class="w-5 h-5 flex items-center justify-center rounded text-[10px] font-bold bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
@@ -606,6 +655,9 @@ async function startImport() {
                                         {{ t.csvColumnFullName }}</th>
                                     <th
                                         class="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        {{ t.csvColumnUsername }}</th>
+                                    <th
+                                        class="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         {{ t.csvColumnEmail }}</th>
                                     <th
                                         class="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -646,6 +698,11 @@ async function startImport() {
                                     <td class="px-3 py-2 text-xs text-gray-400 font-mono">{{ i + 1 }}</td>
                                     <td class="px-3 py-2 text-sm text-gray-800 dark:text-gray-200 font-medium">{{
                                         row.fullName }}</td>
+                                    <td class="px-3 py-2 text-xs font-mono text-gray-600 dark:text-gray-400">
+                                        <span v-if="row.username">{{ row.username }}</span>
+                                        <span v-else class="text-gray-300 dark:text-gray-600 italic">{{ t.autoGenerated
+                                            }}</span>
+                                    </td>
                                     <td class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{{ row.email }}</td>
                                     <td class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{{ row.phone || '—'
                                         }}</td>

@@ -40,7 +40,7 @@ export const useAuth = () => {
     const user = _user
     const token = _token
 
-    const login = async (email: string, password: string) => {
+    const login = async (identifier: string, password: string) => {
         try {
             const response = await fetch(`${STRAPI_URL}/api/auth/local`, {
                 method: 'POST',
@@ -48,7 +48,7 @@ export const useAuth = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    identifier: email,
+                    identifier,
                     password: password,
                 }),
             })
@@ -74,7 +74,7 @@ export const useAuth = () => {
             user.value = {
                 id: userData.id,
                 documentId: userData.documentId,
-                name: userData.username || userData.email.split('@')[0],
+                name: userData.fullName || userData.username || userData.email?.split('@')[0],
                 email: userData.email,
                 role: mapStrapiRoleToUserRole(userData.role),
                 property: userData.property ? { id: userData.property.id, documentId: userData.property.documentId, name: userData.property.name } : null,
@@ -124,7 +124,7 @@ export const useAuth = () => {
                 headers,
                 body: JSON.stringify({
                     username: name.replace(/\s+/g, '').toLowerCase(),
-                    email: email,
+                    email: email || `${name.replace(/\s+/g, '').toLowerCase()}@noemail.local`,
                     password: password,
                 }),
             })
@@ -139,7 +139,7 @@ export const useAuth = () => {
 
             // Update role and plan after registration completes
             if (userId) {
-                const updatePayload: Record<string, unknown> = { role: 3 }
+                const updatePayload: Record<string, unknown> = { role: 3, fullName: name }
 
                 if (plan?.id) {
                     updatePayload.plan = plan.id
@@ -225,7 +225,7 @@ export const useAuth = () => {
             user.value = {
                 id: userData.id,
                 documentId: userData.documentId,
-                name: name,
+                name: userData.fullName || name,
                 email: userData.email,
                 role: mapStrapiRoleToUserRole(userData.role),
                 property: userData.property ? { id: userData.property.id, documentId: userData.property.documentId, name: userData.property.name } : null,

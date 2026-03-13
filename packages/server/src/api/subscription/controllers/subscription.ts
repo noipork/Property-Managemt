@@ -441,17 +441,32 @@ export default factories.createCoreController('api::subscription.subscription', 
         return ctx.badRequest('Plan ID is required')
       }
 
-      if (!fullName || !email || !password) {
-        return ctx.badRequest('Full name, email, and password are required')
+      if (!fullName || !password) {
+        return ctx.badRequest('Full name and password are required')
       }
 
-      // Check if email already exists
-      const existingUser = await strapi.documents('plugin::users-permissions.user').findFirst({
-        filters: { email },
-      })
+      // Derive username from fullName
+      const safeUsername = fullName.replace(/\s+/g, '').toLowerCase()
 
-      if (existingUser) {
-        return ctx.badRequest('Email already registered')
+      // Check if username already exists
+      const existingByUsername = await strapi.documents('plugin::users-permissions.user').findFirst({
+        filters: { username: safeUsername },
+      })
+      if (existingByUsername) {
+        return ctx.badRequest('Username already taken. Please use a different name.')
+      }
+
+      // Use provided email or generate a placeholder
+      const resolvedEmail = email || `${safeUsername}@noemail.local`
+
+      // Check if email already exists (only if real email provided)
+      if (email) {
+        const existingUser = await strapi.documents('plugin::users-permissions.user').findFirst({
+          filters: { email },
+        })
+        if (existingUser) {
+          return ctx.badRequest('Email already registered')
+        }
       }
 
       // Validate duration
@@ -496,7 +511,7 @@ export default factories.createCoreController('api::subscription.subscription', 
 
       // Create Stripe Checkout Session with signup data in metadata
       const session = await stripe.checkout.sessions.create({
-        customer_email: email,
+        customer_email: resolvedEmail,
         payment_method_types: ['card', 'promptpay'],
         line_items: [
           {
@@ -520,7 +535,7 @@ export default factories.createCoreController('api::subscription.subscription', 
           planDocumentId: plan.documentId,
           durationMonths: String(duration),
           fullName,
-          email,
+          email: resolvedEmail,
           // We don't store password in Stripe metadata for security, will use token
         },
       })
@@ -647,6 +662,7 @@ export default factories.createCoreController('api::subscription.subscription', 
           provider: 'local',
           confirmed: true,
           role: managerRole.id,
+          fullName,
         },
       })
 
