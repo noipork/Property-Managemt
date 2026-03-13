@@ -135,6 +135,11 @@ const roleColor = computed(() =>
                     <div>
                         <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ user?.name }}</p>
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ user?.email }}</p>
+                        <p v-if="profileForm.phone"
+                            class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-0.5">
+                            <i class="fa-solid fa-phone text-xs"></i>
+                            {{ profileForm.phone }}
+                        </p>
                         <span
                             class="inline-flex items-center mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase"
                             :class="roleColor">
