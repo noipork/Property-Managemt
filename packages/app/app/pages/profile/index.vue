@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 const { t } = useI18n()
 const { user, token } = useAuth()
@@ -19,7 +19,7 @@ function showToast(type: 'success' | 'error', message: string) {
 const profileForm = ref({
     username: user.value?.name ?? '',
     email: user.value?.email ?? '',
-    phone: (user.value as any)?.phone ?? '',
+    phone: '',   // populated on mount from /api/users/me
 })
 const isSavingProfile = ref(false)
 
@@ -45,7 +45,7 @@ async function saveProfile() {
             ...user.value,
             name: profileForm.value.username,
             email: profileForm.value.email,
-        }
+        } as any
         if (process.client) {
             localStorage.setItem('authUser', JSON.stringify(user.value))
         }
@@ -110,6 +110,21 @@ const roleColor = computed(() =>
         ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
         : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
 )
+
+// Fetch fresh user data on mount to get phone (not stored in cached auth user)
+onMounted(async () => {
+    if (!token.value) return
+    try {
+        const res = await fetch(`${STRAPI_URL}/api/users/me`, {
+            headers: { Authorization: `Bearer ${token.value}` },
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        profileForm.value.phone = data.phone ?? ''
+    } catch {
+        // silently fail — form stays empty
+    }
+})
 </script>
 
 <template>
